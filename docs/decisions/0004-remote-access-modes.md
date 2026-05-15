@@ -28,9 +28,8 @@ Model gmux access as one local baseline plus two supported remote-access modes:
 Provisioning helpers, SSH tunnels, reverse-proxy snippets, and install scripts
 are not additional access modes.
 
-Future config and CLI work should converge on an optional remote selector.
-Local access is implicit; `[remote]` exists only when one remote transport is
-enabled:
+Future config should converge on an optional remote selector. Local access is
+implicit; `[remote]` exists only when one remote transport is enabled:
 
 ```toml
 [remote]
@@ -73,12 +72,13 @@ Tradeoffs:
   `[remote].mode` is the only accepted remote selector.
 - Advanced users who want multiple simultaneous transports will need an explicit
   debug/advanced contract later.
-- Documentation must distinguish implemented behavior from target management
-  commands until the CLI is updated.
+- CLI command docs should stay flat (`gmuxd tsnet`, `gmuxd relay`) while there
+  are only two remote transports; add a namespace only if future scope warrants
+  it.
 
 ## Follow-Up
 
-- Add or update implementation stories for `[remote].mode` migration and remote
-  management commands when code work is selected.
+- Add or update implementation stories for `[remote].mode` migration and direct
+  `gmuxd tsnet` / `gmuxd relay` command behavior when code work is selected.
 - Add platform validation for local, tsnet, and relay smoke checks once validation
   scripts exist.

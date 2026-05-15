@@ -231,8 +231,8 @@ func TestDisplayStatus_NeedsLogin(t *testing.T) {
 	if !strings.Contains(out, "https://login.tailscale.com/a/abc123") {
 		t.Errorf("missing auth URL in:\n%s", out)
 	}
-	if !strings.Contains(out, "gmuxd remote") {
-		t.Errorf("should tell user to run gmuxd remote again:\n%s", out)
+	if !strings.Contains(out, "gmuxd tsnet") {
+		t.Errorf("should tell user to run gmuxd tsnet again:\n%s", out)
 	}
 	// Should NOT mention HTTPS or MagicDNS problems.
 	if strings.Contains(out, "HTTPS") || strings.Contains(out, "MagicDNS") {
@@ -310,7 +310,7 @@ func TestDisplayStatus_NotConnected(t *testing.T) {
 	}
 }
 
-func TestRunRemoteRelayConfiguredDoesNotStartTailscaleSetup(t *testing.T) {
+func TestRunTsnetRelayConfiguredDoesNotStartTailscaleSetup(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", dir)
 	cfgDir := filepath.Join(dir, "gmux")
@@ -329,16 +329,48 @@ token = "secret"
 	}
 	stdin := strings.NewReader("y\n")
 	var stdout, stderr bytes.Buffer
-	code := runRemote(stdin, &stdout, &stderr)
+	code := runTsnet(stdin, &stdout, &stderr)
 	if code != 0 {
 		t.Errorf("exit code = %d, want 0; stderr=%s", code, stderr.String())
 	}
 	out := stdout.String()
-	if !strings.Contains(out, "Relay remote access is configured") {
+	if !strings.Contains(out, "Relay access is configured") {
 		t.Errorf("missing relay configured message:\n%s", out)
 	}
 	if strings.Contains(out, "Enable remote access?") {
 		t.Errorf("should not prompt for Tailscale setup when relay is configured:\n%s", out)
+	}
+}
+
+func TestRunRelayConfigured(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", dir)
+	cfgDir := filepath.Join(dir, "gmux")
+	if err := os.MkdirAll(cfgDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(cfgDir, "host.toml"), []byte(`
+[remote]
+mode = "relay"
+
+[relay]
+url = "wss://relay.example.com/_gmux/agent"
+token = "secret"
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var stdout, stderr bytes.Buffer
+	code := runRelay(&stdout, &stderr)
+	if code != 0 {
+		t.Errorf("exit code = %d, want 0; stderr=%s", code, stderr.String())
+	}
+	out := stdout.String()
+	if !strings.Contains(out, "Relay access is configured") {
+		t.Errorf("missing relay configured message:\n%s", out)
+	}
+	if !strings.Contains(out, "wss://relay.example.com/_gmux/agent") {
+		t.Errorf("missing relay URL:\n%s", out)
 	}
 }
 

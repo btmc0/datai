@@ -81,18 +81,20 @@ Rules:
 
 ## Target Management Commands
 
-Remote management should be grouped under one command surface:
+Remote management should use direct top-level commands because gmux only has two
+remote transports:
 
 ```bash
-gmuxd remote status
-gmuxd remote setup tsnet
-gmuxd remote setup relay
-gmuxd remote disable
+gmuxd tsnet
+gmuxd relay
+gmuxd status
 gmuxd doctor
 ```
 
-`gmuxd remote status` should report mode, local URL, remote/public URL when
-known, connection state, and the last actionable error.
+`gmuxd tsnet` should set up or report tsnet state. `gmuxd relay` should set
+up or report relay state. `gmuxd status` should include the selected remote
+mode, local URL, remote/public URL when known, connection state, and the last
+actionable error.
 
 ## Security Boundary
 

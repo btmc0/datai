@@ -24,7 +24,7 @@ func (a discoverTestAdapter) Name() string                      { return a.name 
 func (a discoverTestAdapter) Discover() bool                    { return a.available }
 func (a discoverTestAdapter) Match(_ []string) bool             { return false }
 func (a discoverTestAdapter) Env(_ adapter.EnvContext) []string { return nil }
-func (a discoverTestAdapter) Monitor(_ []byte) *adapter.Event { return nil }
+func (a discoverTestAdapter) Monitor(_ []byte) *adapter.Event   { return nil }
 func (a discoverTestAdapter) Launchers() []adapter.Launcher {
 	return []adapter.Launcher{{ID: a.name, Label: a.name}}
 }
@@ -310,13 +310,13 @@ func TestUsageIncludesNewCommands(t *testing.T) {
 	var stdout bytes.Buffer
 	printUsage(&stdout)
 	out := stdout.String()
-	for _, cmd := range []string{"start", "stop", "status", "auth", "remote", "log-path"} {
+	for _, cmd := range []string{"start", "stop", "status", "auth", "tsnet", "relay", "log-path"} {
 		if !strings.Contains(out, cmd) {
 			t.Errorf("usage missing command %q", cmd)
 		}
 	}
 	// Old commands should not appear.
-	for _, old := range []string{"shutdown", "auth-link", "--replace"} {
+	for _, old := range []string{"remote", "shutdown", "auth-link", "--replace"} {
 		if strings.Contains(out, old) {
 			t.Errorf("usage should not contain old command %q", old)
 		}

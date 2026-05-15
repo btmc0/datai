@@ -21,16 +21,16 @@ import (
 
 const remoteDocsURL = "https://gmux.app/remote-access/"
 
-func runRemote(stdin io.Reader, stdout, stderr io.Writer) int {
+func runTsnet(stdin io.Reader, stdout, stderr io.Writer) int {
 	cfg, err := config.Load()
 	if err != nil {
-		fmt.Fprintf(stderr, "gmuxd remote: %v\n", err)
+		fmt.Fprintf(stderr, "gmuxd tsnet: %v\n", err)
 		return 1
 	}
 
 	if cfg.Remote.Mode == "relay" || (cfg.Relay.Enabled && !cfg.Tailscale.Enabled) {
-		fmt.Fprintln(stdout, "Relay remote access is configured.")
-		fmt.Fprintln(stdout, "gmuxd remote currently manages Tailscale setup/status only.")
+		fmt.Fprintln(stdout, "Relay access is configured.")
+		fmt.Fprintln(stdout, "Use `gmuxd relay` to inspect relay configuration.")
 		fmt.Fprintf(stdout, "Learn more: %s\n", remoteDocsURL)
 		return 0
 	}
@@ -39,6 +39,25 @@ func runRemote(stdin io.Reader, stdout, stderr io.Writer) int {
 		return remoteSetup(cfg, stdin, stdout, stderr)
 	}
 	return remoteStatus(stdout, stderr)
+}
+
+func runRelay(stdout, stderr io.Writer) int {
+	cfg, err := config.Load()
+	if err != nil {
+		fmt.Fprintf(stderr, "gmuxd relay: %v\n", err)
+		return 1
+	}
+
+	if !cfg.Relay.Enabled {
+		fmt.Fprintln(stdout, "Relay access is not configured.")
+		fmt.Fprintln(stdout, "Add `[remote].mode = \"relay\"` and `[relay]` URL/token settings to host.toml.")
+		fmt.Fprintf(stdout, "Learn more: %s\n", remoteDocsURL)
+		return 0
+	}
+
+	fmt.Fprintln(stdout, "Relay access is configured.")
+	fmt.Fprintf(stdout, "relay url: %s\n", cfg.Relay.URL)
+	return 0
 }
 
 // remoteSetup explains remote access, asks for confirmation, enables it,
@@ -65,7 +84,7 @@ func remoteSetup(cfg config.Config, stdin io.Reader, stdout, stderr io.Writer) i
 	// Enable tailscale in the config file.
 	cfgPath := config.Path()
 	if err := enableTailscaleConfig(cfgPath); err != nil {
-		fmt.Fprintf(stderr, "gmuxd remote: %v\n", err)
+		fmt.Fprintf(stderr, "gmuxd tsnet: %v\n", err)
 		return 1
 	}
 	fmt.Fprintf(stdout, "Enabled tailscale in %s\n", cfgPath)
@@ -307,7 +326,7 @@ func displayStatus(h *tailscaleHealth, stdout io.Writer) int {
 		fmt.Fprintln(stdout, "To complete setup, log in to Tailscale:")
 		fmt.Fprintf(stdout, "  %s\n", ts.AuthURL)
 		fmt.Fprintln(stdout)
-		fmt.Fprintln(stdout, "After logging in, run `gmuxd remote` again to check the connection.")
+		fmt.Fprintln(stdout, "After logging in, run `gmuxd tsnet` again to check the connection.")
 		fmt.Fprintln(stdout)
 		fmt.Fprintf(stdout, "Docs: %s\n", remoteDocsURL)
 		return 0
@@ -350,7 +369,7 @@ func displayStatus(h *tailscaleHealth, stdout io.Writer) int {
 	fmt.Fprintln(stdout, "Tailscale is still connecting. This can take a minute on first setup.")
 	fmt.Fprintln(stdout)
 	fmt.Fprintln(stdout, "Try again shortly:")
-	fmt.Fprintln(stdout, "  gmuxd remote")
+	fmt.Fprintln(stdout, "  gmuxd tsnet")
 	fmt.Fprintln(stdout)
 	fmt.Fprintf(stdout, "Docs: %s\n", remoteDocsURL)
 	return 0

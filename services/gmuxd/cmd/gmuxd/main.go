@@ -212,7 +212,8 @@ Commands:
   restart            Restart the daemon (alias for start)
   status             Show daemon health, listeners, and sessions
   auth               Show the auth URL and token
-  remote             Set up or check remote access via Tailscale
+  tsnet              Set up or check Tailscale/tsnet access
+  relay              Check relay access configuration
   log-path           Print the daemon log file path
   version            Show gmuxd version
   help               Show this help
@@ -281,12 +282,18 @@ func run(args []string, stdout, stderr io.Writer) int {
 			return 2
 		}
 		return runAuth(stdout, stderr)
-	case "remote":
+	case "tsnet":
 		if len(args) > 0 {
-			_, _ = fmt.Fprintf(stderr, "gmuxd remote: unexpected arguments: %s\n", strings.Join(args, " "))
+			_, _ = fmt.Fprintf(stderr, "gmuxd tsnet: unexpected arguments: %s\n", strings.Join(args, " "))
 			return 2
 		}
-		return runRemote(os.Stdin, stdout, stderr)
+		return runTsnet(os.Stdin, stdout, stderr)
+	case "relay":
+		if len(args) > 0 {
+			_, _ = fmt.Fprintf(stderr, "gmuxd relay: unexpected arguments: %s\n", strings.Join(args, " "))
+			return 2
+		}
+		return runRelay(stdout, stderr)
 	case "version":
 		if len(args) > 0 {
 			_, _ = fmt.Fprintf(stderr, "gmuxd version: unexpected arguments: %s\n", strings.Join(args, " "))

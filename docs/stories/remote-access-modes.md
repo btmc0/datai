@@ -32,10 +32,10 @@ session store or product-domain service.
 
 ## Design Notes
 
-- Commands: target command surface is `gmuxd remote status`, `gmuxd remote setup
-  tsnet`, `gmuxd remote setup relay`, `gmuxd remote disable`, and `gmuxd doctor`.
-- Queries: remote status should include mode, local URL, remote/public URL,
-  connection state, and last actionable error.
+- Commands: target command surface is direct top-level mode commands: `gmuxd
+  tsnet`, `gmuxd relay`, `gmuxd status`, and `gmuxd doctor`.
+- Queries: status should include mode, local URL, remote/public URL, connection
+  state, and last actionable error.
 - API: no API change selected in this story.
 - Tables: no data model change.
 - Domain rules: only `gmuxd` owns session/workspace domain state.
@@ -65,8 +65,11 @@ future implementation work.
   environment reports Node.js `v20.19.4`.
 - `go test ./services/gmuxd/internal/config` passed on 2026-05-15 after adding
   optional `[remote].mode` parser coverage.
-- `go test ./services/gmuxd/cmd/gmuxd -run 'TestEnableTailscaleConfig|TestRemoteSetup|TestRunRemoteRelayConfigured|TestDisplayStatus'`
+- `go test ./services/gmuxd/cmd/gmuxd -run 'TestEnableTailscaleConfig|TestRemoteSetup|TestRunTsnetRelayConfigured|TestRunRelayConfigured|TestDisplayStatus'`
   passed on 2026-05-15.
+- `go test ./services/gmuxd/cmd/gmuxd -run 'TestUsageIncludesNewCommands|TestRunNoArgsPrintsHelp|TestRunHelpCommand|TestRunUnknownCommand|TestEnableTailscaleConfig|TestRemoteSetup|TestRunTsnetRelayConfigured|TestRunRelayConfigured|TestDisplayStatus'`
+  passed on 2026-05-15 after switching the command design to direct `gmuxd
+  tsnet` / `gmuxd relay` commands.
 - `go test ./services/gmuxd/cmd/gmuxd` was attempted on 2026-05-15 and still
   fails in existing status/auth tests because Unix socket bind paths under the
   macOS temp directory return `bind: invalid argument`.
