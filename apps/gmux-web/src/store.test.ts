@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
-import { sessions, sessionsLoaded, projects, upsertSession, removeSession, markSessionRead, handleActivity, isSessionActive, isSessionFading, activityMap, sessionStaleness, peers, peerAppearance, urlPath, selectedId, navigateToSession, setNavigate, launchSession } from './store'
+import { sessions, sessionsLoaded, projects, upsertSession, removeSession, markSessionRead, handleActivity, isSessionActive, isSessionFading, activityMap, sessionStaleness, peers, peerAppearance, urlPath, selectedId, navigateToSession, setNavigate, launchSession, removeProject } from './store'
 import type { Session } from './types'
 import type { ProjectItem } from './types'
 
@@ -132,6 +132,23 @@ describe('removeSession', () => {
     sessions.value = [makeSession({ id: 'sess-1' })]
     removeSession('ghost')
     expect(sessions.value).toHaveLength(1)
+  })
+})
+
+describe('project mutations', () => {
+  beforeEach(() => { vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true })) })
+  afterEach(() => { vi.restoreAllMocks() })
+
+  it('removes a project locally after PUT succeeds', async () => {
+    projects.value = [
+      { slug: 'gmux', match: [{ path: '/dev/gmux' }] },
+      { slug: 'fxproj', match: [{ path: '/dev/fxproj' }] },
+    ]
+
+    await removeProject('gmux')
+
+    expect(fetch).toHaveBeenCalledWith('/v1/projects', expect.objectContaining({ method: 'PUT' }))
+    expect(projects.value.map(p => p.slug)).toEqual(['fxproj'])
   })
 })
 

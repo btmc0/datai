@@ -472,6 +472,16 @@ body {
   color: var(--text-secondary);
 }
 
+.session-memory {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.session-memory::before {
+  content: 'mem ';
+  color: var(--text-muted);
+}
+
 @keyframes subtle-pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.35; }
@@ -485,33 +495,37 @@ body {
 /* ── Close button on session items ── */
 .session-close-btn {
   position: absolute;
-  right: 4px;
+  right: 5px;
   top: 50%;
   transform: translateY(-50%);
-  width: 20px;
-  height: 20px;
+  width: 16px;
+  height: 16px;
   opacity: 0;
-  border: none;
+  border: 0;
   border-radius: 0;
   background: transparent;
   color: var(--text-muted);
-  font-size: 14px;
+  font-size: 11px;
   line-height: 1;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.1s, color 0.1s, opacity 0.15s;
+  transition: background 0.1s, color 0.1s, opacity 0.15s, outline-color 0.1s;
   padding: 0;
 }
 .session-item:hover .session-close-btn,
 .session-item.selected .session-close-btn {
-  opacity: 1;
-  background: oklch(22% 0.01 250 / 0.45);
+  opacity: 0.72;
+  background: transparent;
 }
-.session-close-btn:hover {
-  background: oklch(28% 0.015 250) !important;
-  color: var(--text);
+.session-close-btn:hover,
+.session-close-btn:focus-visible {
+  opacity: 1;
+  background: var(--bg-hover) !important;
+  color: var(--accent-warn);
+  outline: 1px solid var(--border-strong);
+  outline-offset: 0;
 }
 
 /* Mock mode (landing page screenshots): hide per-session close buttons */
@@ -872,14 +886,19 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 7px 8px;
+  padding: 7px 8px 7px 7px;
+  border-left: 1px solid transparent;
+  border-bottom: 1px solid color-mix(in oklch, var(--border) 55%, transparent);
   border-radius: 0;
+  background: var(--bg);
   cursor: grab;
-  transition: background 0.1s;
+  transition: background 0.1s, border-color 0.1s;
 }
 
 .mp-project-row:hover {
-  background: var(--bg-hover);
+  background: color-mix(in oklch, var(--bg-hover) 78%, transparent);
+  border-left-color: transparent;
+  border-bottom-color: var(--border-strong);
 }
 
 .mp-project-row.mp-dragging {
@@ -982,9 +1001,12 @@ body {
   opacity: 1;
 }
 
-.mp-remove-btn:hover {
-  background: oklch(28% 0.015 250);
-  color: var(--status-error);
+.mp-remove-btn:hover,
+.mp-remove-btn:focus-visible {
+  background: var(--bg-hover);
+  color: var(--accent-warn);
+  outline: 1px solid var(--border-strong);
+  outline-offset: 0;
 }
 
 /* Empty hint (used in both sections) */
@@ -1045,15 +1067,20 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 7px 8px;
+  padding: 7px 8px 7px 7px;
+  border-left: 1px solid transparent;
+  border-bottom: 1px solid color-mix(in oklch, var(--border) 55%, transparent);
   border-radius: 0;
+  background: var(--bg);
   cursor: pointer;
-  transition: background 0.1s;
+  transition: background 0.1s, border-color 0.1s;
   flex-shrink: 0;
 }
 
 .mp-discovered-row:hover {
-  background: var(--bg-hover);
+  background: color-mix(in oklch, var(--bg-hover) 78%, transparent);
+  border-left-color: transparent;
+  border-bottom-color: var(--border-strong);
 }
 
 .mp-active-badge {
@@ -1063,9 +1090,10 @@ body {
   min-width: 16px;
   height: 16px;
   padding: 0 4px;
+  border: 1px solid var(--border-strong);
   border-radius: 0;
-  background: var(--accent);
-  color: var(--bg);
+  background: transparent;
+  color: var(--accent-warn);
   font-size: 10px;
   font-weight: 600;
   line-height: 1;
@@ -1082,7 +1110,7 @@ body {
 }
 
 .mp-discovered-row:hover .mp-add-label {
-  color: var(--accent);
+  color: var(--text-secondary);
 }
 
 .mp-source-badge {
@@ -1090,8 +1118,9 @@ body {
   align-items: center;
   height: 15px;
   padding: 0 5px;
+  border: 1px solid var(--border);
   border-radius: 0;
-  background: oklch(24% 0.02 250);
+  background: transparent;
   color: var(--text-muted);
   font-size: 9px;
   font-weight: 650;
@@ -1100,18 +1129,18 @@ body {
 }
 
 .mp-source-badge.active {
-  background: oklch(30% 0.07 145);
-  color: oklch(84% 0.13 145);
+  border-color: var(--border-strong);
+  color: var(--accent-warn);
 }
 
 .mp-source-badge.recent {
-  background: oklch(28% 0.055 250);
-  color: oklch(82% 0.1 250);
+  border-color: var(--border);
+  color: var(--text-secondary);
 }
 
 .mp-source-badge.fs {
-  background: oklch(27% 0.06 285);
-  color: oklch(84% 0.1 285);
+  border-color: var(--border);
+  color: var(--text-muted);
 }
 
 .mp-input-preview {
@@ -1855,6 +1884,43 @@ a.home-host-link:hover {
   text-decoration: none;
   color: inherit;
   transition: background 0.1s, border-color 0.15s;
+  position: relative;
+  padding-right: 30px;
+}
+
+.home-project-link {
+  color: inherit;
+  text-decoration: none;
+  display: block;
+}
+
+.home-project-remove {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 0;
+  color: var(--text-muted);
+  border-radius: 0;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.65;
+}
+
+.home-project-remove:hover,
+.home-project-remove:focus-visible {
+  background: var(--bg-hover);
+  color: var(--accent-warn);
+  opacity: 1;
+  outline: 1px solid var(--border-strong);
+  outline-offset: 0;
 }
 .home-project-card:hover {
   background: var(--bg-hover);
@@ -2910,6 +2976,15 @@ code {
   text-transform: uppercase;
   letter-spacing: 0.035em;
 }
+.session-memory {
+  color: var(--accent-warn);
+  font-variant-numeric: tabular-nums;
+}
+
+.session-memory::before {
+  content: 'mem ';
+  color: var(--text-muted);
+}
 
 .session-peer-label,
 .manage-projects-badge,
@@ -2919,9 +2994,12 @@ code {
   color: var(--accent);
 }
 
-.session-close-btn:hover {
-  background: var(--status-error) !important;
-  color: #000;
+.session-close-btn:hover,
+.session-close-btn:focus-visible {
+  background: var(--bg-hover) !important;
+  color: var(--accent-warn);
+  outline: 1px solid var(--border-strong);
+  outline-offset: 0;
 }
 
 .sidebar-hint {
@@ -3112,6 +3190,7 @@ code {
   border-right: 1px solid var(--border-strong);
   border-bottom: 1px solid var(--border-strong);
   padding: 12px;
+  padding-right: 28px;
 }
 
 .home-host-card:hover,
@@ -3199,6 +3278,27 @@ code {
 .home-project-alive { color: var(--accent); }
 .home-project-rest { color: var(--text-muted); }
 
+.home-project-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.home-project-remove {
+  top: 7px;
+  right: 7px;
+  width: 16px;
+  height: 16px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.home-project-remove:hover,
+.home-project-remove:focus-visible {
+  background: var(--bg-hover);
+  color: var(--accent-warn);
+}
+
 .home-host-launchers {
   border-top: 1px solid var(--border);
 }
@@ -3237,8 +3337,7 @@ code {
 }
 
 .modal-close:hover,
-.mp-docs-link:hover,
-.mp-project-row:hover {
+.mp-docs-link:hover {
   background: var(--accent);
   color: #000;
 }
@@ -3254,12 +3353,33 @@ code {
 }
 
 .mp-rule-label {
-  color: var(--accent);
+  color: var(--text-muted);
 }
 
-.mp-remove-btn:hover {
-  background: var(--status-error);
-  color: #000;
+.mp-project-row:hover,
+.mp-discovered-row:hover {
+  background: color-mix(in oklch, var(--bg-hover) 70%, transparent);
+  color: inherit;
+  border-bottom-color: var(--border-strong);
+}
+.mp-active-badge,
+.mp-source-badge.active,
+.mp-source-badge.recent,
+.mp-source-badge.fs {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--text-muted);
+}
+.mp-discovered-row:hover .mp-add-label {
+  color: var(--text-secondary);
+}
+
+.mp-remove-btn:hover,
+.mp-remove-btn:focus-visible {
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+  outline: 1px solid var(--border-strong);
+  outline-offset: 0;
 }
 
 .mobile-bottom-bar {

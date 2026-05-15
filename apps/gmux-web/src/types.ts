@@ -36,6 +36,8 @@ export interface Session {
   runner_version?: string
   /** SHA-256 of the gmux runner binary (first 8 chars useful for display). */
   binary_hash?: string
+  /** Runner + child process tree RSS, local sessions only. */
+  memory_rss_bytes?: number
 }
 
 export interface Folder {

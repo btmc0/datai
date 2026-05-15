@@ -39,6 +39,14 @@ function sessionDotState(session: Session, am: ReadonlyMap<string, 'active' | 'f
   return 'none'
 }
 
+function formatSessionMemory(bytes?: number): string | null {
+  if (typeof bytes !== 'number' || !Number.isFinite(bytes) || bytes <= 0) return null
+  const mib = bytes / 1024 / 1024
+  if (mib < 1024) return `${mib.toFixed(mib >= 100 ? 0 : 1)}M`
+  const gib = mib / 1024
+  return `${gib.toFixed(gib >= 10 ? 0 : 1)}G`
+}
+
 const bellStroke = { fill: 'none', stroke: 'currentColor', 'stroke-width': '1.4', 'stroke-linecap': 'round' as const, 'stroke-linejoin': 'round' as const }
 
 export const IconBell = ({ muted }: { muted?: boolean }) => (
@@ -132,6 +140,7 @@ function SessionItem({
   const dotState = (selected && (effectiveDotState === 'error' || effectiveDotState === 'unread')) ? 'none' : effectiveDotState
   const arrival = useArrivalPulse(dotState)
   const sleeping = !session.alive && session.resumable
+  const memory = formatSessionMemory(session.memory_rss_bytes)
 
   const cls = [
     'session-item',
@@ -167,9 +176,10 @@ function SessionItem({
         <div class="session-title-row">
           <span class="session-title">{session.title}</span>
         </div>
-        {session.status?.label && (
+        {(session.status?.label || memory) && (
           <div class="session-meta">
-            <span class="session-status-label">{session.status.label}</span>
+            {session.status?.label && <span class="session-status-label">{session.status.label}</span>}
+            {memory && <span class="session-memory" title="Runner + child process RSS">{memory}</span>}
           </div>
         )}
       </div>

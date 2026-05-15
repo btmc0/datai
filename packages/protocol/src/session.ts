@@ -33,6 +33,7 @@ export const SessionSchema = z.object({
   slug: z.string().optional(),
   runner_version: z.string().optional(),
   binary_hash: z.string().optional(),
+  memory_rss_bytes: z.number().optional(),
 })
 
 export const AttachResponseSchema = z.object({

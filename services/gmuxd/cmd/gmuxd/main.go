@@ -39,6 +39,7 @@ import (
 	"github.com/gmuxapp/gmux/services/gmuxd/internal/relayclient"
 	"github.com/gmuxapp/gmux/services/gmuxd/internal/sessionfiles"
 	"github.com/gmuxapp/gmux/services/gmuxd/internal/sessionmeta"
+	"github.com/gmuxapp/gmux/services/gmuxd/internal/sessionmetrics"
 	"github.com/gmuxapp/gmux/services/gmuxd/internal/sleep"
 	"github.com/gmuxapp/gmux/services/gmuxd/internal/store"
 	"github.com/gmuxapp/gmux/services/gmuxd/internal/tsauth"
@@ -693,6 +694,11 @@ func serve(stderr io.Writer) int {
 			writeError(w, http.StatusInternalServerError, "metrics_failed", err.Error())
 			return
 		}
+		writeJSON(w, map[string]any{"ok": true, "data": metrics})
+	})
+
+	mux.HandleFunc("GET /v1/session-metrics", func(w http.ResponseWriter, r *http.Request) {
+		metrics := sessionmetrics.Collect(r.Context(), sessions.List())
 		writeJSON(w, map[string]any{"ok": true, "data": metrics})
 	})
 

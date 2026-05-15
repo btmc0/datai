@@ -2,7 +2,7 @@
 // Reads shared data from the store (signals).
 
 import { useEffect, useState } from 'preact/hooks'
-import { addProject, health, peers, folders, sessions, launchers as launchersSignal, defaultLauncher as defaultLauncherSignal, launchSession } from './store'
+import { addProject, removeProject, health, peers, folders, sessions, launchers as launchersSignal, defaultLauncher as defaultLauncherSignal, launchSession } from './store'
 import { PeerLabel } from './peer-label'
 import type { Folder, LauncherDef } from './types'
 import { launchersForPeer } from './launcher'
@@ -219,16 +219,26 @@ function HomeWorkspaceAdd() {
 function ProjectCard({ folder: f }: { folder: Folder }) {
   const alive = f.sessions.filter(s => s.alive).length
   const resumable = f.sessions.filter(s => !s.alive && s.resumable).length
+  const handleRemove = () => {
+    if (!confirm(`Remove workspace "${f.name}"? Sessions will not be deleted.`)) return
+    void removeProject(f.path)
+  }
+
   return (
-    <a class="home-project-card" href={`/${f.path}`}>
-      <div class="home-project-name">{f.name}</div>
-      <div class="home-project-count">
-        {alive > 0 && <span class="home-project-alive">{alive} alive</span>}
-        {alive > 0 && resumable > 0 && <span class="home-project-rest"> · </span>}
-        {resumable > 0 && <span class="home-project-rest">{resumable} resumable</span>}
-        {alive === 0 && resumable === 0 && <span class="home-project-rest">no sessions</span>}
-      </div>
-    </a>
+    <div class="home-project-card">
+      <a class="home-project-link" href={`/${f.path}`}>
+        <div class="home-project-name">{f.name}</div>
+        <div class="home-project-count">
+          {alive > 0 && <span class="home-project-alive">{alive} alive</span>}
+          {alive > 0 && resumable > 0 && <span class="home-project-rest"> · </span>}
+          {resumable > 0 && <span class="home-project-rest">{resumable} resumable</span>}
+          {alive === 0 && resumable === 0 && <span class="home-project-rest">no sessions</span>}
+        </div>
+      </a>
+      <button class="home-project-remove" onClick={handleRemove} title="Remove workspace" aria-label={`Remove workspace ${f.name}`}>
+        ×
+      </button>
+    </div>
   )
 }
 

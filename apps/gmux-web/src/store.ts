@@ -270,6 +270,7 @@ export function toUISession(s: ProtocolSession): Session {
     runner_version: s.runner_version ?? undefined,
     binary_hash: s.binary_hash ?? undefined,
     peer: s.peer ?? undefined,
+    memory_rss_bytes: typeof s.memory_rss_bytes === 'number' ? s.memory_rss_bytes : undefined,
   }
 }
 
@@ -302,7 +303,7 @@ export function upsertSession(raw: ProtocolSession): boolean {
   if (idx >= 0) {
     const old = prev[idx]
     const next = [...prev]
-    next[idx] = updated
+    next[idx] = { ...updated, memory_rss_bytes: updated.memory_rss_bytes ?? old.memory_rss_bytes }
 
     // When the currently-selected session changes slug, update the URL
     // atomically with the session data. Without batch(), the view
@@ -364,6 +365,26 @@ async function fetchSessions(): Promise<Session[]> {
   return data.map(toUISession)
 }
 
+interface SessionMetric { rss_bytes?: number }
+
+async function fetchSessionMetrics(): Promise<void> {
+  try {
+    const resp = await fetch('/v1/session-metrics')
+    if (!resp.ok) return
+    const json = await resp.json()
+    const data = json?.data as Record<string, SessionMetric> | undefined
+    if (!data) return
+
+    sessions.value = sessions.value.map(s => {
+      const rss = data[s.id]?.rss_bytes
+      return typeof rss === 'number' && Number.isFinite(rss)
+        ? { ...s, memory_rss_bytes: rss }
+        : { ...s, memory_rss_bytes: undefined }
+    })
+  } catch {
+    // Session metrics are informational; leave the UI unchanged on failure.
+  }
+}
 
 
 export async function fetchProjects(): Promise<void> {
@@ -411,7 +432,11 @@ async function putProjects(items: ProjectItem[]): Promise<void> {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ items }),
     })
-    if (!resp.ok) console.warn('PUT /v1/projects failed:', resp.status)
+    if (!resp.ok) {
+      console.warn('PUT /v1/projects failed:', resp.status)
+      return
+    }
+    projects.value = items
   } catch (err) {
     console.warn('PUT /v1/projects error:', err)
   }
@@ -623,6 +648,7 @@ export function initStore(): () => void {
       sessionsLoaded.value = true
       connState.value = 'connected'
     })
+    void fetchSessionMetrics()
   }).catch(err => {
     console.error('Failed to fetch sessions:', err)
     connState.value = 'error'
@@ -636,6 +662,10 @@ export function initStore(): () => void {
       keybinds.value = resolveKeybinds(fc.settings?.keybinds ?? null, macCtrl)
     })
   })
+
+  const metricsTick = setInterval(() => { void fetchSessionMetrics() }, 5000)
+  cleanups.push(() => clearInterval(metricsTick))
+  void fetchSessionMetrics()
 
   // SSE subscription.
   //
