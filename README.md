@@ -2,7 +2,7 @@
 
 **Browser-first session manager for AI agents, test runners, and long-running commands.**
 
-gomux keeps every wrapped command in a managed PTY session, exposes the sessions through a local web UI, and can optionally relay that UI through a public `gmux-relayd` endpoint when your machine is behind NAT. The binaries are still named `gmux`, `gmuxd`, and `gmux-relayd`.
+gomux keeps every wrapped command in a managed PTY session, exposes the sessions through a local web UI, and supports two remote-access modes: private Tailscale/tsnet access and public outbound relay access through `gmux-relayd`. The binaries are still named `gmux`, `gmuxd`, and `gmux-relayd`.
 
 ## Status
 
@@ -10,19 +10,12 @@ This branch is the `sting8k/gomux` dev build. It is not the upstream `gmuxapp/gm
 
 ## Install from this branch
 
+This dev branch does not currently ship a supported install script. Clone the branch for development, and restore release/install automation through a dedicated story before publishing user-facing install steps.
+
 ```bash
 git clone https://github.com/sting8k/gomux.git
 cd gomux
 git checkout dev
-./scripts/install.sh
-```
-
-`./scripts/install.sh` builds the web UI, `gmux`, `gmuxd`, and `gmux-relayd`, installs them to `~/.local/bin`, then restarts `gmuxd`.
-
-If `~/.local/bin` is not in your shell path:
-
-```bash
-export PATH="$HOME/.local/bin:$PATH"
 ```
 
 ## Quick start
@@ -46,25 +39,35 @@ Open `http://127.0.0.1:8790` if the browser does not open automatically. `gmux` 
 
 ## How it works
 
-Local-only mode:
+Local access is the baseline. Remote access adds exactly one selected remote transport on top of the same `gmuxd` web/API handler.
+
+Local baseline:
 
 ```mermaid
 graph LR
-    gmux["gmux\nPTY runner"] -->|Unix socket| gmuxd["gmuxd\ndiscovery · cache · proxy · web"]
+    gmux["gmux\nPTY runner"] -->|Unix socket| gmuxd["gmuxd\nsessions · cache · proxy · web/API"]
     browser["Browser"] -->|HTTP · SSE · WS| gmuxd
+```
+
+Tailscale/tsnet mode:
+
+```mermaid
+graph LR
+    browser["Browser in tailnet"] -->|Tailscale / HTTPS| gmuxd["gmuxd\ntsnet listener + shared handler"]
+    gmux["gmux sessions"] -->|Unix socket| gmuxd
 ```
 
 Relay mode:
 
 ```mermaid
 graph LR
-    browser["Browser / phone"] -->|HTTPS · WSS| relayd["gmux-relayd\npublic relay"]
-    gmuxd["gmuxd\nlocal daemon"] -->|outbound WSS agent| relayd
+    browser["Browser / phone"] -->|HTTPS · WSS| relayd["gmux-relayd\npublic transport relay"]
+    gmuxd["gmuxd\nlocal daemon + shared handler"] -->|outbound WSS agent| relayd
     gmuxd -->|local HTTP · WS| local["127.0.0.1:8790"]
     gmux["gmux sessions"] -->|Unix socket| gmuxd
 ```
 
-In relay mode, `gmuxd` connects out to `gmux-relayd`; the relay does not need inbound access to your laptop. If the local `gmuxd` is offline, the public relay stays up but returns `gmux agent not connected`.
+In relay mode, `gmuxd` connects out to `gmux-relayd`; the relay does not need inbound access to your laptop. If the local `gmuxd` is offline, the public relay stays up but returns `gmux agent not connected`. `gmux-relayd` is a transport component, not a session store.
 
 ## Current features
 
@@ -86,16 +89,18 @@ In relay mode, `gmuxd` connects out to `gmux-relayd`; the relay does not need in
 
 ### Remote access
 
-There are two remote-access paths:
+There are two supported remote-access modes, documented in `docs/product/remote-access.md`:
 
-1. Built-in Tailscale/tsnet mode, configured in `~/.config/gmux/host.toml` under `[tailscale]`.
-2. Outbound relay mode, configured under `[relay]` and served by `gmux-relayd`.
+1. Built-in Tailscale/tsnet mode for private tailnet access.
+2. Outbound relay mode, served by `gmux-relayd`, for public HTTPS/WSS access and NAT traversal.
 
-Example relay client config on the machine running `gmuxd`:
+Provisioning helpers, SSH tunnels, reverse-proxy snippets, and install scripts are setup automation, not additional access modes. Future config and CLI work should converge on an explicit selector such as:
 
 ```toml
+[remote]
+mode = "relay" # local | tsnet | relay
+
 [relay]
-enabled = true
 url = "wss://your-relay.example.com/_gmux/agent"
 token = "replace-with-a-shared-secret"
 ```
@@ -107,18 +112,6 @@ gmux-relayd -listen :8791 -token "replace-with-a-shared-secret"
 ```
 
 Put HTTPS in front of `gmux-relayd` with your reverse proxy or Cloudflare setup, then point browsers at that public URL.
-
-### Quick deploy helper
-
-`scripts/gmux-tailscale-quickdeploy.sh` can install release binaries and configure Tailscale-oriented access modes. For community use, forward-mode values are intentionally not hardcoded; pass your own host, user, key, and ports:
-
-```bash
-./scripts/gmux-tailscale-quickdeploy.sh --mode forward \
-  --forward-via my-tailscale-host \
-  --ssh-user myuser \
-  --ssh-key ~/.ssh/id_ed25519 \
-  --skip-install -y
-```
 
 ## Configuration
 
@@ -135,7 +128,7 @@ Useful commands:
 ```bash
 gmuxd status       # daemon health, listeners, session counts
 gmuxd auth         # local auth URL/token
-gmuxd remote       # Tailscale remote status/setup
+gmuxd remote       # remote status/setup surface; should cover tsnet and relay
 gmuxd log-path     # daemon log file path
 ```
 
@@ -143,20 +136,9 @@ gmuxd log-path     # daemon log file path
 
 ```bash
 pnpm install
-./scripts/dev-server.sh
 ```
 
-Build and install locally:
-
-```bash
-./scripts/install.sh
-```
-
-Build only:
-
-```bash
-./scripts/build.sh
-```
+The root `pnpm build` target includes the Astro website build, which requires Node.js `>=22.12.0`. The previous wrapper scripts under `scripts/` are not part of this branch snapshot. Reintroduce development, build, and install wrappers through a dedicated story with validation evidence.
 
 ## Monorepo layout
 

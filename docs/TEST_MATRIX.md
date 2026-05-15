@@ -19,7 +19,7 @@ implemented until tests or validation evidence exist.
 
 | Story | Contract | Unit | Integration | E2E | Platform | Status | Evidence |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| TBD | Add rows when story packets are created | no | no | no | no | planned | none |
+| `docs/stories/remote-access-modes.md` | Local baseline plus `tsnet` and `relay` remote-access modes | no | no | no | no | planned | Documentation contract only; no validation scripts exist |
 
 ## Evidence Rules
 
