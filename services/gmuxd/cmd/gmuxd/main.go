@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"syscall"
@@ -561,6 +562,11 @@ func serve(stderr io.Writer) int {
 	if state, err := projectMgr.Load(); err == nil {
 		rehydrateProjects(sessions, convIndex, state)
 	}
+
+	// Release transient heap from startup history scans. convIndex keeps only
+	// metadata; the large temporary JSONL buffers used during adapter parsing
+	// should not keep gmuxd's steady-state RSS high after boot.
+	debug.FreeOSMemory()
 
 	// After store is populated, clean up orphaned project entries
 	// (slugs that no longer resolve to a store session).
@@ -1251,10 +1257,12 @@ func serve(stderr io.Writer) int {
 				writeError(w, http.StatusNotFound, "not_found", "session not found")
 				return
 			}
-			// Send kill to runner — it will SIGTERM the child, which triggers
+			// Send kill to runner — it will SIGHUP the child, which triggers
 			// normal exit lifecycle (exit event → subscription updates store).
-			// If the runner is unreachable, force-mark dead (stale session).
-			if sess.SocketPath != "" && sess.Alive {
+			// The live runner socket is the runtime source of truth: even if the
+			// store currently says dead, a reachable socket still represents an
+			// orphan runner that this endpoint must be able to clean up.
+			if sess.SocketPath != "" {
 				if err := discovery.KillSession(sess.SocketPath); err != nil {
 					log.Printf("kill: %s: runner unreachable, forcing dead: %v", sessionID, err)
 					sess.Alive = false

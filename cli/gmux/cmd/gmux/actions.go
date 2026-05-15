@@ -17,19 +17,19 @@ import (
 // session is the subset of gmuxd's Session model that the CLI cares
 // about. Defined locally to avoid pulling in the gmuxd store package.
 type cliSession struct {
-	ID         string `json:"id"`
-	Peer       string `json:"peer,omitempty"`
-	Cwd        string `json:"cwd,omitempty"`
-	Kind       string `json:"kind"`
-	Alive      bool   `json:"alive"`
-	Pid        int    `json:"pid,omitempty"`
-	Title      string `json:"title,omitempty"`
-	Slug       string `json:"slug,omitempty"`
-	SocketPath string `json:"socket_path,omitempty"`
+	ID         string   `json:"id"`
+	Peer       string   `json:"peer,omitempty"`
+	Cwd        string   `json:"cwd,omitempty"`
+	Kind       string   `json:"kind"`
+	Alive      bool     `json:"alive"`
+	Pid        int      `json:"pid,omitempty"`
+	Title      string   `json:"title,omitempty"`
+	Slug       string   `json:"slug,omitempty"`
+	SocketPath string   `json:"socket_path,omitempty"`
 	Command    []string `json:"command,omitempty"`
-	StartedAt  string `json:"started_at,omitempty"`
-	ExitedAt   string `json:"exited_at,omitempty"`
-	ExitCode   *int   `json:"exit_code,omitempty"`
+	StartedAt  string   `json:"started_at,omitempty"`
+	ExitedAt   string   `json:"exited_at,omitempty"`
+	ExitCode   *int     `json:"exit_code,omitempty"`
 }
 
 // fetchSessions queries gmuxd for the full session list. Starts gmuxd
@@ -206,11 +206,6 @@ func cmdKill(ref string) int {
 		fmt.Fprintln(os.Stderr, "gmux:", err)
 		return 1
 	}
-	if !sess.Alive {
-		fmt.Fprintf(os.Stderr, "gmux: session %s is already not running\n", shortID(sess.ID))
-		return 1
-	}
-
 	client := gmuxdClient()
 	url := gmuxdBaseURL() + "/v1/sessions/" + sess.ID + "/kill"
 	resp, err := client.Post(url, "application/json", strings.NewReader("{}"))

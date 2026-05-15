@@ -11,6 +11,32 @@ import (
 	"github.com/gmuxapp/gmux/services/gmuxd/internal/store"
 )
 
+func TestWatchRootsDoesNotWatchHistoricalSubdirs(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	pi := adapters.NewPi()
+	root := pi.SessionRootDir()
+	historicalDir := filepath.Join(root, "old-project")
+	if err := os.MkdirAll(historicalDir, 0o755); err != nil {
+		t.Fatalf("mkdir historical dir: %v", err)
+	}
+
+	fm := NewFileMonitor(store.New())
+	if fm.watcher != nil {
+		defer fm.watcher.Close()
+	}
+
+	fm.WatchRoots()
+
+	if !fm.watchedDirs[root] {
+		t.Fatalf("root %s was not watched", root)
+	}
+	if fm.watchedDirs[historicalDir] {
+		t.Fatalf("historical dir %s should not be watched at startup", historicalDir)
+	}
+}
+
 func TestNotifyNewSessionDoesNotStealTitleFromOldPiFile(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)

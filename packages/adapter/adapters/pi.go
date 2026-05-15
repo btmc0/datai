@@ -1,6 +1,7 @@
 package adapters
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"io"
@@ -16,11 +17,11 @@ import (
 
 // Compile-time interface checks.
 var (
-	_ adapter.Launchable      = (*Pi)(nil)
-	_ adapter.SessionFiler    = (*Pi)(nil)
-	_ adapter.FileMonitor     = (*Pi)(nil)
-	_ adapter.FileAttributor  = (*Pi)(nil)
-	_ adapter.Resumer         = (*Pi)(nil)
+	_ adapter.Launchable     = (*Pi)(nil)
+	_ adapter.SessionFiler   = (*Pi)(nil)
+	_ adapter.FileMonitor    = (*Pi)(nil)
+	_ adapter.FileAttributor = (*Pi)(nil)
+	_ adapter.Resumer        = (*Pi)(nil)
 )
 
 func init() {
@@ -111,13 +112,21 @@ func (p *Pi) SessionDir(cwd string) string {
 // ParseSessionFile reads a pi JSONL session file and returns display metadata.
 // Title priority: session_info.name > first user message > "(new)".
 func (p *Pi) ParseSessionFile(path string) (*adapter.SessionFileInfo, error) {
-	data, err := os.ReadFile(path)
+	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
+	defer f.Close()
 
-	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
-	if len(lines) == 0 {
+	r := bufio.NewReader(f)
+	firstLine, err := r.ReadString('\n')
+	if err != nil {
+		if err != io.EOF || firstLine == "" {
+			return nil, err
+		}
+	}
+	firstLine = strings.TrimRight(firstLine, "\r\n")
+	if firstLine == "" {
 		return nil, errEmpty
 	}
 
@@ -127,7 +136,7 @@ func (p *Pi) ParseSessionFile(path string) (*adapter.SessionFileInfo, error) {
 		Cwd       string `json:"cwd"`
 		Timestamp string `json:"timestamp"`
 	}
-	if err := json.Unmarshal([]byte(lines[0]), &header); err != nil {
+	if err := json.Unmarshal([]byte(firstLine), &header); err != nil {
 		return nil, err
 	}
 	if header.Type != "session" {
@@ -146,30 +155,38 @@ func (p *Pi) ParseSessionFile(path string) (*adapter.SessionFileInfo, error) {
 	var name string
 	var firstUserMsg string
 
-	for _, line := range lines[1:] {
-		if line == "" {
-			continue
-		}
-		var peek struct {
-			Type string `json:"type"`
-		}
-		if err := json.Unmarshal([]byte(line), &peek); err != nil {
-			continue
-		}
-
-		switch peek.Type {
-		case "session_info":
-			var si struct {
-				Name string `json:"name"`
+	for {
+		line, err := r.ReadString('\n')
+		if err != nil && !(err == io.EOF && line != "") {
+			if err == io.EOF {
+				break
 			}
-			if err := json.Unmarshal([]byte(line), &si); err == nil && si.Name != "" {
-				name = strings.TrimSpace(si.Name)
+			return nil, err
+		}
+		line = strings.TrimRight(line, "\r\n")
+		if line != "" {
+			var peek struct {
+				Type string `json:"type"`
 			}
-		case "message":
-			info.MessageCount++
-			if firstUserMsg == "" {
-				firstUserMsg = extractFirstUserText(line)
+			if err := json.Unmarshal([]byte(line), &peek); err == nil {
+				switch peek.Type {
+				case "session_info":
+					var si struct {
+						Name string `json:"name"`
+					}
+					if err := json.Unmarshal([]byte(line), &si); err == nil && si.Name != "" {
+						name = strings.TrimSpace(si.Name)
+					}
+				case "message":
+					info.MessageCount++
+					if firstUserMsg == "" {
+						firstUserMsg = extractFirstUserText(line)
+					}
+				}
 			}
+		}
+		if err == io.EOF {
+			break
 		}
 	}
 
@@ -290,7 +307,7 @@ func (p *Pi) ParseNewLines(lines []string, filePath string) []adapter.Event {
 							})
 						}
 					}
-				// Unknown stopReasons: no state change.
+					// Unknown stopReasons: no state change.
 				}
 			}
 		}
@@ -566,7 +583,6 @@ func truncateTitle(s string, maxLen int) string {
 	}
 	return s[:cut] + "…"
 }
-
 
 var (
 	errEmpty      = &parseError{"empty file"}

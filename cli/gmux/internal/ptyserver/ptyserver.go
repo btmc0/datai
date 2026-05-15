@@ -20,18 +20,21 @@ import (
 	"syscall"
 	"time"
 
+	uv "github.com/charmbracelet/ultraviolet"
+	"github.com/charmbracelet/x/vt"
 	"github.com/creack/pty"
 	"github.com/gmuxapp/gmux/cli/gmux/internal/session"
 	"github.com/gmuxapp/gmux/packages/adapter"
 	"github.com/gmuxapp/gmux/packages/adapter/adapters"
-	uv "github.com/charmbracelet/ultraviolet"
-	"github.com/charmbracelet/x/vt"
 	"nhooyr.io/websocket"
 )
 
-// maxScrollback is the number of lines kept in the virtual terminal's
-// scrollback buffer. Lines older than this are discarded.
-const maxScrollback = 2000
+// maxScrollback is the number of lines kept in the in-memory virtual
+// terminal used for reconnect snapshots. Persisted raw scrollback is
+// separately file-backed and capped in packages/scrollback, so this buffer
+// should stay small enough that every live runner does not retain tens of MB
+// of styled terminal cells after long agent output.
+const maxScrollback = 500
 
 // ErrSocketInUse is returned by BindSocket when the requested socket
 // path is already owned by a live listener (a probe at that path got
@@ -155,19 +158,19 @@ type Server struct {
 	ptmx     *os.File
 	sockPath string
 	listener net.Listener
-	screen       *vt.Emulator // virtual terminal for replay snapshots (guarded by mu)
-	adapter      adapter.Adapter
-	state        *session.State
+	screen   *vt.Emulator // virtual terminal for replay snapshots (guarded by mu)
+	adapter  adapter.Adapter
+	state    *session.State
 
 	mu             sync.Mutex
 	clients        map[*wsClient]struct{}
-	localOut       io.Writer       // optional local terminal output sink
-	scrollback     io.WriteCloser  // optional persistent scrollback sink (closed in waitChild)
-	ptyCols        uint16          // last applied PTY cols (guarded by mu)
-	ptyRows        uint16          // last applied PTY rows (guarded by mu)
-	cursorHidden   bool            // tracks DECTCEM via callback (guarded by mu)
-	screenPending  []byte          // raw PTY data not yet fed to screen (guarded by mu)
-	lastClientLeft time.Time       // when the last WS client disconnected (guarded by mu)
+	localOut       io.Writer      // optional local terminal output sink
+	scrollback     io.WriteCloser // optional persistent scrollback sink (closed in waitChild)
+	ptyCols        uint16         // last applied PTY cols (guarded by mu)
+	ptyRows        uint16         // last applied PTY rows (guarded by mu)
+	cursorHidden   bool           // tracks DECTCEM via callback (guarded by mu)
+	screenPending  []byte         // raw PTY data not yet fed to screen (guarded by mu)
+	lastClientLeft time.Time      // when the last WS client disconnected (guarded by mu)
 
 	done    chan struct{} // closed when child exits
 	ptyDone chan struct{} // closed when readPTY finishes draining
@@ -1043,7 +1046,6 @@ func (s *Server) readPTY() {
 		}
 	}
 }
-
 
 func (s *Server) waitChild() {
 	s.err = s.cmd.Wait()

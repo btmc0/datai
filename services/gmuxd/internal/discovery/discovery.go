@@ -87,11 +87,14 @@ func Scan(sessions *store.Store, subs *Subscriptions, fileMon *FileMonitor, onDe
 		return
 	}
 
-	// Build set of sockets already tracked by a store session.
-	trackedSockets := make(map[string]bool)
+	// Build set of sockets already tracked by a store session. A tracked
+	// socket whose store record is dead is still probed below: the runner
+	// socket is the runtime source of truth, so a live /meta must be able
+	// to resurrect a stale dead store record.
+	trackedSockets := make(map[string]store.Session)
 	for _, s := range sessions.List() {
 		if s.SocketPath != "" {
-			trackedSockets[s.SocketPath] = true
+			trackedSockets[s.SocketPath] = s
 		}
 	}
 
@@ -102,8 +105,8 @@ func Scan(sessions *store.Store, subs *Subscriptions, fileMon *FileMonitor, onDe
 			continue
 		}
 		sockPath := filepath.Join(dir, entry.Name())
-		if trackedSockets[sockPath] {
-			continue // already tracked
+		if tracked, ok := trackedSockets[sockPath]; ok && tracked.Alive {
+			continue // already tracked as live
 		}
 		if err := Register(sessions, subs, fileMon, sockPath, onDead); err != nil {
 			// Only remove sockets old enough to be genuinely stale.

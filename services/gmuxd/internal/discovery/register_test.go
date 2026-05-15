@@ -186,6 +186,50 @@ func TestRegisterFreshSessionRunsOnRegisterForShell(t *testing.T) {
 	}
 }
 
+func TestScanReregistersTrackedDeadSocket(t *testing.T) {
+	srv := startUnixServer(t, metaHandler(store.Session{
+		ID:    "sess-orphan",
+		Kind:  "pi",
+		Cwd:   t.TempDir(),
+		Alive: true,
+		Pid:   12345,
+	}))
+	defer srv.cleanup()
+
+	t.Setenv("GMUX_SOCKET_DIR", filepath.Dir(srv.socketPath))
+
+	sessions := store.New()
+	sessions.Upsert(store.Session{
+		ID:         "sess-orphan",
+		Kind:       "pi",
+		Alive:      false,
+		Resumable:  true,
+		SocketPath: srv.socketPath,
+		Slug:       "keep-attribution",
+	})
+
+	subs := NewSubscriptions(sessions)
+	t.Cleanup(func() { subs.UnsubscribeAll() })
+
+	Scan(sessions, subs, nil, nil)
+
+	got, ok := sessions.Get("sess-orphan")
+	if !ok {
+		t.Fatal("session missing after Scan")
+	}
+	if !got.Alive {
+		t.Fatalf("Alive = false, want true: live runner socket must resurrect stale dead store record")
+	}
+	if got.Pid != 12345 {
+		t.Fatalf("Pid = %d, want 12345 from live /meta", got.Pid)
+	}
+	if got.Slug != "keep-attribution" {
+		t.Fatalf("Slug = %q, want preserved attribution", got.Slug)
+	}
+	if got.Resumable {
+		t.Fatalf("Resumable = true, want false for resurrected live session")
+	}
+}
 
 // TestScanIgnoresMissingPathWhileSubscriptionAlive guards a race
 // introduced by ptyserver.handleKill's early sockfile unlink:

@@ -8,9 +8,10 @@
 // Watching strategy:
 //   - Session root dirs (e.g. ~/.pi/agent/sessions/) are always watched
 //     so we detect new subdirectories being created.
-//   - All subdirectories under the root are watched, not just the one
-//     matching the terminal's cwd. Tools may write session files in other
-//     directories (grove worktrees, /resume from a different cwd).
+//   - Live session dirs are watched on demand. Historical subdirectories are
+//     indexed once at startup but are not watched forever; on macOS each
+//     fsnotify/kqueue watch holds an fd, so watching a user's entire adapter
+//     history can create thousands of open fds and inflate daemon RSS.
 //   - .jsonl file Write/Create events trigger line processing for
 //     already-attributed files. Unattributed files are queued and
 //     matched on the next throttled attribution scan.
@@ -46,7 +47,7 @@ import (
 type FileMonitor struct {
 	store   *store.Store
 	watcher *fsnotify.Watcher
-	poke    chan struct{} // non-blocking signal to retry attribution
+	poke    chan struct{}        // non-blocking signal to retry attribution
 	index   *conversations.Index // optional; nil in unit tests
 
 	// rootToAdapter maps each adapter's SessionRootDir() to its adapter.
@@ -126,10 +127,13 @@ func (fm *FileMonitor) SetConvIndex(ix *conversations.Index) {
 }
 
 // WatchRoots installs always-on fsnotify watches for every adapter
-// SessionRootDir() and every existing subdirectory under it. Walks
-// the tree depth-first so codex's date-nested layout (YYYY/MM/DD) is
-// fully covered. Idempotent and safe to call once at gmuxd startup
-// before Run begins.
+// SessionRootDir(). Historical conversation files are discovered by
+// conversations.Index.Scan at startup; keeping watches on every historical
+// subdirectory is both redundant and expensive on macOS where each kqueue
+// watch consumes a file descriptor. Live session dirs are added by
+// NotifyNewSession, and newly-created subdirectories under watched dirs are
+// picked up by handleFSEvent. Idempotent and safe to call once at gmuxd
+// startup before Run begins.
 //
 // We mkdir any missing root because fsnotify can only watch existing
 // directories, and we want to detect when a user starts using an
@@ -152,27 +156,7 @@ func (fm *FileMonitor) WatchRoots() {
 			}
 		}
 		fm.ensureRootWatchLocked(root)
-		fm.watchTreeLocked(root)
 	}
-}
-
-// watchTreeLocked walks the directory tree under root and adds a
-// watch on every subdirectory. Errors on individual entries are
-// logged but don't abort the walk.
-func (fm *FileMonitor) watchTreeLocked(root string) {
-	filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return nil // skip unreadable entries
-		}
-		if !d.IsDir() {
-			return nil
-		}
-		if path == root {
-			return nil // already watched as root
-		}
-		fm.addWatchLocked(path)
-		return nil
-	})
 }
 
 // adapterForPath returns the adapter responsible for path by matching
@@ -420,46 +404,23 @@ func (fm *FileMonitor) NotifyNewSession(sessionID string) {
 		fm.addWatchLocked(dir)
 	}
 
-	// Watch all other subdirectories under the session root. Tools may
-	// write session files in directories other than SessionDir(cwd).
-	// New directories created later are caught by handleNewSubdirLocked.
-	if root != "" {
-		fm.watchAllSubdirsLocked(root)
-	}
-
-	// Seed candidate files: collect recent .jsonl files so
-	// tryAttributeUnmatched can match them. This handles gmuxd restart
-	// (files already exist) and sessions that write before the inotify
-	// watch is established.
+	// Seed candidate files from the live session dir so tryAttributeUnmatched
+	// can match files that already exist or that were written before the watch
+	// was established. Do not scan every historical sibling under root: startup
+	// conversation indexing already handles history, and broad watching/scanning
+	// was the source of thousands of kqueue fds on large ~/.pi histories.
 	var startedAt time.Time
 	if s, ok := fm.store.Get(sessionID); ok {
 		startedAt, _ = time.Parse(time.RFC3339, s.StartedAt)
 	}
 	var nDirs int
-	for d := range fm.watchedDirs {
-		if fm.rootDirs[d] || root == "" || !isUnderRoot(d, root) {
-			continue
-		}
-		nDirs++
-		fm.collectCandidateFilesLocked(d, startedAt)
+	if dir != "" {
+		nDirs = 1
+		fm.collectCandidateFilesLocked(dir, startedAt)
 	}
 	log.Printf("filemon: watching %d session dirs for %s (kind=%s)", nDirs, sessionID, sess.Kind)
 
 	fm.pokeLocked()
-}
-
-// watchAllSubdirsLocked watches every immediate subdirectory under root.
-func (fm *FileMonitor) watchAllSubdirsLocked(root string) {
-	entries, err := os.ReadDir(root)
-	if err != nil {
-		return
-	}
-	for _, e := range entries {
-		if !e.IsDir() {
-			continue
-		}
-		fm.addWatchLocked(filepath.Join(root, e.Name()))
-	}
 }
 
 // collectCandidateFilesLocked adds unattributed .jsonl files in dir
@@ -569,7 +530,7 @@ func (fm *FileMonitor) NotifySessionDied(sessionID string) {
 // dirNeededLocked returns true if any live session needs a watch on dir.
 func (fm *FileMonitor) dirNeededLocked(dir string) bool {
 	for _, ms := range fm.sessions {
-		if root := ms.filer.SessionRootDir(); root != "" && isUnderRoot(dir, root) {
+		if ms.filer.SessionDir(ms.cwd) == dir {
 			return true
 		}
 	}
