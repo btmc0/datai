@@ -1,0 +1,13 @@
+go 1.26.1
+
+use (
+	./cli/gmux
+	./packages/adapter
+	./packages/paths
+	./packages/relayproto
+	./packages/scrollback
+	./packages/workspace
+	./services/gmux-relayd
+	./services/gmuxd
+	./tests/e2e
+)

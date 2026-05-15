@@ -1,0 +1,127 @@
+# git-cliff configuration for gmux.
+#
+# Generates the changelog from conventional commit messages between tags.
+# Output matches the format used in apps/website/src/content/docs/changelog.mdx
+# so that new releases look identical to historical ones.
+#
+# Used by .github/workflows/scripts/version.sh, which parses the JSON
+# context for release-gating logic, enriches commits with PR links via
+# the GitHub API, and renders the final section via --from-context.
+# Manual previews (without PR enrichment):
+#
+#   git-cliff --unreleased --bump              # print the next release section
+#   git-cliff --unreleased --bump --context    # same, as JSON
+#   git-cliff --unreleased --bumped-version    # just the next version tag
+
+[changelog]
+# We inject the section manually into changelog.mdx, so no outer header.
+header = ""
+
+# One release section. Matches the historical format, with a date after
+# the version heading and optional bold scope tags:
+#
+#   ## v1.2.0 - 2026-04-10
+#
+#   ### Features
+#   - **(peering)** prevent duplicate sessions ([#123](https://github.com/gmuxapp/gmux/pull/123))
+#   - foo ([#124](https://github.com/gmuxapp/gmux/pull/124))
+#
+#   ### Fixes
+#   - **(web)** overlap on narrow viewports ([#125](https://github.com/gmuxapp/gmux/pull/125))
+#
+#   ---
+body = """
+{% if version -%}
+## {{ version }} - {{ timestamp | date(format="%Y-%m-%d") }}
+{%- else -%}
+## Unreleased
+{%- endif %}
+{% for group, commits in commits | group_by(attribute="group") %}
+### {{ group | striptags | trim }}
+{% for commit in commits -%}
+- {% if commit.scope %}**({{ commit.scope }})** {% endif %}{{ commit.message }}
+{% endfor -%}
+{% endfor %}
+---
+"""
+# Trim trailing whitespace from the rendered output.
+trim = true
+render_always = false
+
+postprocessors = []
+
+[git]
+conventional_commits = true
+# Skip commits that don't follow conventional format (merge commits, etc.).
+filter_unconventional = true
+# Keep breaking changes (fix!, feat!) even if their type would otherwise be filtered.
+protect_breaking_commits = true
+split_commits = false
+
+commit_preprocessors = [
+  # Turn trailing "(#125)" into a markdown link to the PR. This handles
+  # commits that already carry the suffix (squash merges) during the
+  # --context pass. For rebase merges (which lack the suffix), version.sh
+  # resolves PR numbers via the GitHub API and injects full markdown
+  # links into the context before rendering with --from-context.
+  { pattern = "(?m)\\s*\\(#([0-9]+)\\)$", replace = " ([#${1}](https://github.com/gmuxapp/gmux/pull/${1}))" },
+]
+
+# Assign commits to changelog groups. The `<!-- N -->` HTML comments
+# control sort order; striptags removes them before display.
+commit_parsers = [
+  # Breaking changes first, regardless of type or scope. The `!:`
+  # variant is caught by the subject-line regex, the footer form is
+  # caught by the `footer =` rule (git-cliff strips the footer from
+  # the body and exposes it separately, so matching on `body =`
+  # would miss it). This rule runs before the release-scope skip
+  # below so a hypothetical breaking change to the release flow
+  # still surfaces under the Breaking heading rather than being
+  # silently hidden, even though `protect_breaking_commits` would
+  # also force it through.
+  { message = '^[a-z]+(\([^)]+\))?!: ', group = "<!-- 0 -->Breaking" },
+  { footer = "^BREAKING[ -]CHANGE",      group = "<!-- 0 -->Breaking" },
+
+  # `(release)`-scoped commits are internal release-flow plumbing
+  # (workflow tweaks, notify-discord polish, cliff.toml itself).
+  # They don't change anything users of gmux see, so they're hidden
+  # from the changelog and don't count toward the bump. Note: in
+  # git-cliff, `scope = "x"` in a parser SETS the scope; matching on
+  # the parsed scope requires the explicit `field`/`pattern` form.
+  { field = "scope", pattern = "^release$", skip = true },
+
+  # Security fixes get their own section so they stand out.
+  { message = "^security",                group = "<!-- 1 -->Security" },
+
+  { message = "^feat",                    group = "<!-- 2 -->Features" },
+  { message = "^perf",                    group = "<!-- 2 -->Features" },
+  { message = "^fix",                     group = "<!-- 3 -->Fixes" },
+  { message = "^docs?",                   group = "<!-- 4 -->Docs" },
+
+  # Not surfaced in the user-facing changelog.
+  { message = "^refactor",                skip = true },
+  { message = "^chore",                   skip = true },
+  { message = "^ci",                      skip = true },
+  { message = "^test",                    skip = true },
+  { message = "^style",                   skip = true },
+  { message = "^build",                   skip = true },
+  { message = "^revert",                  skip = true },
+
+  # Unknown types are skipped.
+  { message = ".*",                       skip = true },
+]
+
+filter_commits = true
+fail_on_unmatched_commit = false
+# Within each section, list commits oldest-first to match the
+# historical changelog style (PR numbers ascend down the bullets).
+sort_commits = "oldest"
+
+[bump]
+# Follow standard conventional commits bump semantics:
+#   feat!, fix!, BREAKING CHANGE: → major
+#   feat                          → minor
+#   fix                           → patch
+# Other types (docs, chore, etc.) do not trigger a bump.
+features_always_bump_minor = true
+breaking_always_bump_major = true

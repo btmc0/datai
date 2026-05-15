@@ -1,0 +1,101 @@
+version: 2
+
+# Snapshot builds (PRs, local dev) get a version that is traceable to a
+# real commit on the source branch. Format: <next-patch>-snapshot-<short>.
+# With fetch-depth: 0 in CI, .Version is git-describe-derived (e.g. 1.5.0)
+# so incpatch yields 1.5.1; without tags it falls back to 0.0.0.
+# .ShortCommit reflects whatever ref was checked out — pr-build.yml pins
+# this to the PR head SHA so the version maps directly to a commit a user
+# can browse.
+snapshot:
+  version_template: '{{ incpatch .Version }}-snapshot-{{ .ShortCommit }}'
+
+before:
+  hooks:
+    # VERSION must be passed explicitly: vite reads it from process.env
+    # at build time and bakes it into the bundle as __GMUX_VERSION__.
+    # Without this the frontend always reports 'dev' even on tagged
+    # releases, while gmuxd reports the real version, which makes the
+    # home page footer permanently show "Frontend vdev / reload to
+    # update" because the two never match.
+    - bash -c 'cd apps/gmux-web && VERSION={{ .Version }} npx vite build'
+    - bash -c 'rm -rf services/gmuxd/cmd/gmuxd/web/assets services/gmuxd/cmd/gmuxd/web/favicon.svg services/gmuxd/cmd/gmuxd/web/manifest.json && cp -r apps/gmux-web/dist/* services/gmuxd/cmd/gmuxd/web/'
+
+builds:
+  - id: gmuxd
+    main: ./cmd/gmuxd
+    dir: services/gmuxd
+    binary: gmuxd
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X main.version={{ .Version }}
+
+  - id: gmux
+    main: ./cmd/gmux
+    dir: cli/gmux
+    binary: gmux
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X main.version={{ .Version }}
+
+archives:
+  - id: default
+    ids:
+      - gmuxd
+      - gmux
+    name_template: "gmux_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    formats:
+      - tar.gz
+    format_overrides:
+      - goos: darwin
+        formats:
+          - zip
+
+checksum:
+  name_template: "checksums.txt"
+
+changelog:
+  disable: true
+
+homebrew_casks:
+  - name: gmux
+    repository:
+      owner: gmuxapp
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    homepage: "https://gmux.app"
+    description: "See every running process in your browser"
+    license: "MIT"
+    binaries:
+      - gmux
+      - gmuxd
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/gmux"]
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/gmuxd"]
+          end
+          # Seamless daemon upgrade: if a daemon was running, restart it with
+          # the new version. If it wasn't running, do nothing — the next
+          # `gmux` invocation will start it on demand.
+          system_command "/bin/sh", args: ["-c", <<~EOS
+            if "#{staged_path}/gmuxd" status >/dev/null 2>&1; then
+              "#{staged_path}/gmuxd" start
+            fi
+          EOS
+          ]
