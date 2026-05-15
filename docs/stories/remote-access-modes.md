@@ -26,8 +26,8 @@ session store or product-domain service.
 - Docs name exactly two remote-access modes: `tsnet` and `relay`.
 - Docs define `gmuxd` as the owner of session state and `gmux-relayd` as a dumb
   transport component.
-- Docs describe the target `[access].mode` selector without claiming that code
-  has already migrated.
+- Docs describe the target optional `[remote].mode` selector without claiming
+  that code has already migrated.
 - Stale quick-deploy script references are removed from the root README.
 
 ## Design Notes
@@ -46,8 +46,8 @@ session store or product-domain service.
 
 | Layer | Expected proof |
 | --- | --- |
-| Unit | Future config parser tests for mutually exclusive `access.mode` handling. |
-| Integration | Future `gmuxd` startup/config tests for local, tsnet, and relay modes. |
+| Unit | Future config parser tests for optional `[remote].mode` handling for `tsnet` and `relay`. |
+| Integration | Future `gmuxd` startup/config tests for local-only baseline, tsnet, and relay. |
 | E2E | Future browser session attach through local and remote URLs. |
 | Platform | Future smoke checks for Tailscale/tsnet and relay deployment paths. |
 | Release | Future release checklist confirms docs, config migration notes, and status output. |

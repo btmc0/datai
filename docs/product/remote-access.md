@@ -6,11 +6,10 @@ Accepted design contract for future gmux remote-access work.
 
 ## Scope
 
-gmux has one local runtime baseline and two supported remote-access modes.
-The canonical access selector includes `local`, but only `tsnet` and `relay`
-are remote-access modes. Provisioning helpers, SSH tunnels, reverse-proxy
-snippets, and install scripts may automate setup, but they are not additional
-access modes.
+gmux has one implicit local runtime baseline and two optional remote-access
+modes: `tsnet` and `relay`. A missing `[remote]` block means local-only.
+Provisioning helpers, SSH tunnels, reverse-proxy snippets, and install scripts
+may automate setup, but they are not additional access modes.
 
 ```text
 gmux sessions
@@ -25,15 +24,14 @@ gmux sessions
 | Term | Meaning |
 | --- | --- |
 | Runtime core | `gmux`, `gmuxd`, local PTY sessions, local state, and the shared web/API handler. |
-| Access mode | The selected browser path to the same `gmuxd` handler: `local`, `tsnet`, or `relay`. |
-| Remote-access mode | A non-local access mode: `tsnet` or `relay`. |
+| Local baseline | The implicit browser path to the same-machine `gmuxd` handler. It is not configured as a remote mode. |
+| Remote-access mode | An optional non-local transport selected by `[remote].mode`: `tsnet` or `relay`. |
 | Provisioning | Optional automation that installs binaries, creates services, configures DNS/TLS, or writes config. |
 
-## Supported Access Modes
+## Supported Remote-Access Modes
 
 | Mode | Best for | Browser path | Operational tradeoff |
 | --- | --- | --- | --- |
-| `local` | Single-machine use and baseline debugging | Browser connects to `127.0.0.1:8790` | No remote reachability. |
 | `tsnet` | Private personal/team access when clients are in the tailnet | Browser connects through Tailscale/tsnet to `gmuxd` | Requires Tailscale identity, auth keys, and ACL hygiene. |
 | `relay` | Public URL access, NAT traversal, or phones/browsers outside the tailnet | Browser connects to public `gmux-relayd`; `gmuxd` connects outbound by WSS | Requires operating relay infrastructure, TLS, tokens, and relay availability. |
 
@@ -41,23 +39,24 @@ gmux sessions
 
 - `gmuxd` owns session state, scrollback, project/workspace state, auth, and the
   user-facing web/API behavior.
-- Access modes only transport traffic to the same `gmuxd` handler.
+- Remote-access modes only transport traffic to the same `gmuxd` handler.
 - `gmux-relayd` stays stateless about gmux product domains. It may authenticate,
   hold tunnels, multiplex HTTP/WebSocket frames, expose health, and report
   whether an agent is connected.
 - `gmux-relayd` must not persist sessions, cache terminal output, understand
   workspace/session internals, or implement gmux business rules.
-- Access mode selection should be explicit and mutually exclusive for normal
-  operation. Running more than one remote transport should require an explicit
-  advanced/debug decision, not accidental overlapping config.
+- Remote mode selection should be explicit and mutually exclusive when remote
+  access is enabled. Running more than one remote transport should require an
+  explicit advanced/debug decision, not accidental overlapping config.
 
 ## Target Configuration Shape
 
-Future config should converge on one canonical access selector:
+Local access is implicit. Future config should converge on an optional remote
+selector that exists only when remote access is enabled:
 
 ```toml
-[access]
-mode = "local" # local | tsnet | relay
+[remote]
+mode = "relay" # tsnet | relay
 public_url = ""
 
 [tailscale]
@@ -71,14 +70,14 @@ token = "replace-with-a-shared-secret"
 
 Rules:
 
-- `access.mode = "local"` binds only local access.
-- `access.mode = "tsnet"` enables the tsnet listener and fails fast when required
-  Tailscale config is missing.
-- `access.mode = "relay"` enables the outbound relay agent and fails fast when
+- Missing `[remote]` means local-only access.
+- `remote.mode = "tsnet"` enables the tsnet listener and fails fast when
+  required Tailscale config is missing.
+- `remote.mode = "relay"` enables the outbound relay agent and fails fast when
   relay URL or token is missing.
 - Legacy independent `[tailscale].enabled` and `[relay].enabled` fields may be
   migrated gradually, but docs and new management commands should treat
-  `[access].mode` as the source of truth.
+  `[remote].mode` as the source of truth when `[remote]` exists.
 
 ## Target Management Commands
 

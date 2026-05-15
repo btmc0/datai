@@ -28,11 +28,13 @@ Model gmux access as one local baseline plus two supported remote-access modes:
 Provisioning helpers, SSH tunnels, reverse-proxy snippets, and install scripts
 are not additional access modes.
 
-Future config and CLI work should converge on an explicit canonical access selector:
+Future config and CLI work should converge on an optional remote selector.
+Local access is implicit; `[remote]` exists only when one remote transport is
+enabled:
 
 ```toml
-[access]
-mode = "local" # local | tsnet | relay
+[remote]
+mode = "tsnet" # tsnet | relay
 ```
 
 `gmuxd` remains the owner of session state and user-facing behavior.
@@ -43,12 +45,15 @@ gmux session/workspace domain state.
 
 1. Treat quick-deploy or SSH-forwarding as a third mode. Rejected because it is
    provisioning/transport automation, not a distinct gmux runtime architecture.
-2. Use `[remote].mode = local | tsnet | relay`. Rejected because `local` is not
-   a remote mode; `[access].mode` names the selector more accurately.
-3. Keep independent `[tailscale].enabled` and `[relay].enabled` booleans as the
+2. Use a generic access selector with local as an enum value. Rejected because
+   local access does not need a configured mode for gmux's remote-access
+   contract.
+3. Use an explicit disabled remote value. Rejected because a missing `[remote]`
+   block is simpler than an explicit disabled mode.
+4. Keep independent `[tailscale].enabled` and `[relay].enabled` booleans as the
    main model. Rejected as the long-term shape because overlapping booleans make
    normal operation ambiguous.
-4. Move session awareness into `gmux-relayd`. Rejected because it would split
+5. Move session awareness into `gmux-relayd`. Rejected because it would split
    product state across local and public components and make offline/reconnect
    behavior harder to reason about.
 
@@ -64,8 +69,8 @@ Positive:
 
 Tradeoffs:
 
-- Existing config fields may need a migration path before `[access].mode` is the
-  only accepted source of truth.
+- Existing config fields may need a migration path before optional
+  `[remote].mode` is the only accepted remote selector.
 - Advanced users who want multiple simultaneous transports will need an explicit
   debug/advanced contract later.
 - Documentation must distinguish implemented behavior from target management
@@ -73,7 +78,7 @@ Tradeoffs:
 
 ## Follow-Up
 
-- Add or update implementation stories for `[access].mode` migration and remote
+- Add or update implementation stories for `[remote].mode` migration and remote
   management commands when code work is selected.
 - Add platform validation for local, tsnet, and relay smoke checks once validation
   scripts exist.

@@ -94,11 +94,11 @@ There are two supported remote-access modes, documented in `docs/product/remote-
 1. Built-in Tailscale/tsnet mode for private tailnet access.
 2. Outbound relay mode, served by `gmux-relayd`, for public HTTPS/WSS access and NAT traversal.
 
-Provisioning helpers, SSH tunnels, reverse-proxy snippets, and install scripts are setup automation, not additional access modes. Future config and CLI work should converge on an explicit access selector such as:
+Provisioning helpers, SSH tunnels, reverse-proxy snippets, and install scripts are setup automation, not additional access modes. Local access is the implicit baseline; `[remote]` is only needed when enabling one of the two remote transports:
 
 ```toml
-[access]
-mode = "relay" # local | tsnet | relay
+[remote]
+mode = "relay" # tsnet | relay
 
 [relay]
 url = "wss://your-relay.example.com/_gmux/agent"
