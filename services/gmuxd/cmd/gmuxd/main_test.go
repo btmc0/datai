@@ -323,12 +323,26 @@ func TestUsageIncludesNewCommands(t *testing.T) {
 	}
 }
 
+func shortTestStateDir(t *testing.T) string {
+	t.Helper()
+
+	// Unix socket path lengths are small on macOS. t.TempDir() includes the full
+	// test name, which can make paths like .../TestRunStatusWithRunningDaemon/...
+	// too long to bind. Keep the XDG_STATE_HOME root short for socket tests.
+	dir, err := os.MkdirTemp("", "gmux-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.RemoveAll(dir) })
+	return dir
+}
+
 // startTestSocketDaemon starts a minimal HTTP server on a Unix socket
 // at the standard SocketPath() location under a temp XDG_STATE_HOME.
 // Returns the state dir (for t.Setenv) and a cleanup func.
 func startTestSocketDaemon(t *testing.T, ver string) (stateDir string, cleanup func()) {
 	t.Helper()
-	stateDir = t.TempDir()
+	stateDir = shortTestStateDir(t)
 	sockDir := filepath.Join(stateDir, "gmux")
 	os.MkdirAll(sockDir, 0o700)
 	sockPath := filepath.Join(sockDir, "gmuxd.sock")
@@ -363,7 +377,7 @@ func startTestSocketDaemon(t *testing.T, ver string) (stateDir string, cleanup f
 // startTestSocketDaemonFull starts a mock daemon that returns sessions and peers.
 func startTestSocketDaemonFull(t *testing.T) (stateDir string, cleanup func()) {
 	t.Helper()
-	stateDir = t.TempDir()
+	stateDir = shortTestStateDir(t)
 	sockDir := filepath.Join(stateDir, "gmux")
 	os.MkdirAll(sockDir, 0o700)
 	sockPath := filepath.Join(sockDir, "gmuxd.sock")

@@ -19,7 +19,7 @@ implemented until tests or validation evidence exist.
 
 | Story | Contract | Unit | Integration | E2E | Platform | Status | Evidence |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `docs/stories/remote-access-modes.md` | Local baseline plus `tsnet` and `relay` remote-access modes | yes | no | no | no | in_progress | `go test ./services/gmuxd/internal/config`; `go test ./services/gmuxd/internal/tsauth`; targeted `gmuxd` tsnet/relay command tests |
+| `docs/stories/remote-access-modes.md` | Local baseline plus `tsnet` and `relay` remote-access modes | yes | no | no | no | in_progress | `go test ./services/gmuxd/internal/config`; `go test ./services/gmuxd/internal/tsauth`; `go test ./services/gmuxd/cmd/gmuxd` |
 
 ## Evidence Rules
 

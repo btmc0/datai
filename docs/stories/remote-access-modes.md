@@ -76,6 +76,5 @@ future implementation work.
   auth key into tsnet.
 - `go test ./services/gmuxd/cmd/gmuxd -run 'TestRunRelayConfigured|TestRunTsnetRelayConfigured|TestRemoteSetup|TestDisplayStatus'`
   passed on 2026-05-15 after showing `remote.public_url` in `gmuxd relay`.
-- `go test ./services/gmuxd/cmd/gmuxd` was attempted on 2026-05-15 and still
-  fails in existing status/auth tests because Unix socket bind paths under the
-  macOS temp directory return `bind: invalid argument`.
+- `go test ./services/gmuxd/cmd/gmuxd` passed on 2026-05-15 after shortening
+  Unix socket temp paths in the status/auth test helpers.
