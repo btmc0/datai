@@ -149,13 +149,13 @@ func (a *agentConn) nextID() string {
 }
 
 func (a *agentConn) send(ctx context.Context, f relayproto.Frame) error {
-	b, err := json.Marshal(f)
+	b, err := relayproto.Marshal(f)
 	if err != nil {
 		return err
 	}
 	a.sendMu.Lock()
 	defer a.sendMu.Unlock()
-	return a.conn.Write(ctx, websocket.MessageText, b)
+	return a.conn.Write(ctx, websocket.MessageBinary, b)
 }
 
 func (a *agentConn) readLoop(ctx context.Context) {
@@ -164,11 +164,11 @@ func (a *agentConn) readLoop(ctx context.Context) {
 		if err != nil {
 			return
 		}
-		if typ != websocket.MessageText {
+		if typ != websocket.MessageBinary {
 			continue
 		}
-		var f relayproto.Frame
-		if err := json.Unmarshal(data, &f); err != nil {
+		f, err := relayproto.Unmarshal(data)
+		if err != nil {
 			log.Printf("relay frame decode: %v", err)
 			continue
 		}

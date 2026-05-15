@@ -5,7 +5,6 @@ package relayclient
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -123,11 +122,11 @@ func (c *client) readLoop(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		if typ != websocket.MessageText {
+		if typ != websocket.MessageBinary {
 			continue
 		}
-		var f relayproto.Frame
-		if err := json.Unmarshal(data, &f); err != nil {
+		f, err := relayproto.Unmarshal(data)
+		if err != nil {
 			log.Printf("relay: bad frame: %v", err)
 			continue
 		}
@@ -145,13 +144,13 @@ func (c *client) readLoop(ctx context.Context) error {
 }
 
 func (c *client) send(ctx context.Context, f relayproto.Frame) error {
-	b, err := json.Marshal(f)
+	b, err := relayproto.Marshal(f)
 	if err != nil {
 		return err
 	}
 	c.sendMu.Lock()
 	defer c.sendMu.Unlock()
-	return c.conn.Write(ctx, websocket.MessageText, b)
+	return c.conn.Write(ctx, websocket.MessageBinary, b)
 }
 
 func (c *client) handleHTTP(ctx context.Context, f relayproto.Frame) {

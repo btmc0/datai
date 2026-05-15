@@ -38,6 +38,10 @@ relay: browser -> gmux-relayd -> outbound WSS agent from gmuxd -> shared handler
 traffic and reports agent connection state, but it must not persist or interpret
 gmux sessions/workspaces.
 
+The relay agent connection uses the binary gmux-specific frame codec in
+`packages/relayproto`. `gmuxd` and `gmux-relayd` must be deployed from compatible
+builds when that protocol changes.
+
 ## Remote-Access Invariants
 
 - Missing `[remote]` means local-only baseline.

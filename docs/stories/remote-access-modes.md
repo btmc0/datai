@@ -82,5 +82,10 @@ future implementation work.
 - `go test ./services/gmuxd/cmd/gmuxd -run 'TestRunDoctor|TestRelayHealthURL|TestUsageIncludesNewCommands'`
   passed on 2026-05-15 after adding `gmuxd doctor` diagnostics for config,
   daemon/local UI, tsnet, and relay health.
+- `go test ./packages/relayproto` passed on 2026-05-15 after switching the relay
+  agent protocol from JSON/text frames to binary frames.
+- `go test ./services/gmuxd/internal/relayclient` and `go test
+  ./services/gmux-relayd/cmd/gmux-relayd` passed on 2026-05-15 after updating
+  both sides to read/write WebSocket binary relay frames.
 - `go test ./services/gmuxd/cmd/gmuxd` passed on 2026-05-15 after shortening
   Unix socket temp paths in the status/auth test helpers.
