@@ -33,3 +33,7 @@ cli/gmux/gmux
 test-results/
 tests/pi-adapter/pi-adapter
 gmux gmuxd
+
+# local agent/harness state
+.pi/
+.harness-backup/
