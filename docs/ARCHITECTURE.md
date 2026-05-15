@@ -46,9 +46,8 @@ gmux sessions/workspaces.
   tunnels, reverse proxies, quick-deploy scripts, or install helpers.
 - CLI management stays flat while there are only two transports:
   `gmuxd tsnet`, `gmuxd relay`, `gmuxd status`, and `gmuxd doctor`.
-- Relay URL/token configuration is local daemon configuration. Relay server
-  hardening is a separate story and must not be mixed into remote mode selection
-  work.
+- Relay URL/token configuration is local daemon configuration and stays bounded
+  to remote mode setup/status work.
 
 See `docs/product/remote-access.md` and
 `docs/decisions/0004-remote-access-modes.md` for the product contract and
