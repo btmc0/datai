@@ -7,8 +7,10 @@ Accepted design contract for future gmux remote-access work.
 ## Scope
 
 gmux has one local runtime baseline and two supported remote-access modes.
-Provisioning helpers, SSH tunnels, reverse-proxy snippets, and install scripts
-may automate setup, but they are not additional access modes.
+The canonical access selector includes `local`, but only `tsnet` and `relay`
+are remote-access modes. Provisioning helpers, SSH tunnels, reverse-proxy
+snippets, and install scripts may automate setup, but they are not additional
+access modes.
 
 ```text
 gmux sessions
@@ -23,10 +25,11 @@ gmux sessions
 | Term | Meaning |
 | --- | --- |
 | Runtime core | `gmux`, `gmuxd`, local PTY sessions, local state, and the shared web/API handler. |
-| Access mode | The transport path a browser uses to reach the same `gmuxd` handler. |
+| Access mode | The selected browser path to the same `gmuxd` handler: `local`, `tsnet`, or `relay`. |
+| Remote-access mode | A non-local access mode: `tsnet` or `relay`. |
 | Provisioning | Optional automation that installs binaries, creates services, configures DNS/TLS, or writes config. |
 
-## Supported Modes
+## Supported Access Modes
 
 | Mode | Best for | Browser path | Operational tradeoff |
 | --- | --- | --- | --- |
@@ -44,16 +47,16 @@ gmux sessions
   whether an agent is connected.
 - `gmux-relayd` must not persist sessions, cache terminal output, understand
   workspace/session internals, or implement gmux business rules.
-- Remote mode selection should be explicit and mutually exclusive for normal
+- Access mode selection should be explicit and mutually exclusive for normal
   operation. Running more than one remote transport should require an explicit
   advanced/debug decision, not accidental overlapping config.
 
 ## Target Configuration Shape
 
-Future config should converge on one canonical mode selector:
+Future config should converge on one canonical access selector:
 
 ```toml
-[remote]
+[access]
 mode = "local" # local | tsnet | relay
 public_url = ""
 
@@ -68,14 +71,14 @@ token = "replace-with-a-shared-secret"
 
 Rules:
 
-- `remote.mode = "local"` binds only local access.
-- `remote.mode = "tsnet"` enables the tsnet listener and fails fast when required
+- `access.mode = "local"` binds only local access.
+- `access.mode = "tsnet"` enables the tsnet listener and fails fast when required
   Tailscale config is missing.
-- `remote.mode = "relay"` enables the outbound relay agent and fails fast when
+- `access.mode = "relay"` enables the outbound relay agent and fails fast when
   relay URL or token is missing.
 - Legacy independent `[tailscale].enabled` and `[relay].enabled` fields may be
   migrated gradually, but docs and new management commands should treat
-  `[remote].mode` as the source of truth.
+  `[access].mode` as the source of truth.
 
 ## Target Management Commands
 
