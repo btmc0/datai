@@ -1,133 +1,117 @@
 # Architecture
 
-No application stack is selected yet.
+This repository now contains the gmux application stack. It is not a blank
+harness. Use this document to understand the current component boundaries before
+proposing implementation shape.
 
-No application code exists yet. This document defines generic architecture
-questions and boundary rules that future implementation should adapt after a
-user-provided spec and stack decision exist.
+## Current Stack
 
-## Discovery Before Shape
+| Area | Location | Role |
+| --- | --- | --- |
+| CLI runner | `cli/gmux` | Starts commands in managed PTY sessions, attaches locally, sends input, and opens the browser UI. |
+| Local daemon | `services/gmuxd` | Owns session/workspace state, serves the web UI/API/SSE/WS, proxies terminal traffic, reports health, and owns remote-access behavior. |
+| Public relay | `services/gmux-relayd` | Optional transport relay for public HTTPS/WSS access through one outbound agent connection from `gmuxd`. It is not a session store. |
+| Browser app | `apps/gmux-web` | React/Vite UI served by `gmuxd` for session and workspace interaction. |
+| Website | `apps/website` | Documentation/marketing site, separate from runtime behavior. |
+| Shared Go packages | `packages/adapter`, `packages/paths`, `packages/relayproto`, `packages/scrollback`, `packages/workspace` | Shared runtime contracts and utilities. |
+| Shared TS protocol | `packages/protocol` | Browser-facing protocol types and tests. |
 
-Before proposing implementation shape, identify:
+## Runtime Topology
 
-- Product surfaces: browser, mobile, desktop, CLI, API, worker, or service.
-- Runtime stack: language, framework, database, queues, providers, and hosting.
-- Core domains: the product concepts that deserve stable names and contracts.
-- Boundary inputs: user input, API requests, webhooks, jobs, files, credentials,
-  provider payloads, and environment configuration.
-- Validation ladder: the smallest checks that can prove the selected stack.
-
-Record stack choices in `docs/decisions/` when they meaningfully constrain
-future work.
-
-## Default Layering
+Local access is the baseline:
 
 ```text
-domain
-  <- application
-      <- infrastructure
-          <- interface
-              <- app surfaces
+gmux -> gmuxd over Unix socket
+gmuxd -> browser over local HTTP/SSE/WS
 ```
 
-## Candidate Structure
+Remote access adds exactly one selected remote transport on top of the same
+`gmuxd` web/API handler:
 
 ```text
-app/
-  domain/
-    entities/
-    value-objects/
-    repositories/
-    services/
-
-  application/
-    commands/
-    queries/
-    handlers/
-
-  infrastructure/
-    database/
-    logging/
-    notifications/
-
-  interface/
-    controllers/
-    dto/
-    presenters/
-    routes/
-    middlewares/
-
-surfaces/
-  browser/
-  mobile/
-  desktop/
-  cli/
+tsnet: browser in tailnet -> gmuxd tsnet listener -> shared handler
+relay: browser -> gmux-relayd -> outbound WSS agent from gmuxd -> shared handler
 ```
 
-This is a thinking template, not a scaffold. Create real folders only when a
-story enters implementation and the selected stack needs them.
+`gmuxd` remains the owner of session, workspace, auth-token, and status state.
+`gmux-relayd` must remain a transport component: it forwards HTTP/WebSocket
+traffic and reports agent connection state, but it must not persist or interpret
+gmux sessions/workspaces.
+
+## Remote-Access Invariants
+
+- Missing `[remote]` means local-only baseline.
+- `[remote].mode` selects one optional remote transport: `tsnet` or `relay`.
+- Do not introduce extra architecture modes for setup automation such as SSH
+  tunnels, reverse proxies, quick-deploy scripts, or install helpers.
+- CLI management stays flat while there are only two transports:
+  `gmuxd tsnet`, `gmuxd relay`, `gmuxd status`, and `gmuxd doctor`.
+- Relay URL/token configuration is local daemon configuration. Relay server
+  hardening is a separate story and must not be mixed into remote mode selection
+  work.
+
+See `docs/product/remote-access.md` and
+`docs/decisions/0004-remote-access-modes.md` for the product contract and
+recorded decision.
 
 ## Dependency Rule
 
-Inner layers must not depend on outer layers.
+Inner/shared contracts must not depend on outer surfaces.
 
 | Layer | May depend on | Must not depend on |
 | --- | --- | --- |
-| domain | nothing project-external except tiny pure utilities | framework, database, UI, provider, process/env |
-| application | domain | framework, UI, provider, database concrete clients |
-| infrastructure | domain, application | interface controllers or UI |
-| interface | all backend layers | UI state or platform shell assumptions |
-| app surfaces | API contracts and app-facing clients | domain internals directly |
+| Shared packages | Go/TS standard libraries and tiny pure utilities | CLI, daemon, relay, browser UI |
+| `gmuxd` domain/runtime code | shared packages, internal infrastructure | browser UI state, relay server internals |
+| `gmux` CLI | shared packages, daemon API/IPC contracts | daemon private internals, browser UI internals |
+| `gmux-relayd` | relay protocol and transport concerns | gmux session/workspace domain state |
+| `apps/gmux-web` | browser protocol/API contracts | daemon private structs or filesystem state |
+
+When a change crosses these boundaries, prefer a small shared contract in
+`packages/` over importing an outer component directly.
 
 ## Parse-First Boundary Rule
 
-Unknown data must be parsed at boundaries before it enters inner code.
+Unknown data must be parsed and validated at boundaries before it enters runtime
+logic. Boundaries include:
 
-Boundaries include:
-
-- HTTP request bodies, params, and query strings.
-- Session payloads and identity claims.
-- Environment variables.
-- Database rows returned from external clients.
-- Platform shell payloads.
-- Deep links, tokens, and signed URLs.
-- Provider webhooks, events, and async payloads.
+- CLI arguments and environment variables.
+- `host.toml`, `projects.json`, session metadata, and scrollback files.
+- HTTP request bodies, params, query strings, WebSocket frames, and SSE events.
+- Relay agent/browser frames.
+- Tailscale identity and status payloads.
+- Browser-local input/device payloads.
 
 Target flow:
 
 ```text
-unknown input
-  -> parser
-  -> typed DTO or command
-  -> application use case
-  -> domain object/value object
+unknown input -> parser/validator -> typed contract -> runtime behavior
 ```
 
-Inner layers should work with meaningful product types such as `UserId`,
-`AccountId`, `WorkspaceId`, `Role`, `DateRange`, or domain-specific IDs,
-rather than repeatedly validating raw strings.
+Security-relevant config remains strict: unknown config keys and invalid remote
+mode combinations should fail fast.
 
-## Command/Query Boundary
+## State Ownership
 
-If the product has both reads and writes, keep command/query separation clear at
-the code level even when the storage layer is simple:
+- `gmuxd` owns runtime state under `~/.local/state/gmux/` and host config under
+  `~/.config/gmux/`.
+- `gmux` creates/attaches to sessions but should not become a second state owner
+  for daemon-managed session/workspace truth.
+- `gmux-relayd` may hold transient connection state for routing, not durable
+  product state.
+- Browser state should be UI state only; durable session/workspace state comes
+  from `gmuxd` APIs/events.
 
-- Commands mutate state and own audit side effects.
-- Queries read state and format for consumers.
-- Shared domain rules live in domain/application, not controllers.
+## Validation Ladder
 
-## Observability Contract
+For implementation changes, choose the smallest proof that covers the affected
+boundary:
 
-The future server should emit one canonical JSON log line per request with:
+1. Pure package tests for parsers, protocol helpers, config rules, adapters, and
+   workspace utilities.
+2. `gmuxd` command/API tests for daemon behavior and local IPC.
+3. Browser unit/component tests for UI-only behavior.
+4. E2E or platform smoke tests for cross-process flows, remote access, install,
+   and release behavior.
 
-- timestamp
-- level
-- request_id
-- user_id when known
-- action
-- duration_ms
-- status_code
-- message
-
-Audit logs are product records. Application logs are operational records. Do not
-use one as a substitute for the other.
+Keep `docs/TEST_MATRIX.md` and the relevant story packet current when validation
+expectations or evidence change.
