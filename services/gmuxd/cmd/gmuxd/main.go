@@ -1725,6 +1725,7 @@ func serve(stderr io.Writer) int {
 		tsListener = tsauth.Start(tsauth.Config{
 			Hostname: cfg.Tailscale.Hostname,
 			Allow:    cfg.Tailscale.Allow,
+			AuthKey:  cfg.Tailscale.AuthKey,
 		}, stateDir, mux)
 		defer tsListener.Shutdown()
 

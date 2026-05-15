@@ -75,6 +75,10 @@ Rules:
   required Tailscale config is missing.
 - `remote.mode = "relay"` enables the outbound relay agent and fails fast when
   relay URL or token is missing.
+- `remote.public_url`, when set, is the browser-facing HTTP/HTTPS URL shown to
+  users; it does not replace the relay agent WebSocket URL.
+- `tailscale.auth_key`, when set, is passed to tsnet for unattended node login;
+  when empty, tsnet uses the interactive login flow.
 - Legacy independent `[tailscale].enabled` and `[relay].enabled` fields may be
   migrated gradually, but docs and new management commands should treat
   `[remote].mode` as the source of truth when `[remote]` exists.

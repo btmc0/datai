@@ -352,6 +352,7 @@ func TestRunRelayConfigured(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(cfgDir, "host.toml"), []byte(`
 [remote]
 mode = "relay"
+public_url = "https://gmux.example.com"
 
 [relay]
 url = "wss://relay.example.com/_gmux/agent"
@@ -368,6 +369,9 @@ token = "secret"
 	out := stdout.String()
 	if !strings.Contains(out, "Relay access is configured") {
 		t.Errorf("missing relay configured message:\n%s", out)
+	}
+	if !strings.Contains(out, "https://gmux.example.com") {
+		t.Errorf("missing public URL:\n%s", out)
 	}
 	if !strings.Contains(out, "wss://relay.example.com/_gmux/agent") {
 		t.Errorf("missing relay URL:\n%s", out)

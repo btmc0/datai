@@ -68,6 +68,7 @@ mode = "tsnet"
 
 [tailscale]
 hostname = "mybox"
+auth_key = "tskey-auth-test"
 `)
 
 	cfg, err := Load()
@@ -80,6 +81,9 @@ hostname = "mybox"
 	if !cfg.Tailscale.Enabled {
 		t.Error("remote.mode=tsnet should enable tailscale")
 	}
+	if cfg.Tailscale.AuthKey != "tskey-auth-test" {
+		t.Errorf("tailscale.auth_key = %q, want tskey-auth-test", cfg.Tailscale.AuthKey)
+	}
 	if cfg.Relay.Enabled {
 		t.Error("remote.mode=tsnet should not enable relay")
 	}
@@ -91,6 +95,7 @@ func TestLoadRemoteModeRelay(t *testing.T) {
 	writeConfig(t, dir, `
 [remote]
 mode = "relay"
+public_url = "https://gmux.example.com"
 
 [relay]
 url = "wss://relay.example.com/_gmux/agent"
@@ -106,6 +111,9 @@ token = "secret"
 	}
 	if !cfg.Relay.Enabled {
 		t.Error("remote.mode=relay should enable relay")
+	}
+	if cfg.Remote.PublicURL != "https://gmux.example.com" {
+		t.Errorf("remote.public_url = %q, want https://gmux.example.com", cfg.Remote.PublicURL)
 	}
 	if cfg.Tailscale.Enabled {
 		t.Error("remote.mode=relay should not enable tailscale")
@@ -140,6 +148,50 @@ mode = "local"
 	}
 	if !strings.Contains(err.Error(), "must be tsnet or relay") {
 		t.Errorf("error = %q, want allowed mode message", err)
+	}
+}
+
+func TestLoadRemoteModeAcceptsDocumentedOptionalFields(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", dir)
+	writeConfig(t, dir, `
+[remote]
+mode = "relay"
+public_url = ""
+
+[tailscale]
+hostname = "my-gmux"
+auth_key = ""
+
+[relay]
+url = "wss://relay.example.com/_gmux/agent"
+token = "replace-with-a-shared-secret"
+`)
+
+	if _, err := Load(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestLoadRemoteModeRejectsInvalidPublicURL(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", dir)
+	writeConfig(t, dir, `
+[remote]
+mode = "relay"
+public_url = "wss://gmux.example.com"
+
+[relay]
+url = "wss://relay.example.com/_gmux/agent"
+token = "secret"
+`)
+
+	_, err := Load()
+	if err == nil {
+		t.Fatal("expected error for invalid remote.public_url")
+	}
+	if !strings.Contains(err.Error(), "remote.public_url") {
+		t.Errorf("error = %q, want mention of remote.public_url", err)
 	}
 }
 

@@ -46,7 +46,7 @@ session store or product-domain service.
 
 | Layer | Expected proof |
 | --- | --- |
-| Unit | Future config parser tests for optional `[remote].mode` handling for `tsnet` and `relay`. |
+| Unit | Config parser tests cover optional `[remote].mode`, `remote.public_url`, and `tailscale.auth_key` handling. |
 | Integration | Future `gmuxd` startup/config tests for local-only baseline, tsnet, and relay. |
 | E2E | Future browser session attach through local and remote URLs. |
 | Platform | Future smoke checks for Tailscale/tsnet and relay deployment paths. |
@@ -70,6 +70,12 @@ future implementation work.
 - `go test ./services/gmuxd/cmd/gmuxd -run 'TestUsageIncludesNewCommands|TestRunNoArgsPrintsHelp|TestRunHelpCommand|TestRunUnknownCommand|TestEnableTailscaleConfig|TestRemoteSetup|TestRunTsnetRelayConfigured|TestRunRelayConfigured|TestDisplayStatus'`
   passed on 2026-05-15 after switching the command design to direct `gmuxd
   tsnet` / `gmuxd relay` commands.
+- `go test ./services/gmuxd/internal/config` and `go test
+  ./services/gmuxd/internal/tsauth` passed on 2026-05-15 after adding parser
+  support for `remote.public_url` and `tailscale.auth_key`, plus passing the
+  auth key into tsnet.
+- `go test ./services/gmuxd/cmd/gmuxd -run 'TestRunRelayConfigured|TestRunTsnetRelayConfigured|TestRemoteSetup|TestDisplayStatus'`
+  passed on 2026-05-15 after showing `remote.public_url` in `gmuxd relay`.
 - `go test ./services/gmuxd/cmd/gmuxd` was attempted on 2026-05-15 and still
   fails in existing status/auth tests because Unix socket bind paths under the
   macOS temp directory return `bind: invalid argument`.

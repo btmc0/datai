@@ -29,6 +29,7 @@ import (
 // Config mirrors the tailscale section of the gmuxd config file.
 type Config struct {
 	Hostname string
+	AuthKey  string
 	Allow    []string // tailscale login names (e.g. "user@github")
 }
 
@@ -55,8 +56,8 @@ type Listener struct {
 	srv   *tsnet.Server
 	lc    *tailscale.LocalClient
 	cfg   Config
-	fqdn  string         // resolved tailnet FQDN, set once ready
-	ready chan struct{}   // closed when the listener is fully connected
+	fqdn  string        // resolved tailnet FQDN, set once ready
+	ready chan struct{} // closed when the listener is fully connected
 }
 
 // FQDN returns the full tailnet DNS name (e.g. "gmuxd.angler-map.ts.net")
@@ -101,6 +102,7 @@ func Start(cfg Config, stateDir string, handler http.Handler) *Listener {
 	srv := &tsnet.Server{
 		Hostname: cfg.Hostname,
 		Dir:      tsnetDir,
+		AuthKey:  cfg.AuthKey,
 	}
 
 	l := &Listener{

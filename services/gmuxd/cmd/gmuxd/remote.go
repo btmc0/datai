@@ -56,6 +56,9 @@ func runRelay(stdout, stderr io.Writer) int {
 	}
 
 	fmt.Fprintln(stdout, "Relay access is configured.")
+	if cfg.Remote.PublicURL != "" {
+		fmt.Fprintf(stdout, "public url: %s\n", cfg.Remote.PublicURL)
+	}
 	fmt.Fprintf(stdout, "relay url: %s\n", cfg.Relay.URL)
 	return 0
 }

@@ -82,6 +82,11 @@ type RemoteConfig struct {
 	// Mode selects one remote-access transport. Empty means no explicit remote selector.
 	// Valid configured values are "tsnet" and "relay".
 	Mode string `toml:"mode"`
+
+	// PublicURL is the browser-facing remote URL when known (for example, the HTTPS
+	// URL in front of gmux-relayd). It is informational; relay.url remains the
+	// outbound agent WebSocket endpoint.
+	PublicURL string `toml:"public_url"`
 }
 
 // RelayConfig controls the optional outbound gmux relay client.
@@ -109,6 +114,10 @@ type TailscaleConfig struct {
 	// (e.g. "user@github"). The node owner is always auto-whitelisted at runtime.
 	// Entries are matched against the peer's UserProfile.LoginName.
 	Allow []string `toml:"allow"`
+
+	// AuthKey is an optional Tailscale auth key for unattended tsnet login.
+	// Empty means tsnet uses the interactive/device login flow.
+	AuthKey string `toml:"auth_key"`
 }
 
 // Load reads the config file. Returns defaults if the file doesn't exist.
@@ -150,6 +159,8 @@ func Load() (Config, error) {
 		}
 	}
 	cfg.Tailscale.Allow = filtered
+	cfg.Remote.PublicURL = strings.TrimSpace(cfg.Remote.PublicURL)
+	cfg.Tailscale.AuthKey = strings.TrimSpace(cfg.Tailscale.AuthKey)
 
 	if err := applyRemoteMode(&cfg, md); err != nil {
 		return Config{}, fmt.Errorf("config: %s: %w", path, err)
@@ -213,6 +224,10 @@ func validate(cfg Config) error {
 	// Tailscale: hostname must be non-empty when enabled.
 	if cfg.Tailscale.Enabled && cfg.Tailscale.Hostname == "" {
 		return fmt.Errorf("tailscale.enabled is true but tailscale.hostname is empty")
+	}
+
+	if err := validateRemotePublicURL(cfg.Remote.PublicURL); err != nil {
+		return err
 	}
 
 	// Relay: url/token are required only when enabled.
@@ -280,6 +295,23 @@ func validate(cfg Config) error {
 		}
 	}
 
+	return nil
+}
+
+func validateRemotePublicURL(raw string) error {
+	if raw == "" {
+		return nil
+	}
+	u, err := url.Parse(raw)
+	if err != nil {
+		return fmt.Errorf("remote.public_url %q is invalid: %w", raw, err)
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return fmt.Errorf("remote.public_url %q must use http or https scheme", raw)
+	}
+	if u.Host == "" {
+		return fmt.Errorf("remote.public_url %q has no host", raw)
+	}
 	return nil
 }
 
