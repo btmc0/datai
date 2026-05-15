@@ -505,15 +505,43 @@ let _pendingLaunchAt = 0
 
 export async function launchSession(launcherId: string, opts?: { cwd?: string; peer?: string }): Promise<void> {
   _pendingLaunchAt = Date.now()
+  const beforeIds = new Set(sessions.value.map(s => s.id))
+  let launched = false
   try {
     const resp = await fetch('/v1/launch', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ launcher_id: launcherId, cwd: opts?.cwd, peer: opts?.peer }),
     })
-    if (!resp.ok) console.warn('/v1/launch failed:', resp.status, await resp.text().catch(() => ''))
+    if (!resp.ok) {
+      console.warn('/v1/launch failed:', resp.status, await resp.text().catch(() => ''))
+      return
+    }
+    launched = true
   } catch (err) {
     console.warn('/v1/launch error:', err)
+    return
+  }
+
+  // Do not rely solely on SSE for the created session. The server can emit
+  // the session-upsert before this client has finished processing a freshly
+  // added project, or the event can be missed across reconnects. A bounded
+  // REST refresh after a successful launch makes the sidebar converge without
+  // requiring a full page reload; SSE still handles subsequent live updates.
+  if (launched) {
+    try {
+      await fetchProjects()
+      const list = await fetchSessions()
+      sessions.value = list
+      const created = list
+        .filter(s => s.alive && !beforeIds.has(s.id))
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
+      if (created && consumePendingLaunch()) {
+        navigateToSession(created.id, true)
+      }
+    } catch (err) {
+      console.warn('launch refresh failed:', err)
+    }
   }
 }
 

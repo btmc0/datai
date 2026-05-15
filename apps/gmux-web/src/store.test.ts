@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
-import { sessions, sessionsLoaded, projects, upsertSession, removeSession, markSessionRead, handleActivity, isSessionActive, isSessionFading, activityMap, sessionStaleness, peers, peerAppearance, urlPath, selectedId, navigateToSession, setNavigate } from './store'
+import { sessions, sessionsLoaded, projects, upsertSession, removeSession, markSessionRead, handleActivity, isSessionActive, isSessionFading, activityMap, sessionStaleness, peers, peerAppearance, urlPath, selectedId, navigateToSession, setNavigate, launchSession } from './store'
 import type { Session } from './types'
 import type { ProjectItem } from './types'
 
@@ -170,6 +170,44 @@ describe('markSessionRead', () => {
     sessions.value = [makeSession({ id: 'sess-1', unread: true })]
     markSessionRead('sess-1')
     expect(fetch).toHaveBeenCalledWith('/v1/sessions/sess-1/read', { method: 'POST' })
+  })
+})
+
+describe('launchSession', () => {
+  afterEach(() => { vi.restoreAllMocks() })
+
+  it('refreshes sessions after launch so the sidebar does not depend on SSE', async () => {
+    projects.value = [{ slug: 'proj', match: [{ path: '/dev/proj' }] }]
+    sessions.value = []
+    const launched = makeSession({ id: 'sess-new', cwd: '/dev/proj', created_at: '2026-01-01T00:00:01Z' })
+
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      if (url === '/v1/launch') {
+        expect(init?.method).toBe('POST')
+        return { ok: true, json: async () => ({}), text: async () => '' }
+      }
+      if (url === '/v1/projects') {
+        return {
+          ok: true,
+          json: async () => ({
+            ok: true,
+            data: { configured: projects.value, discovered: [], unmatched_active_count: 0 },
+          }),
+        }
+      }
+      if (url === '/v1/sessions') {
+        return { ok: true, json: async () => ({ data: [launched] }) }
+      }
+      throw new Error(`unexpected fetch ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await launchSession('shell', { cwd: '/dev/proj' })
+
+    expect(fetchMock).toHaveBeenCalledWith('/v1/launch', expect.objectContaining({ method: 'POST' }))
+    expect(fetchMock).toHaveBeenCalledWith('/v1/projects')
+    expect(fetchMock).toHaveBeenCalledWith('/v1/sessions')
+    expect(sessions.value.map(s => s.id)).toEqual(['sess-new'])
   })
 })
 

@@ -7,47 +7,48 @@ code {
   font-size: 0.85em;
   background: oklch(19% 0.015 250);
   padding: 0.15em 0.4em;
-  border-radius: 4px;
+  border-radius: 0;
 }
 
 :root {
-  /* Surfaces — widened gaps for clearer distinction */
-  --bg: oklch(12% 0.015 250);
-  --bg-sidebar: oklch(16.5% 0.015 250);
-  --bg-surface: oklch(19% 0.015 250);
-  --bg-hover: oklch(21% 0.015 250);
-  --bg-selected: oklch(24% 0.02 250);
+  /* Brutalist Terminal: stark phosphor UI, no soft surfaces */
+  --bg: #1a1612;
+  --bg-sidebar: #1d1915;
+  --bg-surface: #221f1a;
+  --bg-hover: #2a2620;
+  --bg-selected: #322d26;
 
-  /* Text — 2 tiers; hierarchy from size and weight, not color */
-  --text: oklch(90% 0.01 250);
-  --text-secondary: oklch(65% 0.01 250);
-  --text-muted: oklch(65% 0.01 250);
+  /* Text */
+  --text: #f5e6d3;
+  --text-secondary: #c9b89a;
+  --text-muted: #8a7d6b;
 
   /* Borders */
-  --border: oklch(22% 0.015 250);
-  --border-strong: oklch(28% 0.015 250);
+  --border: #3a3328;
+  --border-strong: #4d4335;
 
-  /* Accent — used for selection bars, buttons, links */
-  --accent: oklch(72% 0.1 195);
+  /* Terminal phosphor accents */
+  --accent: #ff9f1c;
+  --accent-warn: #ffbf47;
 
-  /* Unread — blue, signals "needs attention" */
-  --unread: oklch(72% 0.1 195);
+  /* Unread — active green, signals "needs attention" */
+  --unread: var(--accent);
 
-  /* Active — muted, for transient output activity */
-  --active: oklch(62% 0.025 250);
+  /* Active — amber output activity */
+  --active: var(--accent-warn);
 
   /* Status */
-  --status-error: oklch(65% 0.18 25);
-  --status-connected: oklch(72% 0.14 145);
-  --status-disconnected: oklch(65% 0.18 25);
+  --status-error: #ff5555;
+  --status-connected: var(--accent);
+  --status-disconnected: var(--accent-warn);
 
   /* Radii */
-  --radius-lg: 10px;
+  --radius-lg: 0;
 
   /* Sizing */
-  --sidebar-width: 272px;
-  --header-height: 44px;
-  --radius: 6px;
+  --sidebar-width: 252px;
+  --header-height: 36px;
+  --radius: 0;
 }
 
 * {
@@ -63,10 +64,10 @@ html, body, #app {
 }
 
 body {
-  font-family: 'Source Sans 3', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   background: var(--bg);
   color: var(--text);
-  font-size: 14px;
+  font-size: 12.5px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -79,6 +80,7 @@ body {
   height: 100dvh;
   height: var(--app-height, 100dvh);
   width: 100%;
+  background: var(--bg);
 }
 
 /* ── Sidebar ── */
@@ -90,7 +92,7 @@ body {
   display: flex;
   flex-direction: column;
   background: var(--bg-sidebar);
-  border-right: 1px solid var(--border);
+  border-right: 1px solid var(--border-strong);
   overflow: hidden;
 }
 
@@ -101,26 +103,28 @@ body {
   padding: 0 12px 0 14px;
   gap: 10px;
   flex-shrink: 0;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-strong);
+  background: var(--bg-sidebar);
 }
 
 .sidebar-logo {
-  font-family: 'Instrument Sans', sans-serif;
-  font-size: 18px;
-  font-weight: 700;
-  letter-spacing: -0.04em;
+  font-family: 'Fira Code', monospace;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
   color: var(--text);
   line-height: 1;
   text-decoration: none;
-  padding: 6px 10px;
-  margin: -6px -10px;
+  padding: 7px 9px;
+  margin: -7px -9px;
   cursor: pointer;
-  border-radius: 6px;
-  transition: color 0.15s, background 0.15s, text-shadow 0.15s;
+  border-radius: 0;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
 }
 .sidebar-logo:hover {
-  color: #fff;
-  text-shadow: 0 0 6px rgba(255, 255, 255, 0.25);
+  color: var(--accent);
+  background: oklch(100% 0 0 / 0.035);
 }
 
 .sidebar-scroll {
@@ -142,31 +146,34 @@ body {
 
 .sidebar-scroll::-webkit-scrollbar-thumb {
   background: var(--border);
-  border-radius: 2px;
+  border-radius: 0;
 }
 
 /* ── Folder ── */
 
 .folder + .folder {
-  margin-top: 4px;
-  padding-top: 4px;
-  border-top: 1px solid var(--border);
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid color-mix(in oklch, var(--border) 78%, transparent);
 }
 
 .folder-header {
   display: flex;
   align-items: center;
-  padding: 5px 12px 5px 14px;
+  padding: 6px 12px 6px 14px;
   user-select: none;
   gap: 6px;
   cursor: pointer;
-  transition: background 0.1s;
+  border-left: 2px solid transparent;
+  transition: background 0.1s, border-color 0.1s;
 }
 .folder-header:hover {
-  background: var(--bg-hover);
+  background: color-mix(in oklch, var(--bg-hover) 80%, transparent);
+  border-left-color: color-mix(in oklch, var(--accent) 34%, transparent);
 }
 .folder-header.current {
   background: var(--bg-selected);
+  border-left-color: var(--accent);
 }
 
 /* ── Launch button + inline menu ── */
@@ -192,15 +199,15 @@ body {
 }
 
 .launch-btn {
-  background: none;
-  border: none;
+  background: oklch(100% 0 0 / 0.025);
+  border: 1px solid color-mix(in oklch, var(--border) 70%, transparent);
   color: var(--text-secondary);
   cursor: pointer;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
   line-height: 1;
   padding: 2px 6px;
-  border-radius: 4px;
+  border-radius: 0;
   transition: all 0.15s ease;
   display: inline-flex;
   align-items: center;
@@ -210,8 +217,9 @@ body {
 }
 
 .launch-btn:hover {
-  background: var(--accent);
-  color: var(--bg);
+  background: color-mix(in oklch, var(--accent) 18%, var(--bg-hover));
+  border-color: color-mix(in oklch, var(--accent) 55%, var(--border));
+  color: var(--accent);
 }
 
 .launch-btn.loading {
@@ -230,10 +238,9 @@ body {
 .launch-inline-menu {
   position: fixed;
   background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.2);
-  min-width: 180px;
+  border: 1px solid var(--border-strong);
+  border-radius: 0;
+  min-width: 190px;
   z-index: 1000;
   padding: 4px;
   overflow: hidden;
@@ -255,7 +262,7 @@ body {
   padding: 6px 10px;
   background: none;
   border: none;
-  border-radius: 6px;
+  border-radius: 0;
   cursor: pointer;
   text-align: left;
   transition: background 0.1s ease;
@@ -291,9 +298,11 @@ body {
 }
 
 .folder-name {
-  font-size: 12px;
+  font-family: 'Fira Code', monospace;
+  font-size: 11px;
   font-weight: 600;
-  color: var(--text);
+  letter-spacing: 0.035em;
+  color: var(--text-secondary);
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -313,7 +322,7 @@ body {
 .session-item {
   display: flex;
   align-items: center;
-  padding: 5px 5px 5px 14px;
+  padding: 6px 6px 6px 16px;
   cursor: pointer;
   gap: 8px;
   transition: background 0.1s;
@@ -323,7 +332,7 @@ body {
 }
 
 .session-item:hover {
-  background: var(--bg-hover);
+  background: color-mix(in oklch, var(--bg-hover) 78%, transparent);
 }
 
 .session-item.selected {
@@ -334,11 +343,11 @@ body {
   content: '';
   position: absolute;
   left: 0;
-  top: 4px;
-  bottom: 4px;
-  width: 2px;
+  top: 5px;
+  bottom: 5px;
+  width: 3px;
   background: var(--accent);
-  border-radius: 0 1px 1px 0;
+  border-radius: 0;
 }
 
 /* Status dot — left of title, vertically centered on first line */
@@ -346,7 +355,7 @@ body {
   flex-shrink: 0;
   width: 7px;
   height: 7px;
-  border-radius: 50%;
+  border-radius: 0;
 
 }
 
@@ -377,19 +386,14 @@ body {
   animation: subtle-pulse 2.5s ease-in-out infinite;
 }
 
-/* Arrival pulse — plays once when a dot transitions from working→unread.
-   Premove (squish inward) → burst (overshoot outward with glow) → settle. */
+/* Arrival pulse — flat TUI blink without glow. */
 .session-dot-indicator.arriving {
-  animation: dot-arrival 520ms cubic-bezier(0.25, 1, 0.5, 1) both;
+  animation: dot-arrival 360ms steps(2, jump-none) both;
 }
 
 @keyframes dot-arrival {
-  0%   { transform: scale(1);   box-shadow: 0 0 0 0 transparent; }
-  12%  { transform: scale(0.6); box-shadow: 0 0 0 0 transparent; }
-  42%  { transform: scale(1.9); box-shadow: 0 0 6px 2px oklch(72% 0.1 195 / 0.45); }
-  62%  { transform: scale(0.95); box-shadow: 0 0 3px 1px oklch(72% 0.1 195 / 0.2); }
-  80%  { transform: scale(1.08); box-shadow: 0 0 0 0 transparent; }
-  100% { transform: scale(1);   box-shadow: 0 0 0 0 transparent; }
+  0%   { opacity: 0.45; }
+  100% { opacity: 1; }
 }
 
 /* Invisible placeholder to keep alignment when no dot */
@@ -456,13 +460,13 @@ body {
   justify-content: center;
   width: 14px;
   height: 14px;
-  border-radius: 3px;
+  border-radius: 0;
   font-size: 9px;
   font-weight: 600;
   line-height: 1cap;
   /* Default fallback; overridden by inline style when peer appearance is available */
-  background: oklch(25% 0.04 250);
-  color: oklch(72% 0.08 250);
+  background: color-mix(in oklch, var(--accent) 16%, var(--bg-hover));
+  color: var(--accent);
 }
 .session-status-label {
   color: var(--text-secondary);
@@ -488,7 +492,7 @@ body {
   height: 20px;
   opacity: 0;
   border: none;
-  border-radius: 4px;
+  border-radius: 0;
   background: transparent;
   color: var(--text-muted);
   font-size: 14px;
@@ -562,8 +566,9 @@ body {
   flex-shrink: 0;
   display: grid;
   gap: 7px;
-  padding: 8px 12px;
-  border-top: 1px solid var(--border);
+  padding: 10px 12px 12px;
+  border-top: 1px solid var(--border-strong);
+  background: var(--bg-sidebar);
 }
 
 .manage-projects-btn {
@@ -572,20 +577,23 @@ body {
   justify-content: center;
   gap: 8px;
   width: 100%;
-  padding: 6px 10px;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
+  padding: 7px 10px;
+  border: 1px solid color-mix(in oklch, var(--border) 78%, transparent);
+  border-radius: 0;
+  background: oklch(100% 0 0 / 0.018);
   color: var(--text-muted);
-  font-size: 13px;
-  font-family: 'Source Sans 3', sans-serif;
+  font-size: 12px;
+  font-family: 'Fira Code', monospace;
+  letter-spacing: 0.025em;
+  text-transform: uppercase;
   cursor: pointer;
-  transition: color 0.15s, background 0.15s;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
 }
 
 .manage-projects-btn:hover {
-  color: var(--text-secondary);
-  background: var(--bg-hover);
+  color: var(--accent);
+  background: color-mix(in oklch, var(--accent) 10%, var(--bg-hover));
+  border-color: color-mix(in oklch, var(--accent) 45%, var(--border));
 }
 
 .manage-projects-badge {
@@ -595,9 +603,10 @@ body {
   min-width: 18px;
   height: 18px;
   padding: 0 5px;
-  border-radius: 9px;
-  background: var(--accent);
-  color: var(--bg);
+  border-radius: 0;
+  background: color-mix(in oklch, var(--accent) 18%, transparent);
+  color: var(--accent);
+  border: 1px solid color-mix(in oklch, var(--accent) 35%, transparent);
   font-size: 11px;
   font-weight: 600;
   line-height: 1;
@@ -611,11 +620,11 @@ body {
   margin-top: 6px;
   padding: 6px 10px;
   border: 1px dashed var(--border);
-  border-radius: 6px;
+  border-radius: 0;
   background: transparent;
   color: var(--text-muted);
   font-size: 13px;
-  font-family: 'Source Sans 3', sans-serif;
+  font-family: 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   cursor: pointer;
   text-align: left;
   transition: border-color 0.15s, color 0.15s;
@@ -652,7 +661,7 @@ body {
   margin-top: 0;
   padding: 4px 8px;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 0;
   font-family: 'Fira Code', monospace;
   font-size: 10px;
   letter-spacing: 0.02em;
@@ -661,19 +670,25 @@ body {
 
 .sidebar-metrics {
   display: grid;
-  gap: 5px;
-  padding: 8px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: color-mix(in oklch, var(--bg-surface) 78%, var(--bg));
+  gap: 6px;
+  padding: 9px;
+  border: 1px solid var(--border-strong);
+  border-radius: 0;
+  background: var(--bg-surface);
   color: var(--text-secondary);
-  box-shadow: inset 0 0 0 1px oklch(100% 0 0 / 0.02);
 }
 
 .sidebar-metrics.tui {
   font-family: 'Fira Code', monospace;
   text-transform: uppercase;
   letter-spacing: 0.035em;
+}
+
+.sidebar-metrics.tui::before {
+  content: 'host telemetry';
+  color: var(--accent-warn);
+  font-size: 9px;
+  letter-spacing: 0.08em;
 }
 
 .sidebar-metrics-row {
@@ -697,17 +712,18 @@ body {
 }
 
 .sidebar-metrics-bar {
-  height: 3px;
+  height: 4px;
   overflow: hidden;
-  border-radius: 999px;
-  background: var(--bg-hover);
+  border-radius: 0;
+  background: oklch(7% 0.014 245);
+  border: 1px solid oklch(100% 0 0 / 0.045);
 }
 
 .sidebar-metrics-bar i {
   display: block;
   height: 100%;
-  border-radius: inherit;
-  background: color-mix(in oklch, var(--accent) 72%, var(--text-muted));
+  border-radius: 0;
+  background: var(--accent);
 }
 
 /* ── Manage Projects Modal ── */
@@ -737,8 +753,8 @@ body {
   flex-direction: column;
   background: var(--bg-sidebar);
   border: 1px solid var(--border-strong);
-  border-radius: 12px;
-  box-shadow: 0 16px 48px oklch(0% 0 0 / 0.5), 0 4px 12px oklch(0% 0 0 / 0.3);
+  border-radius: 0;
+  box-shadow: none;
   animation: modal-slide-in 0.15s ease-out;
 }
 
@@ -766,7 +782,7 @@ body {
   width: 28px;
   height: 28px;
   border: none;
-  border-radius: 6px;
+  border-radius: 0;
   background: transparent;
   color: var(--text-muted);
   font-size: 18px;
@@ -791,7 +807,7 @@ body {
 
 .modal-body::-webkit-scrollbar { width: 3px; }
 .modal-body::-webkit-scrollbar-track { background: transparent; }
-.modal-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.modal-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 0; }
 
 /* Section layout */
 .mp-section + .mp-section {
@@ -829,7 +845,7 @@ body {
 .mp-docs-link {
   width: 28px;
   height: 28px;
-  border-radius: 6px;
+  border-radius: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -857,7 +873,7 @@ body {
   align-items: center;
   gap: 8px;
   padding: 7px 8px;
-  border-radius: 6px;
+  border-radius: 0;
   cursor: grab;
   transition: background 0.1s;
 }
@@ -949,7 +965,7 @@ body {
   width: 24px;
   height: 24px;
   border: none;
-  border-radius: 4px;
+  border-radius: 0;
   background: transparent;
   color: var(--text-muted);
   font-size: 16px;
@@ -991,7 +1007,7 @@ body {
   min-width: 0;
   padding: 6px 10px;
   border: 1px solid var(--border-strong);
-  border-radius: 6px;
+  border-radius: 0;
   background: var(--bg);
   color: var(--text);
   font-family: 'Fira Code', monospace;
@@ -1003,7 +1019,7 @@ body {
 .mp-filter-input::placeholder {
   color: var(--text-muted);
   opacity: 0.6;
-  font-family: 'Source Sans 3', sans-serif;
+  font-family: 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 12px;
 }
 
@@ -1022,7 +1038,7 @@ body {
 
 .mp-discovered-scroll::-webkit-scrollbar { width: 3px; }
 .mp-discovered-scroll::-webkit-scrollbar-track { background: transparent; }
-.mp-discovered-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.mp-discovered-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 0; }
 
 /* Discovered rows */
 .mp-discovered-row {
@@ -1030,7 +1046,7 @@ body {
   align-items: center;
   gap: 8px;
   padding: 7px 8px;
-  border-radius: 6px;
+  border-radius: 0;
   cursor: pointer;
   transition: background 0.1s;
   flex-shrink: 0;
@@ -1047,7 +1063,7 @@ body {
   min-width: 16px;
   height: 16px;
   padding: 0 4px;
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--accent);
   color: var(--bg);
   font-size: 10px;
@@ -1059,7 +1075,7 @@ body {
   flex-shrink: 0;
   color: var(--text-muted);
   font-size: 12px;
-  font-family: 'Source Sans 3', sans-serif;
+  font-family: 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-weight: 500;
   white-space: nowrap;
   transition: color 0.15s;
@@ -1074,7 +1090,7 @@ body {
   align-items: center;
   height: 15px;
   padding: 0 5px;
-  border-radius: 999px;
+  border-radius: 0;
   background: oklch(24% 0.02 250);
   color: var(--text-muted);
   font-size: 9px;
@@ -1105,7 +1121,7 @@ body {
   margin: -3px 0 7px;
   padding: 5px 8px;
   border: 1px solid oklch(42% 0.09 250 / 0.6);
-  border-radius: 6px;
+  border-radius: 0;
   background: oklch(22% 0.028 250 / 0.65);
   color: var(--text-secondary);
   font-size: 12px;
@@ -1131,11 +1147,11 @@ body {
 .mp-manual-btn {
   flex-shrink: 0;
   border: 1px solid var(--border-strong);
-  border-radius: 6px;
+  border-radius: 0;
   background: transparent;
   color: var(--text-secondary);
   font-size: 13px;
-  font-family: 'Source Sans 3', sans-serif;
+  font-family: 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-weight: 500;
   padding: 6px 14px;
   cursor: pointer;
@@ -1162,7 +1178,7 @@ body {
 
 /* Status dot — used in header */
 .session-dot {
-  border-radius: 50%;
+  border-radius: 0;
   display: inline-block;
   flex-shrink: 0;
 }
@@ -1191,9 +1207,10 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 16px;
+  padding: 0 18px;
   gap: 12px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-strong);
+  background: var(--bg);
   flex-shrink: 0;
   /* overflow must NOT be hidden here — the session menu drops below the header */
   overflow: visible;
@@ -1217,14 +1234,14 @@ body {
 }
 
 .main-header-title {
-  font-family: 'Source Sans 3', sans-serif;
-  font-size: 14px;
+  font-family: 'Fira Code', monospace;
+  font-size: 12px;
   font-weight: 600;
   color: var(--text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  letter-spacing: -0.01em;
+  letter-spacing: 0.035em;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1267,23 +1284,24 @@ body {
 /* Trigger: icon button in the same style as .session-close-btn */
 .session-menu-trigger {
   position: relative;
-  width: 26px;
-  height: 26px;
-  border: none;
-  border-radius: 4px;
-  background: transparent;
+  width: 28px;
+  height: 28px;
+  border: 1px solid color-mix(in oklch, var(--border) 76%, transparent);
+  border-radius: 0;
+  background: oklch(100% 0 0 / 0.018);
   color: var(--text-muted);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.1s, color 0.1s;
+  transition: background 0.1s, color 0.1s, border-color 0.1s;
   flex-shrink: 0;
 }
 
 .session-menu-trigger:hover {
-  background: var(--bg-hover);
-  color: var(--text);
+  background: color-mix(in oklch, var(--accent) 10%, var(--bg-hover));
+  border-color: color-mix(in oklch, var(--accent) 45%, var(--border));
+  color: var(--accent);
 }
 
 
@@ -1301,7 +1319,7 @@ body {
   right: 3px;
   width: 6px;
   height: 6px;
-  border-radius: 50%;
+  border-radius: 0;
   background: oklch(80% 0.15 65);
   border: 1.5px solid var(--bg);
   pointer-events: none;
@@ -1309,14 +1327,13 @@ body {
 
 .session-menu-dropdown {
   position: absolute;
-  top: calc(100% + 4px);
+  top: calc(100% + 6px);
   right: 0;
-  min-width: 200px;
+  min-width: 220px;
   background: var(--bg-surface);
   border: 1px solid var(--border-strong);
-  border-radius: 6px;
-  padding: 4px 0;
-  box-shadow: 0 8px 24px oklch(0% 0 0 / 0.4);
+  border-radius: 0;
+  padding: 5px 0;
   z-index: 100;
 }
 
@@ -1356,7 +1373,7 @@ body {
   font-weight: 500;
   letter-spacing: 0.04em;
   padding: 1px 5px;
-  border-radius: 3px;
+  border-radius: 0;
   background: oklch(80% 0.15 65 / 0.15);
   color: oklch(80% 0.15 65);
   white-space: nowrap;
@@ -1447,12 +1464,12 @@ body {
   max-width: min(calc(100% - 24px), 460px);
   padding: 10px 16px;
   border: 1px solid color-mix(in oklch, var(--accent) 22%, var(--border-strong));
-  border-radius: 999px;
+  border-radius: 0;
   background: color-mix(in oklch, var(--bg-sidebar) 76%, #0f141a 24%);
   color: color-mix(in oklch, var(--text) 88%, var(--accent));
   box-shadow: 0 8px 24px oklch(0% 0 0 / 0.28);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   font: inherit;
   font-size: 13px;
   line-height: 1;
@@ -1486,14 +1503,12 @@ body {
   max-width: min(calc(100% - 24px), 460px);
   padding: 10px 16px;
   border: 1px solid oklch(0.45 0.12 20 / 0.5);
-  border-radius: 999px;
+  border-radius: 0;
   background: oklch(0.22 0.06 20 / 0.88);
   color: oklch(0.78 0.1 20);
-  box-shadow:
-    0 8px 24px oklch(0% 0 0 / 0.28),
-    0 0 12px oklch(0.5 0.15 20 / 0.12);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   font: inherit;
   font-size: 13px;
   line-height: 1;
@@ -1520,17 +1535,17 @@ body {
   bottom: 12px;
   right: 16px;
   padding: 8px 12px;
-  border-radius: 8px;
+  border-radius: 0;
   border: 1px solid oklch(from var(--border-strong) l c h / 0.7);
   background: oklch(from var(--bg-surface) l c h / 0.38);
   color: oklch(76% 0.012 250 / 0.85);
   font-size: 13px;
-  font-family: 'Source Sans 3', sans-serif;
+  font-family: 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-weight: 600;
   letter-spacing: 0.01em;
   cursor: pointer;
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   z-index: 20;
   transition: opacity 0.15s, background 0.15s, color 0.15s;
   pointer-events: auto;
@@ -1608,36 +1623,37 @@ body {
 .home {
   flex: 1;
   overflow-y: auto;
-  padding: 32px 32px 48px;
-  max-width: 640px;
+  padding: 34px 36px 52px;
+  max-width: 880px;
   min-width: 0;
   display: flex;
   flex-direction: column;
 }
 
 .home-section-title {
+  font-family: 'Fira Code', monospace;
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--text-muted);
+  letter-spacing: 0.12em;
+  color: var(--accent-warn);
   margin-bottom: 12px;
 }
 
 /* Host cards */
 
 .home-host-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 32px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 10px;
+  margin-bottom: 34px;
 }
 
 .home-host-card {
   background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 12px 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 0;
+  padding: 13px 14px;
 }
 
 .home-host-top {
@@ -1655,12 +1671,11 @@ body {
 .home-host-status {
   width: 8px;
   height: 8px;
-  border-radius: 50%;
+  border-radius: 0;
   flex-shrink: 0;
 }
 .home-host-status.connected, .home-host-status.local {
   background: var(--status-connected);
-  box-shadow: 0 0 6px color-mix(in oklch, var(--status-connected) 40%, transparent);
 }
 .home-host-status.connecting {
   background: var(--status-disconnected);
@@ -1678,13 +1693,15 @@ body {
 
 .home-host-details {
   display: flex;
-  gap: 12px;
-  margin-top: 6px;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-top: 8px;
   padding-left: 16px;
 }
 
 .home-host-detail {
-  font-size: 12px;
+  font-family: 'Fira Code', monospace;
+  font-size: 11px;
   color: var(--text-secondary);
 }
 
@@ -1708,11 +1725,11 @@ a.home-host-link:hover {
 
 /* Project cards */
 .home-workspace-add {
-  margin-bottom: 12px;
-  padding: 10px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: color-mix(in oklch, var(--bg-surface) 82%, transparent);
+  margin-bottom: 14px;
+  padding: 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 0;
+  background: var(--bg-surface);
 }
 
 .home-workspace-input-row {
@@ -1723,14 +1740,14 @@ a.home-host-link:hover {
 .home-workspace-input {
   flex: 1;
   min-width: 0;
-  height: 34px;
-  padding: 0 10px;
+  height: 36px;
+  padding: 0 11px;
   border: 1px solid var(--border);
-  border-radius: 7px;
-  background: var(--bg);
+  border-radius: 0;
+  background: oklch(7.5% 0.014 245);
   color: var(--text);
-  font: inherit;
-  font-size: 13px;
+  font-family: 'Fira Code', monospace;
+  font-size: 12px;
 }
 
 .home-workspace-input:focus {
@@ -1739,13 +1756,17 @@ a.home-host-link:hover {
 }
 
 .home-workspace-add-btn {
-  height: 34px;
-  padding: 0 12px;
-  border: 1px solid var(--accent);
-  border-radius: 7px;
-  background: color-mix(in oklch, var(--accent) 16%, transparent);
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid color-mix(in oklch, var(--accent) 58%, var(--border));
+  border-radius: 0;
+  background: color-mix(in oklch, var(--accent) 14%, var(--bg-hover));
   color: var(--accent);
+  font-family: 'Fira Code', monospace;
+  font-size: 12px;
   font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   cursor: pointer;
 }
 
@@ -1791,10 +1812,10 @@ a.home-host-link:hover {
   justify-content: space-between;
   gap: 10px;
   width: 100%;
-  padding: 7px 8px;
+  padding: 8px 9px;
   border: 1px solid var(--border);
-  border-radius: 7px;
-  background: var(--bg-surface);
+  border-radius: 0;
+  background: color-mix(in oklch, var(--bg-surface) 82%, var(--bg));
   color: var(--text);
   cursor: pointer;
   text-align: left;
@@ -1821,23 +1842,23 @@ a.home-host-link:hover {
 
 .home-project-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 8px;
-  margin-bottom: 32px;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 10px;
+  margin-bottom: 34px;
 }
 
 .home-project-card {
   background: var(--bg-surface);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 12px 14px;
+  border-radius: 0;
+  padding: 13px 14px;
   text-decoration: none;
   color: inherit;
   transition: background 0.1s, border-color 0.15s;
 }
 .home-project-card:hover {
   background: var(--bg-hover);
-  border-color: var(--text-muted);
+  border-color: color-mix(in oklch, var(--accent) 38%, var(--border-strong));
 }
 
 .home-project-name {
@@ -1862,20 +1883,22 @@ a.home-host-link:hover {
 /* Host-card launch buttons */
 
 .home-launch-btn {
-  padding: 4px 14px;
-  background: var(--bg-hover);
+  padding: 5px 13px;
+  background: oklch(100% 0 0 / 0.02);
   border: 1px solid var(--border);
-  border-radius: 5px;
-  color: var(--text);
-  font-family: 'Source Sans 3', sans-serif;
-  font-size: 12px;
+  border-radius: 0;
+  color: var(--text-secondary);
+  font-family: 'Fira Code', monospace;
+  font-size: 11px;
   font-weight: 500;
+  letter-spacing: 0.03em;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
 .home-launch-btn:hover {
-  background: var(--bg-selected);
-  border-color: var(--text-muted);
+  background: color-mix(in oklch, var(--accent) 11%, var(--bg-selected));
+  border-color: color-mix(in oklch, var(--accent) 42%, var(--border));
+  color: var(--accent);
 }
 .home-launch-btn:disabled {
   opacity: 0.5;
@@ -1897,7 +1920,8 @@ a.home-host-link:hover {
   gap: 8px;
   margin-top: auto;
   padding-top: 16px;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--border-strong);
+  font-family: 'Fira Code', monospace;
 }
 
 .home-footer-version {
@@ -2028,12 +2052,12 @@ a.home-host-link:hover {
     border: 1px solid var(--border-strong);
     background: var(--bg-surface);
     color: oklch(76% 0.012 250);
-    border-radius: 6px;
+    border-radius: 0;
     min-height: 34px;
     min-width: 30px;
     padding: 0 7px;
     flex: 0 0 auto;
-    font-family: 'Source Sans 3', sans-serif;
+    font-family: 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     font-size: 12px;
     font-weight: 600;
     display: inline-flex;
@@ -2056,12 +2080,12 @@ a.home-host-link:hover {
     position: absolute;
     width: 8px;
     height: 8px;
-    border-radius: 50%;
+    border-radius: 0;
     top: -3px;
     right: -3px;
     pointer-events: none;
     /* Ring in the page background so the dot reads cleanly against the button border */
-    box-shadow: 0 0 0 1.5px var(--bg-base);
+    box-shadow: none;
   }
   .mobile-bottom-action.menu-btn.bg-working::after {
     background: transparent;
@@ -2115,7 +2139,7 @@ a.home-host-link:hover {
     background: color-mix(in oklch, var(--accent) 24%, var(--bg-surface));
     border-color: var(--accent);
     color: var(--text);
-    box-shadow: 0 0 0 1px oklch(100% 0 0 / 0.05), 0 0 14px color-mix(in oklch, var(--accent) 45%, transparent);
+    box-shadow: none;
   }
 
   .launch-inline-menu {
@@ -2127,7 +2151,7 @@ a.home-host-link:hover {
     max-height: min(55vh, 360px);
     overflow-y: auto;
     padding: 8px;
-    border-radius: 14px;
+    border-radius: 0;
   }
 
   .launch-inline-item {
@@ -2171,11 +2195,11 @@ a.home-host-link:hover {
 
 
 .btn {
-  font-family: 'Source Sans 3', sans-serif;
+  font-family: 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 13px;
   font-weight: 500;
   padding: 5px 12px;
-  border-radius: 4px;
+  border-radius: 0;
   border: 1px solid var(--border);
   background: var(--bg-surface);
   color: var(--text);
@@ -2222,7 +2246,7 @@ a.home-host-link:hover {
   height: var(--app-height, 100vh);
   background: var(--bg);
   color: var(--text);
-  font-family: 'Source Sans 3', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   overflow: hidden;
 }
 
@@ -2265,7 +2289,7 @@ a.home-host-link:hover {
 
 .diag-terminal {
   height: 180px;
-  border-radius: var(--radius);
+  border-radius: 0;
   overflow: hidden;
 }
 
@@ -2310,7 +2334,7 @@ a.home-host-link:hover {
   font-size: 12px;
   padding: 4px 10px;
   border: 1px solid var(--border-strong);
-  border-radius: var(--radius);
+  border-radius: 0;
   background: var(--bg-surface);
   color: var(--text);
   cursor: pointer;
@@ -2335,7 +2359,7 @@ a.home-host-link:hover {
   flex: 1;
   overflow-y: auto;
   background: var(--bg-surface);
-  border-radius: var(--radius);
+  border-radius: 0;
   padding: 6px;
   font-family: 'Fira Code', monospace;
   font-size: 11px;
@@ -2428,7 +2452,7 @@ a.home-host-link:hover {
 .hub-host-dot {
   width: 7px;
   height: 7px;
-  border-radius: 50%;
+  border-radius: 0;
   flex-shrink: 0;
 }
 .hub-host-dot.connected, .hub-host-dot.local {
@@ -2480,7 +2504,7 @@ a.home-host-link:hover {
   gap: 12px;
   padding: 14px 16px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 0;
   color: var(--text-muted);
   font-size: 13px;
   margin-top: 16px;
@@ -2497,7 +2521,7 @@ a.home-host-link:hover {
   align-items: center;
   gap: 10px;
   padding: 8px 12px;
-  border-radius: var(--radius);
+  border-radius: 0;
   background: var(--bg-surface);
   border: 1px solid var(--border);
   cursor: pointer;
@@ -2515,7 +2539,7 @@ a.home-host-link:hover {
 .session-card-dot {
   width: 6px;
   height: 6px;
-  border-radius: 50%;
+  border-radius: 0;
   background: var(--status-connected);
   flex-shrink: 0;
 }
@@ -2532,7 +2556,7 @@ a.home-host-link:hover {
   width: 20px;
   height: 20px;
   border: none;
-  border-radius: 4px;
+  border-radius: 0;
   background: transparent;
   color: var(--text-muted);
   font-size: 13px;
@@ -2596,7 +2620,7 @@ a.home-host-link:hover {
   z-index: 5;
   width: 36px;
   height: 36px;
-  border-radius: 50%;
+  border-radius: 0;
   border: 1px solid var(--border);
   background: var(--bg-surface);
   color: var(--text);
@@ -2611,3 +2635,684 @@ a.home-host-link:hover {
 }
 .jump-to-bottom:hover { background: oklch(28% 0.015 250); }
 .jump-to-bottom:active { transform: translateY(1px); }
+
+/* ── Brutalist Terminal override ───────────────────────────────────────────
+   Design invariant: gmux is a control terminal, not a dashboard. The shell
+   uses hard monochrome planes, phosphor state color, ASCII-style hierarchy,
+   square hit targets, and zero decorative depth. */
+
+body {
+  font-family: 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 11.5px;
+  letter-spacing: -0.012em;
+}
+
+
+
+code,
+input,
+button,
+textarea,
+select {
+  font-family: inherit;
+}
+
+code {
+  background: #050505;
+  border: 1px solid var(--border);
+  color: var(--accent);
+}
+
+.app-layout {
+  background: var(--bg);
+}
+
+.sidebar,
+.main-panel,
+.main-header,
+.sidebar-header,
+.sidebar-footer {
+  background: var(--bg);
+}
+
+.sidebar {
+  border-right: 1px solid var(--border-strong);
+}
+
+.sidebar-header {
+  height: var(--header-height);
+  padding: 0 8px;
+  border-bottom: 1px solid var(--border-strong);
+}
+
+.sidebar-header::before {
+  content: '┌';
+  color: var(--border-strong);
+}
+
+.sidebar-header::after {
+  content: '┐';
+  margin-left: auto;
+  color: var(--border-strong);
+}
+
+.sidebar-logo {
+  padding: 0;
+  margin: 0;
+  color: var(--accent);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.sidebar-logo::before {
+  content: '> ';
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+}
+
+.sidebar-logo:hover {
+  background: transparent;
+  color: #fff;
+}
+
+.sidebar-scroll {
+  padding: 0;
+}
+
+.folder + .folder {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 1px solid var(--border);
+}
+
+.folder-header {
+  min-height: 28px;
+  padding: 0 6px 0 8px;
+  gap: 6px;
+  border-left: 0;
+  border-bottom: 1px solid #0b0b0b;
+  background: #020202;
+}
+
+.folder-header::before {
+  content: '├';
+  color: var(--border-strong);
+}
+
+.folder-header:hover {
+  background: #080808;
+  border-left-color: transparent;
+}
+
+.folder-header:has(.folder-name.current) {
+  background: #101010;
+  color: #fff;
+  border-left-color: transparent;
+}
+
+.folder-header:has(.folder-name.current)::before {
+  content: '▶';
+  color: var(--accent);
+}
+
+.folder-name {
+  color: var(--text-secondary);
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.launch-btn,
+.session-menu-trigger,
+.manage-projects-btn,
+.home-launch-btn,
+.home-workspace-add-btn {
+  background: var(--bg);
+  border: 1px solid var(--border-strong);
+  color: var(--text-secondary);
+  border-radius: 0;
+  box-shadow: none;
+  text-transform: uppercase;
+  font-size: 10.5px;
+  padding: 4px 7px;
+  min-height: 26px;
+}
+
+.launch-btn:hover,
+.session-menu-trigger:hover,
+.manage-projects-btn:hover,
+.home-launch-btn:hover,
+.home-workspace-add-btn:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg);
+}
+
+.launch-btn:focus-visible,
+.session-menu-trigger:focus-visible,
+.manage-projects-btn:focus-visible,
+.home-launch-btn:focus-visible,
+.home-workspace-add-btn:focus-visible,
+.home-workspace-input:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.launch-inline-menu,
+.session-menu-dropdown,
+.modal-panel {
+  background: #020202;
+  border: 1px solid var(--accent);
+  box-shadow: none;
+}
+
+.launch-target-line,
+.session-menu-section-title,
+.mp-section-label {
+  color: var(--accent-warn);
+  letter-spacing: 0.12em;
+}
+
+.launch-inline-item,
+.session-menu-action {
+  color: var(--text-secondary);
+  background: #020202;
+}
+
+.launch-inline-item:hover,
+.session-menu-action:hover {
+  background: var(--accent);
+  color: #000;
+}
+
+.launch-inline-divider,
+.session-menu-divider {
+  background: var(--border-strong);
+}
+
+.session-item {
+  min-height: 30px;
+  padding: 4px 5px 4px 16px;
+  border-bottom: 1px solid #080808;
+  gap: 6px;
+}
+
+.session-item:hover {
+  background: #070707;
+}
+
+.session-item.selected {
+  background: #111;
+}
+
+.session-item.selected::before {
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--accent);
+}
+
+.session-item.selected::after {
+  content: '>';
+  position: absolute;
+  left: 5px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--accent);
+  font-size: 11px;
+}
+
+.session-dot-indicator,
+.session-dot,
+.home-host-status {
+  width: 8px;
+  height: 8px;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.session-dot-indicator.working,
+.session-dot.working {
+  border-color: var(--accent);
+}
+
+.session-dot-indicator.unread,
+.session-dot.unread,
+.home-host-status.connected,
+.home-host-status.local {
+  background: var(--accent);
+}
+
+.session-dot-indicator.active,
+.session-dot-indicator.fading {
+  border-color: var(--accent-warn);
+}
+
+.session-dot-indicator.error,
+.session-dot.error {
+  background: var(--status-error);
+}
+
+.session-title {
+  color: var(--text);
+  font-size: 11.5px;
+  line-height: 1.3;
+}
+
+.session-meta {
+  color: var(--text-muted);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.035em;
+}
+
+.session-peer-label,
+.manage-projects-badge,
+.session-menu-action-tag {
+  background: #000;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+}
+
+.session-close-btn:hover {
+  background: var(--status-error) !important;
+  color: #000;
+}
+
+.sidebar-hint {
+  padding: 14px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sidebar-hint::before {
+  content: 'NO_WORKSPACES:: ';
+  color: var(--accent-warn);
+}
+
+.sidebar-footer {
+  gap: 8px;
+  padding: 9px;
+  border-top: 1px solid var(--border-strong);
+}
+
+.notif-btn,
+.notif-denied.compact {
+  font-family: inherit;
+  background: #000;
+  border: 1px dashed var(--border-strong);
+  color: var(--text-muted);
+}
+
+.notif-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.sidebar-metrics {
+  background: #020202;
+  border: 1px solid var(--border-strong);
+  padding: 8px;
+}
+
+.sidebar-metrics.tui::before {
+  content: '┌─ HOST TELEMETRY ─';
+  color: var(--accent);
+}
+
+.sidebar-metrics-row {
+  font-size: 9.5px;
+}
+
+.sidebar-metrics-row span::before {
+  content: '$ ';
+  color: var(--text-muted);
+}
+
+.sidebar-metrics-bar {
+  height: 7px;
+  background: #000;
+  border: 1px solid var(--border-strong);
+}
+
+.sidebar-metrics-bar i {
+  background: var(--accent);
+}
+
+.main-header {
+  padding: 0 12px;
+  background: #000;
+  border-bottom: 1px solid var(--border-strong);
+}
+
+.main-header::before {
+  content: '┌─ SESSION ─';
+  color: var(--accent);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  margin-right: 10px;
+}
+
+.main-header-title {
+  color: var(--text);
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.main-header-meta,
+.main-header-status {
+  color: var(--text-muted);
+  font-size: 10.5px;
+  text-transform: uppercase;
+}
+
+.main-header-status.working { color: var(--accent); }
+.main-header-status.error { color: var(--status-error); }
+
+.terminal-shell,
+.terminal-container {
+  background: #000;
+}
+
+.terminal-container .xterm {
+  padding: 8px;
+}
+
+.terminal-resize-overlay,
+.terminal-disconnected-pill,
+.terminal-scroll-end {
+  background: #000;
+  border: 1px solid var(--accent-warn);
+  color: var(--accent-warn);
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  font-family: inherit;
+  text-transform: uppercase;
+}
+
+.terminal-resize-overlay:hover {
+  background: var(--accent-warn);
+  color: #000;
+}
+
+.terminal-loading {
+  background: rgb(0 0 0 / 0.92);
+  color: var(--accent);
+  text-transform: uppercase;
+}
+
+.state-message {
+  background: #000;
+}
+
+.state-title {
+  color: var(--accent);
+  font-family: inherit;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.state-subtitle {
+  color: var(--text-muted);
+  font-family: inherit;
+}
+
+.home {
+  max-width: none;
+  padding: 22px;
+  background: #000;
+  position: relative;
+}
+
+.home::before {
+  content: 'GMUX CONTROL PLANE';
+  color: var(--accent);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  margin-bottom: 18px;
+}
+
+.home-section-title {
+  color: var(--accent);
+  font-size: 10.5px;
+  margin: 20px 0 8px;
+  letter-spacing: 0.16em;
+}
+
+.home-section-title::before {
+  content: '┌─ ';
+  color: var(--border-strong);
+}
+
+.home-section-title::after {
+  content: ' ─────────────────';
+  color: var(--border-strong);
+}
+
+.home-host-grid,
+.home-project-grid {
+  gap: 0;
+  border-top: 1px solid var(--border-strong);
+  border-left: 1px solid var(--border-strong);
+}
+
+.home-host-card,
+.home-project-card,
+.home-workspace-add {
+  background: #020202;
+  border: 0;
+  border-right: 1px solid var(--border-strong);
+  border-bottom: 1px solid var(--border-strong);
+  padding: 12px;
+}
+
+.home-host-card:hover,
+.home-project-card:hover {
+  background: #080808;
+  border-color: var(--border-strong);
+}
+
+.home-host-name,
+.home-project-name {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.home-host-name::before,
+.home-project-name::before {
+  content: './';
+  color: var(--accent);
+}
+
+.home-host-details,
+.home-project-count {
+  color: var(--text-muted);
+  font-size: 10.5px;
+}
+
+.home-workspace-add {
+  margin-bottom: 18px;
+  border: 1px solid var(--border-strong);
+}
+
+.home-workspace-add::before {
+  content: 'ADD_WORKSPACE';
+  display: block;
+  margin-bottom: 8px;
+  color: var(--accent-warn);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+}
+
+.home-workspace-input {
+  height: 34px;
+  background: #000;
+  border: 1px solid var(--border-strong);
+  color: var(--accent);
+  font-size: 12px;
+}
+
+.home-workspace-input::placeholder {
+  color: var(--text-muted);
+}
+
+.home-workspace-input:focus {
+  border-color: var(--accent);
+}
+
+.home-workspace-preview,
+.home-workspace-error,
+.home-workspace-suggestion small,
+.home-project-empty {
+  font-family: inherit;
+  color: var(--text-muted);
+}
+
+.home-workspace-error,
+.home-workspace-preview.duplicate {
+  color: var(--status-error);
+}
+
+.home-workspace-suggestion {
+  background: #000;
+  border: 1px solid var(--border-strong);
+  color: var(--text-secondary);
+}
+
+.home-workspace-suggestion:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #000;
+}
+
+.home-project-alive { color: var(--accent); }
+.home-project-rest { color: var(--text-muted); }
+
+.home-host-launchers {
+  border-top: 1px solid var(--border);
+}
+
+.home-footer {
+  border-top: 1px solid var(--border-strong);
+  color: var(--text-muted);
+}
+
+.home-footer::before {
+  content: '└─ ';
+  color: var(--border-strong);
+}
+
+.modal-backdrop {
+  background: rgb(0 0 0 / 0.72);
+}
+
+.modal-panel {
+  background: #000;
+}
+
+.modal-header {
+  border-bottom: 1px solid var(--accent);
+}
+
+.modal-title {
+  color: var(--accent);
+  font-family: inherit;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.modal-title::before {
+  content: ':: ';
+}
+
+.modal-close:hover,
+.mp-docs-link:hover,
+.mp-project-row:hover {
+  background: var(--accent);
+  color: #000;
+}
+
+.mp-project-row {
+  border-bottom: 1px solid #080808;
+}
+
+.mp-project-name,
+.mp-rule,
+.mp-project-detail {
+  font-family: inherit;
+}
+
+.mp-rule-label {
+  color: var(--accent);
+}
+
+.mp-remove-btn:hover {
+  background: var(--status-error);
+  color: #000;
+}
+
+.mobile-bottom-bar {
+  background: #000;
+  border-top: 1px solid var(--border-strong);
+}
+
+.mobile-bottom-action {
+  font-family: inherit;
+  background: #000;
+  border: 1px solid var(--border-strong);
+  color: var(--text-secondary);
+  box-shadow: none;
+}
+
+.mobile-bottom-action:active,
+.mobile-bottom-action.armed,
+.mobile-bottom-action.keyboard-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #000;
+  box-shadow: none;
+}
+
+.mobile-bottom-action.send-btn,
+.mobile-bottom-action.keyboard-btn {
+  color: var(--accent);
+}
+
+.mobile-bottom-action.menu-btn.bg-working::after,
+.mobile-bottom-action.menu-btn.bg-active::after,
+.mobile-bottom-action.menu-btn.bg-fading::after,
+.mobile-bottom-action.menu-btn.bg-error::after,
+.mobile-bottom-action.menu-btn.bg-unread::after {
+  box-shadow: none;
+}
+
+.jump-to-bottom {
+  background: #000;
+  border: 1px solid var(--accent-warn);
+  color: var(--accent-warn);
+  box-shadow: none;
+}
+
+.jump-to-bottom:hover {
+  background: var(--accent-warn);
+  color: #000;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
