@@ -23,11 +23,11 @@ func TestEnableTailscaleConfig_NewFile(t *testing.T) {
 		t.Fatal(err)
 	}
 	content := string(data)
-	if !strings.Contains(content, "[tailscale]") {
-		t.Errorf("missing [tailscale] section in:\n%s", content)
+	if !strings.Contains(content, "[remote]") {
+		t.Errorf("missing [remote] section in:\n%s", content)
 	}
-	if !strings.Contains(content, "enabled = true") {
-		t.Errorf("missing enabled = true in:\n%s", content)
+	if !strings.Contains(content, `mode = "tsnet"`) {
+		t.Errorf("missing remote mode in:\n%s", content)
 	}
 	if !strings.Contains(content, "host-toml") {
 		t.Errorf("new file should contain reference link:\n%s", content)
@@ -48,11 +48,11 @@ func TestEnableTailscaleConfig_ExistingFileNoSection(t *testing.T) {
 	if !strings.Contains(content, "port = 9999") {
 		t.Errorf("original content lost:\n%s", content)
 	}
-	if !strings.Contains(content, "[tailscale]") {
-		t.Errorf("missing [tailscale] section:\n%s", content)
+	if !strings.Contains(content, "[remote]") {
+		t.Errorf("missing [remote] section:\n%s", content)
 	}
-	if !strings.Contains(content, "enabled = true") {
-		t.Errorf("missing enabled = true:\n%s", content)
+	if !strings.Contains(content, `mode = "tsnet"`) {
+		t.Errorf("missing remote mode:\n%s", content)
 	}
 	// Should not prepend the header comment to an existing user file.
 	if strings.HasPrefix(content, "# gmux") {
@@ -71,11 +71,11 @@ func TestEnableTailscaleConfig_ExistingSectionDisabled(t *testing.T) {
 
 	data, _ := os.ReadFile(cfgPath)
 	content := string(data)
-	if !strings.Contains(content, "enabled = true") {
-		t.Errorf("enabled not set to true:\n%s", content)
+	if !strings.Contains(content, "[remote]") {
+		t.Errorf("missing [remote] section:\n%s", content)
 	}
-	if strings.Contains(content, "enabled = false") {
-		t.Errorf("old enabled = false still present:\n%s", content)
+	if !strings.Contains(content, `mode = "tsnet"`) {
+		t.Errorf("missing remote mode:\n%s", content)
 	}
 	if !strings.Contains(content, "hostname = \"mybox\"") {
 		t.Errorf("hostname lost:\n%s", content)
@@ -93,8 +93,8 @@ func TestEnableTailscaleConfig_ExistingSectionNoEnabled(t *testing.T) {
 
 	data, _ := os.ReadFile(cfgPath)
 	content := string(data)
-	if !strings.Contains(content, "enabled = true") {
-		t.Errorf("enabled not added:\n%s", content)
+	if !strings.Contains(content, `mode = "tsnet"`) {
+		t.Errorf("remote mode not added:\n%s", content)
 	}
 	if !strings.Contains(content, "hostname = \"mybox\"") {
 		t.Errorf("hostname lost:\n%s", content)
@@ -147,19 +147,15 @@ devcontainers = true
 		t.Errorf("hostname lost:\n%s", content)
 	}
 
-	// The enabled line must be replaced.
-	if !strings.Contains(content, "enabled = true") {
-		t.Errorf("enabled not set:\n%s", content)
-	}
-	if strings.Contains(content, "enabled = false") {
-		t.Errorf("old enabled still present:\n%s", content)
+	if !strings.Contains(content, `mode = "tsnet"`) {
+		t.Errorf("remote mode not added:\n%s", content)
 	}
 }
 
 func TestEnableTailscaleConfig_AlreadyEnabled(t *testing.T) {
 	dir := t.TempDir()
 	cfgPath := filepath.Join(dir, "host.toml")
-	initial := "[tailscale]\nenabled = true\nhostname = \"mybox\"\n"
+	initial := "[remote]\nmode = \"tsnet\"\n\n[tailscale]\nhostname = \"mybox\"\n"
 	os.WriteFile(cfgPath, []byte(initial), 0o644)
 
 	if err := enableTailscaleConfig(cfgPath); err != nil {
@@ -185,6 +181,7 @@ func TestEnableTailscaleConfig_ProducesValidConfig(t *testing.T) {
 		{"section no enabled", "[tailscale]\nhostname = \"mybox\"\n"},
 		{"no trailing newline", "[tailscale]\nhostname = \"mybox\""},
 		{"section header only no newline", "[tailscale]"},
+		{"remote section no mode", "[remote]\n"},
 	}
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
@@ -206,9 +203,13 @@ func TestEnableTailscaleConfig_ProducesValidConfig(t *testing.T) {
 				data, _ := os.ReadFile(cfgPath)
 				t.Fatalf("config.Load failed: %v\nfile contents:\n%s", err, data)
 			}
+			if cfg.Remote.Mode != "tsnet" {
+				data, _ := os.ReadFile(cfgPath)
+				t.Errorf("remote.mode = %q, want tsnet\nfile contents:\n%s", cfg.Remote.Mode, data)
+			}
 			if !cfg.Tailscale.Enabled {
 				data, _ := os.ReadFile(cfgPath)
-				t.Errorf("tailscale.enabled = false after enableTailscaleConfig\nfile contents:\n%s", data)
+				t.Errorf("tailscale should be enabled by remote.mode=tsnet\nfile contents:\n%s", data)
 			}
 		})
 	}
@@ -306,6 +307,38 @@ func TestDisplayStatus_NotConnected(t *testing.T) {
 	// Should NOT mention HTTPS or MagicDNS problems.
 	if strings.Contains(out, "HTTPS") || strings.Contains(out, "MagicDNS") {
 		t.Errorf("should not mention HTTPS/MagicDNS when not connected:\n%s", out)
+	}
+}
+
+func TestRunRemoteRelayConfiguredDoesNotStartTailscaleSetup(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", dir)
+	cfgDir := filepath.Join(dir, "gmux")
+	if err := os.MkdirAll(cfgDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(cfgDir, "host.toml"), []byte(`
+[remote]
+mode = "relay"
+
+[relay]
+url = "wss://relay.example.com/_gmux/agent"
+token = "secret"
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	stdin := strings.NewReader("y\n")
+	var stdout, stderr bytes.Buffer
+	code := runRemote(stdin, &stdout, &stderr)
+	if code != 0 {
+		t.Errorf("exit code = %d, want 0; stderr=%s", code, stderr.String())
+	}
+	out := stdout.String()
+	if !strings.Contains(out, "Relay remote access is configured") {
+		t.Errorf("missing relay configured message:\n%s", out)
+	}
+	if strings.Contains(out, "Enable remote access?") {
+		t.Errorf("should not prompt for Tailscale setup when relay is configured:\n%s", out)
 	}
 }
 

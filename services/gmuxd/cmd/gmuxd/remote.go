@@ -28,6 +28,13 @@ func runRemote(stdin io.Reader, stdout, stderr io.Writer) int {
 		return 1
 	}
 
+	if cfg.Remote.Mode == "relay" || (cfg.Relay.Enabled && !cfg.Tailscale.Enabled) {
+		fmt.Fprintln(stdout, "Relay remote access is configured.")
+		fmt.Fprintln(stdout, "gmuxd remote currently manages Tailscale setup/status only.")
+		fmt.Fprintf(stdout, "Learn more: %s\n", remoteDocsURL)
+		return 0
+	}
+
 	if !cfg.Tailscale.Enabled {
 		return remoteSetup(cfg, stdin, stdout, stderr)
 	}
@@ -73,7 +80,7 @@ func remoteSetup(cfg config.Config, stdin io.Reader, stdout, stderr io.Writer) i
 	return remotePoll(stdout, stderr)
 }
 
-// enableTailscaleConfig ensures tailscale.enabled = true in the config file.
+// enableTailscaleConfig ensures remote.mode = "tsnet" in the config file.
 // Creates the file if it doesn't exist, or appends the section if missing.
 //
 // Uses the TOML library to parse the file and understand the current state,
@@ -92,17 +99,21 @@ func enableTailscaleConfig(cfgPath string) error {
 
 	// Parse with the TOML library to understand the current state.
 	var parsed struct {
-		Tailscale struct {
-			Enabled bool `toml:"enabled"`
-		} `toml:"tailscale"`
+		Remote struct {
+			Mode string `toml:"mode"`
+		} `toml:"remote"`
 	}
 	md, parseErr := toml.Decode(string(data), &parsed)
 	if parseErr != nil {
 		return fmt.Errorf("cannot parse %s: %w", cfgPath, parseErr)
 	}
 
-	if parsed.Tailscale.Enabled {
+	mode := strings.TrimSpace(parsed.Remote.Mode)
+	if mode == "tsnet" {
 		return nil // already enabled
+	}
+	if mode != "" {
+		return fmt.Errorf("remote.mode is %q; disable it before enabling Tailscale remote access", mode)
 	}
 
 	content := string(data)
@@ -113,8 +124,8 @@ func enableTailscaleConfig(cfgPath string) error {
 	}
 
 	switch {
-	case !md.IsDefined("tailscale"):
-		// No [tailscale] section: append it.
+	case !md.IsDefined("remote"):
+		// No [remote] section: append it.
 		if content == "" {
 			// New file: add a reference comment.
 			content = "# gmux daemon configuration\n# Reference: https://gmux.app/reference/host-toml/\n\n"
@@ -122,15 +133,11 @@ func enableTailscaleConfig(cfgPath string) error {
 			// content already ends with \n from normalization above.
 			content += "\n"
 		}
-		content += "[tailscale]\nenabled = true\n"
+		content += "[remote]\nmode = \"tsnet\"\n"
 
-	case !md.IsDefined("tailscale", "enabled"):
-		// Section exists but no enabled key: insert after the header.
-		content = insertAfterSection(content, "tailscale", "enabled = true")
-
-	default:
-		// enabled = false: replace the value in place.
-		content = replaceKeyInSection(content, "tailscale", "enabled", "enabled = true")
+	case !md.IsDefined("remote", "mode"):
+		// Section exists but no mode key: insert after the header.
+		content = insertAfterSection(content, "remote", "mode = \"tsnet\"")
 	}
 
 	return os.WriteFile(cfgPath, []byte(content), 0o644)

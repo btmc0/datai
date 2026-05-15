@@ -27,6 +27,7 @@ type Config struct {
 	// Port is the TCP port for the HTTP listener (default 8790).
 	Port int `toml:"port"`
 
+	Remote    RemoteConfig    `toml:"remote"`
 	Tailscale TailscaleConfig `toml:"tailscale"`
 	Discovery DiscoveryConfig `toml:"discovery"`
 	Relay     RelayConfig     `toml:"relay"`
@@ -74,6 +75,13 @@ type DiscoveryConfig struct {
 	// tailnet. Only active when tailscale.enabled is also true.
 	// Default true.
 	Tailscale bool `toml:"tailscale"`
+}
+
+// RemoteConfig selects the optional remote-access transport.
+type RemoteConfig struct {
+	// Mode selects one remote-access transport. Empty means no explicit remote selector.
+	// Valid configured values are "tsnet" and "relay".
+	Mode string `toml:"mode"`
 }
 
 // RelayConfig controls the optional outbound gmux relay client.
@@ -143,6 +151,10 @@ func Load() (Config, error) {
 	}
 	cfg.Tailscale.Allow = filtered
 
+	if err := applyRemoteMode(&cfg, md); err != nil {
+		return Config{}, fmt.Errorf("config: %s: %w", path, err)
+	}
+
 	if err := validate(cfg); err != nil {
 		return Config{}, fmt.Errorf("config: %s: %w", path, err)
 	}
@@ -153,6 +165,36 @@ func Load() (Config, error) {
 // peerNameRe matches valid peer names: lowercase alphanumeric + hyphens,
 // no leading/trailing hyphens, no consecutive hyphens.
 var peerNameRe = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
+
+func applyRemoteMode(cfg *Config, md toml.MetaData) error {
+	if !md.IsDefined("remote") {
+		return nil
+	}
+
+	mode := strings.TrimSpace(cfg.Remote.Mode)
+	if mode == "" {
+		return fmt.Errorf("remote.mode is required when [remote] is present")
+	}
+
+	switch mode {
+	case "tsnet":
+		if cfg.Relay.Enabled {
+			return fmt.Errorf("remote.mode is tsnet but relay.enabled is true")
+		}
+		cfg.Remote.Mode = mode
+		cfg.Tailscale.Enabled = true
+	case "relay":
+		if cfg.Tailscale.Enabled {
+			return fmt.Errorf("remote.mode is relay but tailscale.enabled is true")
+		}
+		cfg.Remote.Mode = mode
+		cfg.Relay.Enabled = true
+	default:
+		return fmt.Errorf("remote.mode %q must be tsnet or relay", cfg.Remote.Mode)
+	}
+
+	return nil
+}
 
 func validate(cfg Config) error {
 	// Port range.

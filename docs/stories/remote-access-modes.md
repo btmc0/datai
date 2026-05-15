@@ -2,7 +2,7 @@
 
 ## Status
 
-planned
+in_progress
 
 ## Lane
 
@@ -63,3 +63,10 @@ future implementation work.
 - `pnpm -s build` was attempted on 2026-05-15 and failed before completing
   because the website Astro build requires Node.js `>=22.12.0`; the current
   environment reports Node.js `v20.19.4`.
+- `go test ./services/gmuxd/internal/config` passed on 2026-05-15 after adding
+  optional `[remote].mode` parser coverage.
+- `go test ./services/gmuxd/cmd/gmuxd -run 'TestEnableTailscaleConfig|TestRemoteSetup|TestRunRemoteRelayConfigured|TestDisplayStatus'`
+  passed on 2026-05-15.
+- `go test ./services/gmuxd/cmd/gmuxd` was attempted on 2026-05-15 and still
+  fails in existing status/auth tests because Unix socket bind paths under the
+  macOS temp directory return `bind: invalid argument`.

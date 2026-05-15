@@ -59,6 +59,143 @@ allow = ["alice@github", "bob@github"]
 	}
 }
 
+func TestLoadRemoteModeTsnet(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", dir)
+	writeConfig(t, dir, `
+[remote]
+mode = "tsnet"
+
+[tailscale]
+hostname = "mybox"
+`)
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Remote.Mode != "tsnet" {
+		t.Errorf("remote.mode = %q, want tsnet", cfg.Remote.Mode)
+	}
+	if !cfg.Tailscale.Enabled {
+		t.Error("remote.mode=tsnet should enable tailscale")
+	}
+	if cfg.Relay.Enabled {
+		t.Error("remote.mode=tsnet should not enable relay")
+	}
+}
+
+func TestLoadRemoteModeRelay(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", dir)
+	writeConfig(t, dir, `
+[remote]
+mode = "relay"
+
+[relay]
+url = "wss://relay.example.com/_gmux/agent"
+token = "secret"
+`)
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Remote.Mode != "relay" {
+		t.Errorf("remote.mode = %q, want relay", cfg.Remote.Mode)
+	}
+	if !cfg.Relay.Enabled {
+		t.Error("remote.mode=relay should enable relay")
+	}
+	if cfg.Tailscale.Enabled {
+		t.Error("remote.mode=relay should not enable tailscale")
+	}
+}
+
+func TestLoadRemoteModeRejectsMissingMode(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", dir)
+	writeConfig(t, dir, `[remote]`)
+
+	_, err := Load()
+	if err == nil {
+		t.Fatal("expected error for missing remote.mode")
+	}
+	if !strings.Contains(err.Error(), "remote.mode is required") {
+		t.Errorf("error = %q, want mention of remote.mode", err)
+	}
+}
+
+func TestLoadRemoteModeRejectsInvalidMode(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", dir)
+	writeConfig(t, dir, `
+[remote]
+mode = "local"
+`)
+
+	_, err := Load()
+	if err == nil {
+		t.Fatal("expected error for invalid remote.mode")
+	}
+	if !strings.Contains(err.Error(), "must be tsnet or relay") {
+		t.Errorf("error = %q, want allowed mode message", err)
+	}
+}
+
+func TestLoadRemoteModeRejectsConflictingLegacyEnabled(t *testing.T) {
+	tests := []struct {
+		name    string
+		content string
+		want    string
+	}{
+		{
+			name: "tsnet with relay enabled",
+			content: `
+[remote]
+mode = "tsnet"
+
+[relay]
+enabled = true
+url = "wss://relay.example.com/_gmux/agent"
+token = "secret"
+`,
+			want: "remote.mode is tsnet but relay.enabled is true",
+		},
+		{
+			name: "relay with tailscale enabled",
+			content: `
+[remote]
+mode = "relay"
+
+[tailscale]
+enabled = true
+
+[relay]
+url = "wss://relay.example.com/_gmux/agent"
+token = "secret"
+`,
+			want: "remote.mode is relay but tailscale.enabled is true",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dir := t.TempDir()
+			t.Setenv("XDG_CONFIG_HOME", dir)
+			writeConfig(t, dir, tt.content)
+
+			_, err := Load()
+			if err == nil {
+				t.Fatal("expected conflict error")
+			}
+			if !strings.Contains(err.Error(), tt.want) {
+				t.Errorf("error = %q, want %q", err, tt.want)
+			}
+		})
+	}
+}
+
 func TestLoadFiltersEmptyAllowEntries(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", dir)
@@ -226,7 +363,6 @@ func TestListenAddrIPv6(t *testing.T) {
 		t.Errorf("addr = %q, want %q", addr, "[fd12::1]:8790")
 	}
 }
-
 
 // ── [[peers]] ──
 
