@@ -215,6 +215,99 @@ func TestEnableTailscaleConfig_ProducesValidConfig(t *testing.T) {
 	}
 }
 
+func TestEnableRelayConfig_ProducesValidConfig(t *testing.T) {
+	cases := []struct {
+		name    string
+		initial string
+	}{
+		{"empty file", ""},
+		{"port only", "port = 9999\n"},
+		{"remote section no mode", "[remote]\n"},
+		{"relay section empty", "[relay]\n"},
+		{"existing relay values", "[remote]\nmode = \"relay\"\n\n[relay]\nurl = \"wss://old.example.com/_gmux/agent\"\ntoken = \"old\"\n"},
+	}
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			dir := t.TempDir()
+			cfgDir := filepath.Join(dir, "gmux")
+			os.MkdirAll(cfgDir, 0o755)
+			cfgPath := filepath.Join(cfgDir, "host.toml")
+			if tt.initial != "" {
+				os.WriteFile(cfgPath, []byte(tt.initial), 0o644)
+			}
+
+			if err := enableRelayConfig(cfgPath, " wss://relay.example.com/_gmux/agent ", " secret ", " https://gmux.example.com "); err != nil {
+				t.Fatal(err)
+			}
+
+			t.Setenv("XDG_CONFIG_HOME", dir)
+			cfg, err := config.Load()
+			if err != nil {
+				data, _ := os.ReadFile(cfgPath)
+				t.Fatalf("config.Load failed: %v\nfile contents:\n%s", err, data)
+			}
+			if cfg.Remote.Mode != "relay" {
+				t.Errorf("remote.mode = %q, want relay", cfg.Remote.Mode)
+			}
+			if cfg.Remote.PublicURL != "https://gmux.example.com" {
+				t.Errorf("remote.public_url = %q, want https://gmux.example.com", cfg.Remote.PublicURL)
+			}
+			if !cfg.Relay.Enabled {
+				t.Error("relay should be enabled by remote.mode=relay")
+			}
+			if cfg.Relay.URL != "wss://relay.example.com/_gmux/agent" {
+				t.Errorf("relay.url = %q", cfg.Relay.URL)
+			}
+			if cfg.Relay.Token != "secret" {
+				t.Errorf("relay.token = %q", cfg.Relay.Token)
+			}
+		})
+	}
+}
+
+func TestEnableRelayConfig_RejectsTsnetMode(t *testing.T) {
+	dir := t.TempDir()
+	cfgPath := filepath.Join(dir, "host.toml")
+	os.WriteFile(cfgPath, []byte("[remote]\nmode = \"tsnet\"\n"), 0o644)
+
+	err := enableRelayConfig(cfgPath, "wss://relay.example.com/_gmux/agent", "secret", "")
+	if err == nil {
+		t.Fatal("expected error for tsnet conflict")
+	}
+	if !strings.Contains(err.Error(), "remote.mode") {
+		t.Errorf("error = %q, want remote.mode", err)
+	}
+}
+
+func TestEnableRelayConfig_RejectsInvalidInput(t *testing.T) {
+	dir := t.TempDir()
+	cfgPath := filepath.Join(dir, "host.toml")
+
+	err := enableRelayConfig(cfgPath, "https://relay.example.com/_gmux/agent", "secret", "")
+	if err == nil {
+		t.Fatal("expected error for http relay url")
+	}
+	if !strings.Contains(err.Error(), "ws or wss") {
+		t.Errorf("error = %q, want scheme message", err)
+	}
+}
+
+func TestRelaySetup_UserDeclinesNoConfigChange(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", dir)
+
+	stdin := strings.NewReader("n\n")
+	var stdout, stderr bytes.Buffer
+	code := relaySetup(stdin, &stdout, &stderr)
+	if code != 0 {
+		t.Errorf("exit code = %d, want 0", code)
+	}
+	cfgPath := filepath.Join(dir, "gmux", "host.toml")
+	if _, err := os.Stat(cfgPath); !os.IsNotExist(err) {
+		t.Errorf("config file should not exist after declining, err=%v", err)
+	}
+}
+
 func TestDisplayStatus_NeedsLogin(t *testing.T) {
 	var stdout bytes.Buffer
 	h := &tailscaleHealth{
@@ -362,7 +455,7 @@ token = "secret"
 	}
 
 	var stdout, stderr bytes.Buffer
-	code := runRelay(&stdout, &stderr)
+	code := runRelay(strings.NewReader(""), &stdout, &stderr)
 	if code != 0 {
 		t.Errorf("exit code = %d, want 0; stderr=%s", code, stderr.String())
 	}

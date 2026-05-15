@@ -76,5 +76,8 @@ future implementation work.
   auth key into tsnet.
 - `go test ./services/gmuxd/cmd/gmuxd -run 'TestRunRelayConfigured|TestRunTsnetRelayConfigured|TestRemoteSetup|TestDisplayStatus'`
   passed on 2026-05-15 after showing `remote.public_url` in `gmuxd relay`.
+- `go test ./services/gmuxd/cmd/gmuxd -run 'TestEnableRelayConfig|TestRelaySetup|TestRunRelayConfigured|TestRunTsnetRelayConfigured|TestRemoteSetup|TestDisplayStatus'`
+  passed on 2026-05-15 after adding the `gmuxd relay` setup/config writer
+  flow.
 - `go test ./services/gmuxd/cmd/gmuxd` passed on 2026-05-15 after shortening
   Unix socket temp paths in the status/auth test helpers.

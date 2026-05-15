@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -41,7 +43,7 @@ func runTsnet(stdin io.Reader, stdout, stderr io.Writer) int {
 	return remoteStatus(stdout, stderr)
 }
 
-func runRelay(stdout, stderr io.Writer) int {
+func runRelay(stdin io.Reader, stdout, stderr io.Writer) int {
 	cfg, err := config.Load()
 	if err != nil {
 		fmt.Fprintf(stderr, "gmuxd relay: %v\n", err)
@@ -49,10 +51,7 @@ func runRelay(stdout, stderr io.Writer) int {
 	}
 
 	if !cfg.Relay.Enabled {
-		fmt.Fprintln(stdout, "Relay access is not configured.")
-		fmt.Fprintln(stdout, "Add `[remote].mode = \"relay\"` and `[relay]` URL/token settings to host.toml.")
-		fmt.Fprintf(stdout, "Learn more: %s\n", remoteDocsURL)
-		return 0
+		return relaySetup(stdin, stdout, stderr)
 	}
 
 	fmt.Fprintln(stdout, "Relay access is configured.")
@@ -60,6 +59,48 @@ func runRelay(stdout, stderr io.Writer) int {
 		fmt.Fprintf(stdout, "public url: %s\n", cfg.Remote.PublicURL)
 	}
 	fmt.Fprintf(stdout, "relay url: %s\n", cfg.Relay.URL)
+	return 0
+}
+
+func relaySetup(stdin io.Reader, stdout, stderr io.Writer) int {
+	fmt.Fprintln(stdout, "Relay access lets this gmuxd connect outbound to gmux-relayd")
+	fmt.Fprintln(stdout, "so browsers can reach it through a public HTTPS/WSS endpoint.")
+	fmt.Fprintln(stdout)
+	fmt.Fprintf(stdout, "  Learn more: %s\n", remoteDocsURL)
+	fmt.Fprintln(stdout)
+
+	reader := bufio.NewReader(stdin)
+	fmt.Fprintf(stdout, "Enable relay access? [y/N] ")
+	answer, _ := reader.ReadString('\n')
+	answer = strings.TrimSpace(strings.ToLower(answer))
+	if answer != "y" && answer != "yes" {
+		return 0
+	}
+
+	fmt.Fprintf(stdout, "Relay agent URL (wss://.../_gmux/agent): ")
+	relayURL, _ := reader.ReadString('\n')
+	relayURL = strings.TrimSpace(relayURL)
+
+	fmt.Fprintf(stdout, "Relay token: ")
+	token, _ := reader.ReadString('\n')
+	token = strings.TrimSpace(token)
+
+	fmt.Fprintf(stdout, "Public browser URL (optional): ")
+	publicURL, _ := reader.ReadString('\n')
+	publicURL = strings.TrimSpace(publicURL)
+
+	cfgPath := config.Path()
+	if err := enableRelayConfig(cfgPath, relayURL, token, publicURL); err != nil {
+		fmt.Fprintf(stderr, "gmuxd relay: %v\n", err)
+		return 1
+	}
+	fmt.Fprintf(stdout, "Enabled relay in %s\n", cfgPath)
+
+	fmt.Fprintln(stdout, "Restarting daemon...")
+	if code := startBackground(stdout, stderr); code != 0 {
+		return code
+	}
+	fmt.Fprintln(stdout, "Relay access is configured.")
 	return 0
 }
 
@@ -163,6 +204,123 @@ func enableTailscaleConfig(cfgPath string) error {
 	}
 
 	return os.WriteFile(cfgPath, []byte(content), 0o644)
+}
+
+func enableRelayConfig(cfgPath, relayURL, token, publicURL string) error {
+	relayURL = strings.TrimSpace(relayURL)
+	token = strings.TrimSpace(token)
+	publicURL = strings.TrimSpace(publicURL)
+	if err := validateRelaySetupInputs(relayURL, token, publicURL); err != nil {
+		return err
+	}
+
+	dir := filepath.Dir(cfgPath)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return fmt.Errorf("cannot create %s: %w", dir, err)
+	}
+
+	data, err := os.ReadFile(cfgPath)
+	if err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("cannot read %s: %w", cfgPath, err)
+	}
+
+	var parsed struct {
+		Remote struct {
+			Mode string `toml:"mode"`
+		} `toml:"remote"`
+	}
+	md, parseErr := toml.Decode(string(data), &parsed)
+	if parseErr != nil {
+		return fmt.Errorf("cannot parse %s: %w", cfgPath, parseErr)
+	}
+
+	mode := strings.TrimSpace(parsed.Remote.Mode)
+	if mode == "tsnet" {
+		return fmt.Errorf("remote.mode is %q; disable it before enabling relay access", mode)
+	}
+
+	content := string(data)
+	if content != "" && !strings.HasSuffix(content, "\n") {
+		content += "\n"
+	}
+
+	remoteModeLine := `mode = "relay"`
+	publicURLLine := "public_url = " + strconv.Quote(publicURL)
+	switch {
+	case !md.IsDefined("remote"):
+		if content == "" {
+			content = "# gmux daemon configuration\n# Reference: https://gmux.app/reference/host-toml/\n\n"
+		} else {
+			content += "\n"
+		}
+		content += "[remote]\n" + remoteModeLine + "\n"
+		if publicURL != "" {
+			content += publicURLLine + "\n"
+		}
+	case !md.IsDefined("remote", "mode"):
+		content = insertAfterSection(content, "remote", remoteModeLine)
+		if publicURL != "" {
+			content = insertAfterSection(content, "remote", publicURLLine)
+		}
+	default:
+		if mode == "relay" && publicURL != "" {
+			content = setKeyInSection(content, md, "remote", "public_url", publicURLLine)
+		}
+	}
+
+	relayURLLine := "url = " + strconv.Quote(relayURL)
+	tokenLine := "token = " + strconv.Quote(token)
+	if !md.IsDefined("relay") {
+		if content != "" && !strings.HasSuffix(content, "\n") {
+			content += "\n"
+		}
+		content += "\n[relay]\n" + relayURLLine + "\n" + tokenLine + "\n"
+	} else {
+		content = setKeyInSection(content, md, "relay", "token", tokenLine)
+		content = setKeyInSection(content, md, "relay", "url", relayURLLine)
+	}
+
+	return os.WriteFile(cfgPath, []byte(content), 0o644)
+}
+
+func validateRelaySetupInputs(relayURL, token, publicURL string) error {
+	if relayURL == "" {
+		return fmt.Errorf("relay url is required")
+	}
+	u, err := url.Parse(relayURL)
+	if err != nil {
+		return fmt.Errorf("relay url %q is invalid: %w", relayURL, err)
+	}
+	if u.Scheme != "ws" && u.Scheme != "wss" {
+		return fmt.Errorf("relay url %q must use ws or wss scheme", relayURL)
+	}
+	if u.Host == "" {
+		return fmt.Errorf("relay url %q has no host", relayURL)
+	}
+	if token == "" {
+		return fmt.Errorf("relay token is required")
+	}
+	if publicURL == "" {
+		return nil
+	}
+	public, err := url.Parse(publicURL)
+	if err != nil {
+		return fmt.Errorf("public url %q is invalid: %w", publicURL, err)
+	}
+	if public.Scheme != "http" && public.Scheme != "https" {
+		return fmt.Errorf("public url %q must use http or https scheme", publicURL)
+	}
+	if public.Host == "" {
+		return fmt.Errorf("public url %q has no host", publicURL)
+	}
+	return nil
+}
+
+func setKeyInSection(content string, md toml.MetaData, section, key, line string) string {
+	if md.IsDefined(section, key) {
+		return replaceKeyInSection(content, section, key, line)
+	}
+	return insertAfterSection(content, section, line)
 }
 
 // insertAfterSection inserts a line immediately after the [section] header.

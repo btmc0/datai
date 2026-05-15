@@ -129,7 +129,7 @@ Useful commands:
 gmuxd status       # daemon health, listeners, session counts
 gmuxd auth         # local auth URL/token
 gmuxd tsnet        # set up or check Tailscale/tsnet access
-gmuxd relay        # check relay access configuration
+gmuxd relay        # set up or check relay access
 gmuxd log-path     # daemon log file path
 ```
 
