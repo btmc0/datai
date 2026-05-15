@@ -306,18 +306,96 @@ func TestRunLogPath(t *testing.T) {
 	}
 }
 
+func TestRunDoctorNoRunningDaemon(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("XDG_STATE_HOME", shortTestStateDir(t))
+
+	var stdout, stderr bytes.Buffer
+	code := run([]string{"doctor"}, &stdout, &stderr)
+	if code != 1 {
+		t.Fatalf("expected exit code 1, got %d", code)
+	}
+	out := stdout.String()
+	if !strings.Contains(out, "config valid") {
+		t.Errorf("expected config check, got %q", out)
+	}
+	if !strings.Contains(out, "daemon not reachable") {
+		t.Errorf("expected daemon failure, got %q", out)
+	}
+}
+
+func TestRunDoctorWithRunningDaemon(t *testing.T) {
+	stateDir, cleanup := startTestSocketDaemon(t, "0.9.0")
+	defer cleanup()
+	t.Setenv("XDG_STATE_HOME", stateDir)
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	var stdout, stderr bytes.Buffer
+	code := run([]string{"doctor"}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("expected exit code 0, got %d; stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+	}
+	out := stdout.String()
+	for _, want := range []string{"config valid", "daemon running", "local UI", "local-only"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("doctor output missing %q:\n%s", want, out)
+		}
+	}
+}
+
+func TestRunDoctorInvalidConfig(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", dir)
+	t.Setenv("XDG_STATE_HOME", shortTestStateDir(t))
+	cfgDir := filepath.Join(dir, "gmux")
+	if err := os.MkdirAll(cfgDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(cfgDir, "host.toml"), []byte("wat = true\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var stdout, stderr bytes.Buffer
+	code := run([]string{"doctor"}, &stdout, &stderr)
+	if code != 1 {
+		t.Fatalf("expected exit code 1, got %d", code)
+	}
+	if out := stdout.String(); !strings.Contains(out, "config invalid") || !strings.Contains(out, "unknown keys") {
+		t.Errorf("expected config error, got %q", out)
+	}
+}
+
+func TestRelayHealthURL(t *testing.T) {
+	tests := []struct {
+		in   string
+		want string
+	}{
+		{"ws://relay.example.com/_gmux/agent", "http://relay.example.com/_gmux/health"},
+		{"wss://relay.example.com/_gmux/agent?x=1", "https://relay.example.com/_gmux/health"},
+	}
+	for _, tt := range tests {
+		got, err := relayHealthURL(tt.in)
+		if err != nil {
+			t.Fatalf("relayHealthURL(%q): %v", tt.in, err)
+		}
+		if got != tt.want {
+			t.Errorf("relayHealthURL(%q) = %q, want %q", tt.in, got, tt.want)
+		}
+	}
+}
+
 func TestUsageIncludesNewCommands(t *testing.T) {
 	var stdout bytes.Buffer
 	printUsage(&stdout)
 	out := stdout.String()
-	for _, cmd := range []string{"start", "stop", "status", "auth", "tsnet", "relay", "log-path"} {
+	for _, cmd := range []string{"start", "stop", "status", "auth", "tsnet", "relay", "doctor", "log-path"} {
 		if !strings.Contains(out, cmd) {
 			t.Errorf("usage missing command %q", cmd)
 		}
 	}
-	// Old commands should not appear.
+	// Old commands should not appear as command entries.
 	for _, old := range []string{"remote", "shutdown", "auth-link", "--replace"} {
-		if strings.Contains(out, old) {
+		if strings.Contains(out, "\n  "+old+" ") {
 			t.Errorf("usage should not contain old command %q", old)
 		}
 	}

@@ -79,5 +79,8 @@ future implementation work.
 - `go test ./services/gmuxd/cmd/gmuxd -run 'TestEnableRelayConfig|TestRelaySetup|TestRunRelayConfigured|TestRunTsnetRelayConfigured|TestRemoteSetup|TestDisplayStatus'`
   passed on 2026-05-15 after adding the `gmuxd relay` setup/config writer
   flow.
+- `go test ./services/gmuxd/cmd/gmuxd -run 'TestRunDoctor|TestRelayHealthURL|TestUsageIncludesNewCommands'`
+  passed on 2026-05-15 after adding `gmuxd doctor` diagnostics for config,
+  daemon/local UI, tsnet, and relay health.
 - `go test ./services/gmuxd/cmd/gmuxd` passed on 2026-05-15 after shortening
   Unix socket temp paths in the status/auth test helpers.

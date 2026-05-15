@@ -9,6 +9,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+
 	"os"
 	"os/exec"
 	"os/signal"
@@ -214,6 +215,7 @@ Commands:
   auth               Show the auth URL and token
   tsnet              Set up or check Tailscale/tsnet access
   relay              Set up or check relay access
+  doctor             Diagnose config, daemon, and remote access
   log-path           Print the daemon log file path
   version            Show gmuxd version
   help               Show this help
@@ -294,6 +296,12 @@ func run(args []string, stdout, stderr io.Writer) int {
 			return 2
 		}
 		return runRelay(os.Stdin, stdout, stderr)
+	case "doctor":
+		if len(args) > 0 {
+			_, _ = fmt.Fprintf(stderr, "gmuxd doctor: unexpected arguments: %s\n", strings.Join(args, " "))
+			return 2
+		}
+		return runDoctor(stdout, stderr)
 	case "version":
 		if len(args) > 0 {
 			_, _ = fmt.Fprintf(stderr, "gmuxd version: unexpected arguments: %s\n", strings.Join(args, " "))
