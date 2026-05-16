@@ -1099,7 +1099,7 @@ export function MockTerminal({ sessionId }: { sessionId: string }) {
 
     const term = new Terminal({
       theme: TERM_THEME,
-      fontFamily: "'Fira Code', monospace",
+      fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
       fontSize: 13,
       disableStdin: true,
       cursorBlink: false,

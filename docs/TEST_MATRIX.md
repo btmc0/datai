@@ -22,6 +22,7 @@ implemented until tests or validation evidence exist.
 | `docs/stories/remote-access-modes.md` | Local baseline plus `tsnet` and `relay` remote-access modes | yes | no | no | no | in_progress | `go test ./packages/relayproto`; `go test ./services/gmuxd/internal/config`; `go test ./services/gmuxd/internal/tsauth`; `go test ./services/gmuxd/internal/relayclient`; `go test ./services/gmux-relayd/cmd/gmux-relayd`; `go test ./services/gmuxd/cmd/gmuxd` |
 | `docs/stories/mobile-resume-reconnect.md` | Mobile browser resume should reconnect stale UI transports without manual refresh | yes | no | no | no | implemented | `pnpm --filter @gmux/web test`; `pnpm --filter @gmux/web lint`; `pnpm --filter @gmux/web build`; `go test ./services/gmuxd/cmd/gmuxd` |
 | `docs/stories/web-terminal-font-size.md` | Web UI should let users adjust terminal font size without daemon config/restart | yes | no | no | no | implemented | `pnpm --filter @gmux/web test -- terminal-font-size page-resume`; `pnpm --filter @gmux/web lint`; `pnpm --filter @gmux/web build`; `go test ./services/gmuxd/cmd/gmuxd` |
+| `docs/stories/webui-terminal-pasture-skin.md` | Runtime Web UI keeps existing flows while using a dark mono terminal-pasture skin | yes | yes | no | yes | implemented | `pnpm --filter @gmux/web test`; `pnpm --filter @gmux/web lint`; `pnpm --filter @gmux/web build`; `go test ./services/gmuxd/cmd/gmuxd`; local `gmuxd status` smoke |
 
 ## Evidence Rules
 
