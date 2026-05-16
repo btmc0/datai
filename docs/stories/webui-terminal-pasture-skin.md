@@ -10,7 +10,7 @@ normal
 
 ## Product Contract
 
-The runtime Web UI keeps the existing workspace/session/terminal flows while using a dark mono, thin-border visual skin inspired by herdr.dev. The change is presentation-only: no API, session, workspace, remote-access, or terminal input behavior changes.
+The runtime Web UI keeps the existing workspace/session/terminal flows while using a dark mono, thin-border visual skin inspired by herdr.dev. The change is presentation-focused, with one small workspace-add UX refinement: choosing a filesystem suggestion returns focus to the input. There are no API, session, remote-access, or terminal input protocol changes.
 
 ## Relevant Product Docs
 
@@ -21,6 +21,7 @@ The runtime Web UI keeps the existing workspace/session/terminal flows while usi
 - Web UI uses a cohesive terminal-pasture palette: dark base/mantle/surface, thin borders, JetBrains Mono defaults, and green/yellow/blue/red state accents.
 - Existing sidebar, workspace, session, modal, terminal, and mobile toolbar interactions remain structurally unchanged.
 - Embedded `gmuxd` web assets are rebuilt from the updated frontend.
+- Selecting an add-workspace filesystem suggestion keeps the user in the input field for quick editing/submission.
 
 ## Design Notes
 
@@ -29,7 +30,7 @@ The runtime Web UI keeps the existing workspace/session/terminal flows while usi
 - API: no browser/daemon protocol change.
 - Tables: no data model change.
 - Domain rules: unchanged.
-- UI surfaces: `apps/gmux-web` CSS tokens, default terminal theme/font, mock/diagnostics terminal defaults.
+- UI surfaces: `apps/gmux-web` CSS tokens, default terminal theme/font, mock/diagnostics terminal defaults, and add-workspace suggestion focus handling.
 
 ## Validation
 
@@ -55,3 +56,4 @@ None.
 - `go build -o /tmp/gmux-deploy/gmuxd ./services/gmuxd/cmd/gmuxd` passed.
 - Installed `/tmp/gmux-deploy/gmuxd` to `~/.local/bin/gmuxd`, restarted local daemon, and `gmuxd status` reported ready.
 - Screenshot smoke was attempted but skipped because the local Playwright browser binary is not installed.
+- Follow-up polish pass validated with `pnpm --filter @gmux/web test`, `pnpm --filter @gmux/web lint`, `pnpm --filter @gmux/web build`, `go test ./services/gmuxd/cmd/gmuxd`, and `go build -o /tmp/gmux-deploy/gmuxd ./services/gmuxd/cmd/gmuxd`.

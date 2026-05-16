@@ -3468,3 +3468,213 @@ code {
     transition-duration: 0.001ms !important;
   }
 }
+
+/* ── Terminal pasture polish pass ── */
+
+/* Sidebar: keep dense scanning, but reduce the hard black/green contrast. */
+.folder-header:has(.folder-name.current) {
+  background: color-mix(in oklch, var(--bg-selected) 96%, var(--accent) 4%);
+  color: var(--text);
+  border-left-color: var(--accent);
+}
+
+.folder-header:has(.folder-name.current)::before {
+  content: '•';
+  color: var(--accent);
+  font-size: 13px;
+  line-height: 1;
+}
+
+.folder + .folder {
+  border-top-color: color-mix(in oklch, var(--border) 72%, transparent);
+}
+
+.session-item {
+  border-bottom-color: color-mix(in oklch, var(--border) 62%, transparent);
+}
+
+.session-item:hover {
+  background: color-mix(in oklch, var(--bg-hover) 72%, transparent);
+}
+
+.session-item.selected {
+  background: color-mix(in oklch, var(--bg-selected) 97%, var(--accent) 3%);
+}
+
+.session-item.selected::before {
+  top: 4px;
+  bottom: 4px;
+  width: 2px;
+  border-radius: var(--radius-dot);
+}
+
+.session-item.selected::after {
+  content: none;
+}
+
+.session-dot-indicator,
+.session-dot,
+.home-host-status,
+.mobile-bottom-action.menu-btn.bg-working::after,
+.mobile-bottom-action.menu-btn.bg-active::after,
+.mobile-bottom-action.menu-btn.bg-fading::after,
+.mobile-bottom-action.menu-btn.bg-error::after,
+.mobile-bottom-action.menu-btn.bg-unread::after {
+  border-radius: var(--radius-dot);
+}
+
+.session-title {
+  font-size: 12px;
+}
+
+.session-meta {
+  color: color-mix(in oklch, var(--text-muted) 92%, var(--text) 8%);
+}
+
+.session-memory {
+  color: var(--text-secondary);
+}
+
+/* Menus and controls: outlined terminal controls, not solid neon blocks. */
+.launch-btn:hover,
+.session-menu-trigger:hover,
+.manage-projects-btn:hover,
+.home-launch-btn:hover,
+.home-workspace-add-btn:hover {
+  background: color-mix(in oklch, var(--accent) 12%, var(--bg-hover));
+  border-color: color-mix(in oklch, var(--accent) 55%, var(--border));
+  color: var(--accent);
+}
+
+.launch-inline-menu,
+.session-menu-dropdown,
+.modal-panel {
+  border-color: var(--border-strong);
+  box-shadow: 0 18px 40px rgb(0 0 0 / 0.22);
+}
+
+.launch-inline-menu::before,
+.session-menu-dropdown::before {
+  content: '';
+  display: block;
+  height: 1px;
+  margin: -1px 0 4px;
+  background: color-mix(in oklch, var(--accent) 48%, transparent);
+}
+
+.launch-inline-item:hover,
+.session-menu-action:hover {
+  background: color-mix(in oklch, var(--bg-hover) 86%, var(--accent) 5%);
+  color: var(--text);
+}
+
+.main-header {
+  background: color-mix(in oklch, var(--bg) 88%, var(--bg-surface));
+}
+
+.main-header::before {
+  content: 'session';
+  color: var(--text-faint);
+  letter-spacing: 0.16em;
+}
+
+.main-header-title {
+  text-transform: none;
+  font-size: 12px;
+  letter-spacing: 0.025em;
+}
+
+.main-header-status.working {
+  color: var(--accent-warn);
+}
+
+.terminal-resize-overlay,
+.terminal-disconnected-pill,
+.terminal-scroll-end,
+.jump-to-bottom {
+  background: color-mix(in oklch, var(--bg) 88%, var(--bg-surface));
+  border-color: var(--border-strong);
+  color: var(--text-secondary);
+}
+
+.terminal-resize-overlay:hover,
+.jump-to-bottom:hover {
+  background: color-mix(in oklch, var(--accent) 12%, var(--bg-hover));
+  border-color: color-mix(in oklch, var(--accent) 55%, var(--border));
+  color: var(--accent);
+}
+
+/* Home: keep the terminal grid idea, but give cards breathing room. */
+.home::before {
+  content: 'gmux control plane';
+  color: var(--text-faint);
+}
+
+.home-section-title::before {
+  color: var(--text-faint);
+}
+
+.home-section-title::after {
+  color: color-mix(in oklch, var(--border) 72%, transparent);
+}
+
+.home-host-grid,
+.home-project-grid {
+  gap: 9px;
+  border: 0;
+}
+
+.home-host-card,
+.home-project-card,
+.home-workspace-add {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+}
+
+.home-project-card {
+  padding-right: 34px;
+}
+
+.home-host-card:hover,
+.home-project-card:hover {
+  border-color: color-mix(in oklch, var(--accent) 35%, var(--border-strong));
+}
+
+.home-host-name::before,
+.home-project-name::before {
+  color: var(--text-faint);
+}
+
+.home-host-details,
+.home-project-count {
+  line-height: 1.55;
+}
+
+.home-workspace-add::before {
+  color: var(--text-muted);
+}
+
+.home-workspace-input {
+  color: var(--text);
+}
+
+.home-workspace-suggestion:hover {
+  background: color-mix(in oklch, var(--bg-hover) 82%, var(--accent) 6%);
+  border-color: color-mix(in oklch, var(--accent) 50%, var(--border));
+  color: var(--text);
+}
+
+/* Mobile: active states stay visible without turning the toolbar into a green slab. */
+.mobile-bottom-action:active,
+.mobile-bottom-action.armed,
+.mobile-bottom-action.keyboard-btn.active {
+  background: color-mix(in oklch, var(--accent) 16%, var(--bg-hover));
+  border-color: color-mix(in oklch, var(--accent) 62%, var(--border));
+  color: var(--text);
+}
+
+.mobile-bottom-action.send-btn:active,
+.mobile-bottom-action.keyboard-btn.active {
+  color: var(--accent);
+}

@@ -1,7 +1,7 @@
 // Home page: host status, project overview, quick-launch per host.
 // Reads shared data from the store (signals).
 
-import { useEffect, useState } from 'preact/hooks'
+import { useEffect, useRef, useState } from 'preact/hooks'
 import { addProject, removeProject, health, peers, folders, sessions, launchers as launchersSignal, defaultLauncher as defaultLauncherSignal, launchSession } from './store'
 import { PeerLabel } from './peer-label'
 import type { Folder, LauncherDef } from './types'
@@ -124,6 +124,7 @@ export function Home() {
 }
 
 function HomeWorkspaceAdd() {
+  const inputRef = useRef<HTMLInputElement>(null)
   const [input, setInput] = useState('')
   const [suggestions, setSuggestions] = useState<FSCompletion[]>([])
   const [adding, setAdding] = useState(false)
@@ -180,10 +181,17 @@ function HomeWorkspaceAdd() {
     }
   }
 
+  const selectSuggestion = (suggestionPath: string) => {
+    setInput(suggestionPath)
+    setError('')
+    inputRef.current?.focus()
+  }
+
   return (
     <div class="home-workspace-add">
       <div class="home-workspace-input-row">
         <input
+          ref={inputRef}
           class="home-workspace-input"
           type="text"
           placeholder="Add workspace dir, e.g. ~/src/project"
@@ -205,7 +213,7 @@ function HomeWorkspaceAdd() {
       {suggestions.length > 0 && (
         <div class="home-workspace-suggestions">
           {suggestions.map(s => (
-            <button key={s.path} class="home-workspace-suggestion" onClick={() => { setInput(s.path); setError('') }}>
+            <button key={s.path} class="home-workspace-suggestion" onClick={() => selectSuggestion(s.path)}>
               <span>{s.name}</span>
               <small>{s.path}</small>
             </button>
