@@ -15,6 +15,7 @@ import { decideViewportResize, sameSize } from './terminal-resize'
 import { MOCK_BY_ID } from './mock-data/index'
 import type { Session } from './types'
 import { isCoarsePointerDevice, isSoftKeyboardLikelyOpen } from './input-device'
+import { normalizeTerminalInput } from './terminal-input'
 
 // ── Config ──
 
@@ -559,7 +560,7 @@ export function TerminalView({
     textarea?.addEventListener('compositionend', handleCompositionEnd)
     syncKeyboardActive()
 
-    const dataDisposable = term.onData((data) => sendInput(data))
+    const dataDisposable = term.onData((data) => sendInput(normalizeTerminalInput(data)))
     attachKeyboardHandler(term, sendInput, sendRawInput, keybinds, macCommandIsCtrl, session.id)
     const disposePasteHandler = attachPasteHandler(term, containerRef.current!, sendRawInput, session.id)
     const disposeMobileHandler = attachMobileInputHandler(term, containerRef.current!, sendRawInput)

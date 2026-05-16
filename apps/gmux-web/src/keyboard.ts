@@ -109,9 +109,12 @@ export function attachKeyboardHandler(
   onPasteFeedback: PasteFeedback = defaultPasteFeedback,
 ): void {
   term.attachCustomKeyEventHandler((ev: KeyboardEvent) => {
-    // IME/mobile composition owns intermediate key events. Let xterm's
-    // textarea composition pipeline finish before we apply terminal keybinds
-    // or mobile Enter remaps.
+    // IME composition owns intermediate key events. In particular, xterm's
+    // keydown-229 fallback diffs the hidden textarea and can send mutable
+    // pre-edit text before compositionend. Let compositionend/input produce
+    // the committed text instead of applying terminal keybinds here.
+    const isImeProcessKey = ev.key === 'Process' || (ev.isComposing && ev.keyCode === 229)
+    if (ev.type === 'keydown' && isImeProcessKey) return false
     if (ev.isComposing || ev.key === 'Process') return true
 
     // Mobile Enter → newline (not submit).

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { ctrlSequenceFor, formatPasteText, pickBinaryDataTransferItem } from './keyboard'
+import { attachKeyboardHandler, ctrlSequenceFor, formatPasteText, pickBinaryDataTransferItem } from './keyboard'
 
 // Build an array-like stand-in for DataTransferItemList. Vitest runs in
 // node by default, where the real DOM type isn't available; a plain
@@ -13,6 +13,52 @@ function makeItems(
   })
   return list as unknown as DataTransferItemList
 }
+
+function captureKeyboardHandler() {
+  let attached = false
+  let handler: (ev: KeyboardEvent) => boolean = () => true
+  const term = {
+    attachCustomKeyEventHandler(fn: (ev: KeyboardEvent) => boolean) { attached = true; handler = fn },
+    modes: { bracketedPasteMode: false },
+  }
+  const sent: string[] = []
+  attachKeyboardHandler(term as any, data => sent.push(data), data => sent.push(data), [])
+  if (!attached) throw new Error('handler not attached')
+  return { handler, sent }
+}
+
+function fakeKeyEvent(props: Partial<KeyboardEvent>): KeyboardEvent {
+  return {
+    type: 'keydown',
+    key: '',
+    keyCode: 0,
+    isComposing: false,
+    shiftKey: false,
+    ctrlKey: false,
+    altKey: false,
+    metaKey: false,
+    preventDefault() {},
+    ...props,
+  } as KeyboardEvent
+}
+
+describe('attachKeyboardHandler IME handling', () => {
+  it('suppresses composing Process keydown so xterm waits for compositionend', () => {
+    const { handler, sent } = captureKeyboardHandler()
+    const result = handler(fakeKeyEvent({ key: 'Process', keyCode: 229, isComposing: true }))
+
+    expect(result).toBe(false)
+    expect(sent).toEqual([])
+  })
+
+  it('lets non-process composition events continue through xterm composition handling', () => {
+    const { handler, sent } = captureKeyboardHandler()
+    const result = handler(fakeKeyEvent({ key: 'a', keyCode: 65, isComposing: true }))
+
+    expect(result).toBe(true)
+    expect(sent).toEqual([])
+  })
+})
 
 describe('pickBinaryDataTransferItem', () => {
   it('returns the first file with a non-text MIME', () => {
