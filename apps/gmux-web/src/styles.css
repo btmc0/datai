@@ -1585,6 +1585,61 @@ body {
   color: oklch(76% 0.012 250);
 }
 
+.terminal-font-size-controls {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  border: 1px solid oklch(from var(--border-strong) l c h / 0.7);
+  background: oklch(from var(--bg-surface) l c h / 0.38);
+  color: oklch(76% 0.012 250 / 0.9);
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  z-index: 20;
+  pointer-events: auto;
+  font-family: 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.terminal-font-size-btn {
+  width: 30px;
+  height: 28px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  appearance: none;
+}
+
+.terminal-font-size-btn:hover:not(:disabled),
+.terminal-font-size-btn:focus-visible {
+  background: color-mix(in oklch, var(--accent) 18%, transparent);
+  color: var(--text);
+  outline: none;
+}
+
+.terminal-font-size-btn:disabled {
+  opacity: 0.32;
+  cursor: default;
+}
+
+.terminal-font-size-value {
+  min-width: 42px;
+  padding: 0 8px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 12px;
+  user-select: none;
+}
+
 /* Use JetBrains Mono for italic glyphs since Fira Code has no italic variant.
    The bundled JetBrains Mono italic files (from fonts.css) are referenced here
    so we don't depend on the font being installed on the system. */
@@ -3104,7 +3159,8 @@ code {
 
 .terminal-resize-overlay,
 .terminal-disconnected-pill,
-.terminal-scroll-end {
+.terminal-scroll-end,
+.terminal-font-size-controls {
   background: #000;
   border: 1px solid var(--accent-warn);
   color: var(--accent-warn);
@@ -3115,7 +3171,9 @@ code {
   text-transform: uppercase;
 }
 
-.terminal-resize-overlay:hover {
+.terminal-resize-overlay:hover,
+.terminal-font-size-btn:hover:not(:disabled),
+.terminal-font-size-btn:focus-visible {
   background: var(--accent-warn);
   color: #000;
 }

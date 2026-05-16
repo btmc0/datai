@@ -11,6 +11,14 @@ import { attachMobileInputHandler } from './mobile-input'
 import { createReplayBuffer } from './replay'
 import { createTerminalIO, type TerminalSize } from './terminal-io'
 import { addPageResumeListener } from './page-resume'
+import {
+  TERMINAL_FONT_SIZE_MAX,
+  TERMINAL_FONT_SIZE_MIN,
+  TERMINAL_FONT_SIZE_STEP,
+  adjustTerminalFontSize,
+  loadTerminalFontSize,
+  saveTerminalFontSize,
+} from './terminal-font-size'
 import { decideViewportResize, sameSize } from './terminal-resize'
 import { MOCK_BY_ID } from './mock-data/index'
 import type { Session } from './types'
@@ -244,6 +252,7 @@ export function TerminalView({
   // True once the terminal's font is downloaded; gates xterm mount.
   // See the preload effect below for why this matters.
   const [fontReady, setFontReady] = useState(false)
+  const [terminalFontSize, setTerminalFontSize] = useState(() => loadTerminalFontSize(terminalOptions.fontSize))
 
   const [termLoading, setTermLoading] = useState(true)
   const [wsState, setWsState] = useState<'connecting' | 'open' | 'lost'>('connecting')
@@ -420,12 +429,12 @@ export function TerminalView({
   // loading overlay forever.
   useEffect(() => {
     let cancelled = false
-    const spec = `${terminalOptions.fontSize}px ${terminalOptions.fontFamily}`
+    const spec = `${terminalFontSize}px ${terminalOptions.fontFamily}`
     document.fonts.load(spec).finally(() => {
       if (!cancelled) setFontReady(true)
     })
     return () => { cancelled = true }
-  }, [terminalOptions.fontFamily, terminalOptions.fontSize])
+  }, [terminalOptions.fontFamily, terminalFontSize])
 
   useEffect(() => {
     const term = termRef.current
@@ -443,6 +452,7 @@ export function TerminalView({
     // Add non-serializable options that can't live in JSON config.
     const term = new Terminal({
       ...terminalOptions,
+      fontSize: terminalFontSize,
       linkHandler: {
         activate(_event, text) {
           window.open(text, '_blank', 'noopener')
@@ -1012,6 +1022,21 @@ export function TerminalView({
     }
   }, [fitAndResize, queueData, queueMany, queueResize, releaseResizeEchoGate, resetResizeEchoGate, session.id, fontReady])
 
+  const changeFontSize = useCallback((delta: number) => {
+    setTerminalFontSize(current => saveTerminalFontSize(adjustTerminalFontSize(current, delta)))
+  }, [])
+
+  useEffect(() => {
+    const term = termRef.current
+    if (!term) return
+
+    term.options.fontSize = terminalFontSize
+    document.fonts.load(`${terminalFontSize}px ${terminalOptions.fontFamily}`).finally(() => {
+      if (termRef.current !== term) return
+      requestAnimationFrame(() => fitAndResize())
+    })
+  }, [fitAndResize, terminalFontSize, terminalOptions.fontFamily])
+
   // Pill is purely derived from size mismatch. No "driving" flag: we claim
   // on every fresh session select (first ws.onopen), and fitAndResize sets
   // ptySize = viewportSize optimistically so the pill self-clears the moment
@@ -1041,6 +1066,31 @@ export function TerminalView({
           </div>
         </div>
       )}
+      <div class="terminal-font-size-controls" aria-label="Terminal font size">
+        <button
+          type="button"
+          class="terminal-font-size-btn"
+          onClick={() => changeFontSize(-TERMINAL_FONT_SIZE_STEP)}
+          disabled={terminalFontSize <= TERMINAL_FONT_SIZE_MIN}
+          title="Decrease terminal font size"
+          aria-label="Decrease terminal font size"
+        >
+          −
+        </button>
+        <span class="terminal-font-size-value" aria-label={`Terminal font size ${terminalFontSize} pixels`}>
+          {terminalFontSize}px
+        </span>
+        <button
+          type="button"
+          class="terminal-font-size-btn"
+          onClick={() => changeFontSize(TERMINAL_FONT_SIZE_STEP)}
+          disabled={terminalFontSize >= TERMINAL_FONT_SIZE_MAX}
+          title="Increase terminal font size"
+          aria-label="Increase terminal font size"
+        >
+          +
+        </button>
+      </div>
       {showResizePill && (
         <div class="terminal-resize-anchor">
           <button
