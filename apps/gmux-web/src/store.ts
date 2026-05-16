@@ -20,6 +20,7 @@ import { resolveViewFromPath, viewToPath, sessionPath } from './routing'
 import { buildProjectFolders, matchSession } from './projects'
 
 import { fetchFrontendConfig, buildTerminalOptions, resolveKeybinds, type ResolvedKeybind } from './config'
+import { addPageResumeListener } from './page-resume'
 import { MOCK_SESSIONS, MOCK_PROJECTS } from './mock-data/index'
 import type { ResolvedTerminalOptions } from './settings-schema'
 import type { Session as ProtocolSession } from '@gmux/protocol'
@@ -677,61 +678,86 @@ export function initStore(): () => void {
   //
   // On reconnect, the SSE dump IS useful because events may have been
   // missed. We pair it with a fresh fetchSessions to be safe.
-  const source = new EventSource('/v1/events')
+  let source: EventSource | null = null
   let sseConnected = false
 
-  source.addEventListener('open', () => {
-    if (sseConnected) {
-      // Reconnect: refresh everything to catch missed events.
-      fetchProjects()
-      fetchSessions().then(list => { sessions.value = list }).catch(() => {})
-    }
-    sseConnected = true
-  })
-
-  source.addEventListener('session-upsert', (e) => {
-    // Skip the initial SSE dump: the bulk GET /v1/sessions fetch is
-    // authoritative for the first load. Processing the dump would
-    // trigger O(n²) array mutations for no benefit.
-    if (!sessionsLoaded.value) return
-
-    try {
-      const envelope = JSON.parse(e.data)
-      const session = envelope.session ?? envelope
-      const isNew = upsertSession(session)
-      if (isNew && consumePendingLaunch()) {
-        navigateToSession(session.id, true)
-      }
-    } catch (err) {
-      console.warn('session-upsert: bad event', err)
-    }
-  })
-
-  source.addEventListener('session-remove', (e) => {
-    try {
-      const { id } = JSON.parse(e.data)
-      removeSession(id)
-    } catch (err) {
-      console.warn('session-remove: bad event', err)
-    }
-  })
-
-  source.addEventListener('session-activity', (e) => {
-    try {
-      const { id } = JSON.parse(e.data)
-      if (id) handleActivity(id)
-    } catch { /* ignore */ }
-  })
-
-  source.addEventListener('projects-update', () => {
+  function refreshAfterReconnect() {
     fetchProjects()
-  })
-
-  source.addEventListener('peer-status', () => {
+    fetchSessions().then(list => { sessions.value = list }).catch(() => {})
     fetchHealth()
+    void fetchSessionMetrics()
+  }
+
+  function connectEvents() {
+    source?.close()
+    const next = new EventSource('/v1/events')
+    source = next
+
+    next.addEventListener('open', () => {
+      if (sseConnected) {
+        // Reconnect: refresh everything to catch missed events.
+        refreshAfterReconnect()
+      }
+      sseConnected = true
+    })
+
+    next.addEventListener('session-upsert', (e) => {
+      // Skip the initial SSE dump: the bulk GET /v1/sessions fetch is
+      // authoritative for the first load. Processing the dump would
+      // trigger O(n²) array mutations for no benefit.
+      if (!sessionsLoaded.value) return
+
+      try {
+        const envelope = JSON.parse(e.data)
+        const session = envelope.session ?? envelope
+        const isNew = upsertSession(session)
+        if (isNew && consumePendingLaunch()) {
+          navigateToSession(session.id, true)
+        }
+      } catch (err) {
+        console.warn('session-upsert: bad event', err)
+      }
+    })
+
+    next.addEventListener('session-remove', (e) => {
+      try {
+        const { id } = JSON.parse(e.data)
+        removeSession(id)
+      } catch (err) {
+        console.warn('session-remove: bad event', err)
+      }
+    })
+
+    next.addEventListener('session-activity', (e) => {
+      try {
+        const { id } = JSON.parse(e.data)
+        if (id) handleActivity(id)
+      } catch { /* ignore */ }
+    })
+
+    next.addEventListener('projects-update', () => {
+      fetchProjects()
+    })
+
+    next.addEventListener('peer-status', () => {
+      fetchHealth()
+    })
+  }
+
+  connectEvents()
+  const removePageResumeListener = addPageResumeListener(() => {
+    refreshAfterReconnect()
+    // Mobile browsers can preserve an EventSource object while its underlying
+    // TCP stream is stale. Reopen it on resume instead of waiting for native
+    // retry/timeout behavior.
+    sseConnected = false
+    connectEvents()
   })
 
-  cleanups.push(() => source.close())
+  cleanups.push(() => {
+    removePageResumeListener()
+    source?.close()
+  })
 
   // URL normalization effect: rewrites the URL when the resolved view
   // differs from the current path (e.g., `/:project` resolves to a

@@ -20,6 +20,7 @@ implemented until tests or validation evidence exist.
 | Story | Contract | Unit | Integration | E2E | Platform | Status | Evidence |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `docs/stories/remote-access-modes.md` | Local baseline plus `tsnet` and `relay` remote-access modes | yes | no | no | no | in_progress | `go test ./packages/relayproto`; `go test ./services/gmuxd/internal/config`; `go test ./services/gmuxd/internal/tsauth`; `go test ./services/gmuxd/internal/relayclient`; `go test ./services/gmux-relayd/cmd/gmux-relayd`; `go test ./services/gmuxd/cmd/gmuxd` |
+| `docs/stories/mobile-resume-reconnect.md` | Mobile browser resume should reconnect stale UI transports without manual refresh | yes | no | no | no | implemented | `pnpm --filter @gmux/web test`; `pnpm --filter @gmux/web lint`; `pnpm --filter @gmux/web build`; `go test ./services/gmuxd/cmd/gmuxd` |
 
 ## Evidence Rules
 

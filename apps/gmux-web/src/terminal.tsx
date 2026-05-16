@@ -10,6 +10,7 @@ import { DEFAULT_THEME_COLORS, type ResolvedKeybind } from './config'
 import { attachMobileInputHandler } from './mobile-input'
 import { createReplayBuffer } from './replay'
 import { createTerminalIO, type TerminalSize } from './terminal-io'
+import { addPageResumeListener } from './page-resume'
 import { decideViewportResize, sameSize } from './terminal-resize'
 import { MOCK_BY_ID } from './mock-data/index'
 import type { Session } from './types'
@@ -858,6 +859,15 @@ export function TerminalView({
 
     setTermLoading(true)
 
+    function forceReconnect() {
+      if (disposed.current) return
+      if (currentSessionId.current !== session.id) return
+      if (reconnectTimer.current) clearTimeout(reconnectTimer.current)
+      reconnectTimer.current = null
+      setWsState('connecting')
+      connect()
+    }
+
     function connect() {
       if (disposed.current) return
 
@@ -970,6 +980,7 @@ export function TerminalView({
       }
 
       ws.onclose = () => {
+        if (wsRef.current !== ws) return
         resetResizeEchoGate()
         setWsState(prev => prev === 'open' ? 'lost' : prev)
         if (disposed.current || intentionalClose) return
@@ -981,10 +992,12 @@ export function TerminalView({
       }
 
       ws.onerror = () => {
+        if (wsRef.current === ws) ws.close()
       }
     }
 
     connect()
+    const removePageResumeListener = addPageResumeListener(forceReconnect)
 
     return () => {
       intentionalClose = true
@@ -993,6 +1006,7 @@ export function TerminalView({
       if (reconnectTimer.current) clearTimeout(reconnectTimer.current)
       reconnectTimer.current = null
       resetResizeEchoGate()
+      removePageResumeListener()
       wsRef.current?.close()
       wsRef.current = null
     }

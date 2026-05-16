@@ -1,3 +1,5 @@
+import { addPageResumeListener } from './page-resume'
+
 // Presence WebSocket — reports client state to gmuxd and receives notification
 // commands. The daemon uses this to decide whether, when, and where to show
 // OS notifications.
@@ -33,7 +35,8 @@ export interface PresenceConnection {
  * Connect to the presence WebSocket. Automatically sends a client-hello on
  * open and routes incoming notify/cancel messages to the provided callbacks.
  *
- * Reconnects automatically on disconnect with exponential backoff.
+ * Reconnects automatically on disconnect with exponential backoff, and
+ * proactively reconnects when a suspended mobile browser tab resumes.
  */
 export function connectPresence(options: {
   onNotify: (msg: NotifyMessage) => void
@@ -42,34 +45,44 @@ export function connectPresence(options: {
   let ws: WebSocket | null = null
   let closed = false
   let backoff = 1000
+  let reconnectTimer: ReturnType<typeof setTimeout> | null = null
 
   const deviceType = matchMedia('(pointer: coarse)').matches ? 'mobile' : 'desktop'
 
   // Queue state updates until the socket is ready.
   let pendingState: ClientState | null = null
 
+  function reconnectNow() {
+    if (closed) return
+    if (reconnectTimer !== null) clearTimeout(reconnectTimer)
+    reconnectTimer = null
+    ws?.close()
+    connect()
+  }
+
   function connect() {
     const proto = location.protocol === 'https:' ? 'wss:' : 'ws:'
-    ws = new WebSocket(`${proto}//${location.host}/v1/presence`)
+    const socket = new WebSocket(`${proto}//${location.host}/v1/presence`)
+    ws = socket
 
-    ws.onopen = () => {
+    socket.onopen = () => {
       backoff = 1000
       // Read permission fresh on each connect — it may have changed since
       // the previous connection (e.g. user granted permission, then WS reconnected).
       const perm = 'Notification' in window ? Notification.permission : 'unavailable'
-      ws!.send(JSON.stringify({
+      socket.send(JSON.stringify({
         type: 'client-hello',
         device_type: deviceType,
         notification_permission: perm,
       }))
       // Flush any pending state
       if (pendingState) {
-        ws!.send(JSON.stringify({ type: 'client-state', ...pendingState }))
+        socket.send(JSON.stringify({ type: 'client-state', ...pendingState }))
         pendingState = null
       }
     }
 
-    ws.onmessage = (e) => {
+    socket.onmessage = (e) => {
       try {
         const msg = JSON.parse(e.data)
         if (msg.type === 'notify') options.onNotify(msg)
@@ -77,20 +90,22 @@ export function connectPresence(options: {
       } catch { /* ignore malformed messages */ }
     }
 
-    ws.onclose = () => {
-      if (closed) return
-      setTimeout(() => {
+    socket.onclose = () => {
+      if (closed || ws !== socket) return
+      reconnectTimer = setTimeout(() => {
+        reconnectTimer = null
         if (!closed) connect()
       }, Math.min(backoff, 30000))
       backoff *= 2
     }
 
-    ws.onerror = () => {
-      // onclose will fire after this, triggering reconnect
+    socket.onerror = () => {
+      if (ws === socket) socket.close()
     }
   }
 
   connect()
+  const removePageResumeListener = addPageResumeListener(reconnectNow)
 
   return {
     sendState(state: ClientState) {
@@ -107,6 +122,9 @@ export function connectPresence(options: {
     },
     close() {
       closed = true
+      if (reconnectTimer !== null) clearTimeout(reconnectTimer)
+      reconnectTimer = null
+      removePageResumeListener()
       ws?.close()
     },
   }
