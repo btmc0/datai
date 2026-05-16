@@ -13,7 +13,7 @@
   "dependencies": {
     "@fontsource/fira-code": "^5.2.7",
     "@fontsource/instrument-sans": "^5.2.8",
-    "@fontsource/jetbrains-mono": "^5.2.8",
+    "@fontsource/roboto-mono": "^5.2.9",
     "@fontsource/source-sans-3": "^5.2.9",
     "@gmux/protocol": "workspace:*",
     "@preact/signals": "^2.9.0",

@@ -1,8 +1,8 @@
 /* Self-hosted fonts via @fontsource. No external network requests at runtime. */
 
-/* JetBrains Mono — primary UI + terminal mono face. */
-@import '@fontsource/jetbrains-mono/400.css';
-@import '@fontsource/jetbrains-mono/500.css';
+/* Roboto Mono — primary UI + terminal mono face. */
+@import '@fontsource/roboto-mono/400.css';
+@import '@fontsource/roboto-mono/500.css';
 
 /* Fira Code — fallback for users who set it explicitly. */
 @import '@fontsource/fira-code/400.css';
@@ -17,6 +17,6 @@
 /* Instrument Sans — logo/branding fallback. */
 @import '@fontsource/instrument-sans/700.css';
 
-/* JetBrains Mono italic — fallback for Fira Code italic (which has none). */
-@import '@fontsource/jetbrains-mono/400-italic.css';
-@import '@fontsource/jetbrains-mono/500-italic.css';
+/* Roboto Mono italic — fallback for Fira Code italic (which has none). */
+@import '@fontsource/roboto-mono/400-italic.css';
+@import '@fontsource/roboto-mono/500-italic.css';

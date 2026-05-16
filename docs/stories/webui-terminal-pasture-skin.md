@@ -18,7 +18,7 @@ The runtime Web UI keeps the existing workspace/session/terminal flows while usi
 
 ## Acceptance Criteria
 
-- Web UI uses a cohesive terminal-pasture palette: dark base/mantle/surface, thin borders, JetBrains Mono defaults, and green/yellow/blue/red state accents.
+- Web UI uses a cohesive terminal-pasture palette: dark base/mantle/surface, thin borders, Roboto Mono defaults, and green/yellow/blue/red state accents.
 - Existing sidebar, workspace, session, modal, terminal, and mobile toolbar interactions remain structurally unchanged.
 - Embedded `gmuxd` web assets are rebuilt from the updated frontend.
 - Selecting an add-workspace filesystem suggestion keeps the user in the input field for quick editing/submission.
@@ -57,3 +57,4 @@ None.
 - Installed `/tmp/gmux-deploy/gmuxd` to `~/.local/bin/gmuxd`, restarted local daemon, and `gmuxd status` reported ready.
 - Screenshot smoke was attempted but skipped because the local Playwright browser binary is not installed.
 - Follow-up polish pass validated with `pnpm --filter @gmux/web test`, `pnpm --filter @gmux/web lint`, `pnpm --filter @gmux/web build`, `go test ./services/gmuxd/cmd/gmuxd`, and `go build -o /tmp/gmux-deploy/gmuxd ./services/gmuxd/cmd/gmuxd`.
+- Follow-up font pass switched the primary mono face from JetBrains Mono to Roboto Mono and was validated with the same web/gmuxd test/build set.
