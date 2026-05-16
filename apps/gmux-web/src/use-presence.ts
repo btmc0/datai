@@ -10,9 +10,10 @@ import { useCallback, useEffect, useRef, useState } from 'preact/hooks'
 import { connectPresence } from './presence'
 import type { NotifyMessage, CancelMessage } from './presence'
 import { selectedId, sessions, navigateToSession } from './store'
-import type { NotifPermission } from './sidebar'
 
 const USE_MOCK = import.meta.env.VITE_MOCK === '1' || location.search.includes('mock')
+
+type NotifPermission = 'default' | 'granted' | 'denied' | 'unavailable'
 
 interface UsePresenceResult {
   notifPermission: NotifPermission

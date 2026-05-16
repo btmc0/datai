@@ -21,7 +21,6 @@ import type { Session, Folder, ProjectItem } from './types'
 
 // ── Types ──
 
-export type NotifPermission = 'default' | 'granted' | 'denied' | 'unavailable'
 
 // Re-export DotState so existing imports keep working.
 export type { DotState }
@@ -47,14 +46,6 @@ function formatSessionMemory(bytes?: number): string | null {
   return `${gib.toFixed(gib >= 10 ? 0 : 1)}G`
 }
 
-const bellStroke = { fill: 'none', stroke: 'currentColor', 'stroke-width': '1.4', 'stroke-linecap': 'round' as const, 'stroke-linejoin': 'round' as const }
-
-export const IconBell = ({ muted }: { muted?: boolean }) => (
-  <svg viewBox="0 0 14 14" width="14" height="14" {...bellStroke} style={{ opacity: muted ? 0.4 : 1 }}>
-    <path d="M7 2a4 4 0 0 1 4 4v2.5l1 1.5H2l1-1.5V6a4 4 0 0 1 4-4Z"/>
-    <path d="M5.5 11.5a1.5 1.5 0 0 0 3 0" stroke-width="1.2"/>
-  </svg>
-)
 
 // ── Drag helpers ──
 
@@ -290,8 +281,6 @@ export function Sidebar({
   open,
   onClose,
   onInteract,
-  notifPermission,
-  onRequestNotifPermission,
 }: {
   resumingId: string | null
   onCloseSession: (session: Session) => void
@@ -299,8 +288,6 @@ export function Sidebar({
   open: boolean
   onClose: () => void
   onInteract?: () => void
-  notifPermission: NotifPermission
-  onRequestNotifPermission: () => void
 }) {
   // Read signals; component re-renders only when these values change.
   const foldersVal = folders.value
@@ -383,16 +370,6 @@ export function Sidebar({
             )}
           </button>
           <SidebarHostMetrics />
-          {notifPermission === 'default' && (
-            <button class="notif-btn compact" onClick={onRequestNotifPermission} title="Enable notifications">
-              <IconBell /> notifications off
-            </button>
-          )}
-          {notifPermission === 'denied' && (
-            <div class="notif-denied compact" title="Notifications blocked in browser settings">
-              <IconBell muted /> notifications blocked
-            </div>
-          )}
         </div>
       </aside>
     </>

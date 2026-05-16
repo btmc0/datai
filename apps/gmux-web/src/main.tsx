@@ -437,7 +437,7 @@ function App() {
     setTerminalFontSize(current => saveTerminalFontSize(adjustTerminalFontSize(current, delta)))
   }, [])
 
-  const { notifPermission, requestNotifPermission } = usePresence()
+  usePresence()
 
   // ── Resume ──
   const [resumingId, setResumingId] = useState<string | null>(null)
@@ -538,8 +538,6 @@ function App() {
         open={sidebarOpen}
         onClose={() => { handleHideKeyboard(); setSidebarOpen(false) }}
         onInteract={handleHideKeyboard}
-        notifPermission={notifPermission}
-        onRequestNotifPermission={requestNotifPermission}
       />
 
       <ManageProjectsModal
