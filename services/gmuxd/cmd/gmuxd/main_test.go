@@ -250,6 +250,45 @@ func TestRunStatusShowsSessionsAndPeers(t *testing.T) {
 	if !strings.Contains(out, "connection refused") {
 		t.Errorf("expected disconnected peer error, got %q", out)
 	}
+	if !strings.Contains(out, "remote mode: relay") {
+		t.Errorf("expected relay remote mode, got %q", out)
+	}
+	if !strings.Contains(out, "relayd: https://gmux.example.com") {
+		t.Errorf("expected relayd public URL, got %q", out)
+	}
+	if !strings.Contains(out, "relay agent: wss://relay.example.com/_gmux/agent") {
+		t.Errorf("expected relay agent URL, got %q", out)
+	}
+}
+
+func TestPrintRemoteStatusShowsTsnetLoginSeparately(t *testing.T) {
+	var stdout bytes.Buffer
+	printRemoteStatus(&stdout, "tsnet", "", &tsHealth{AuthURL: "https://login.tailscale.com/a/test"}, nil)
+	out := stdout.String()
+	if !strings.Contains(out, "remote mode: tsnet") {
+		t.Errorf("expected tsnet remote mode, got %q", out)
+	}
+	if !strings.Contains(out, "tsnet: needs login") {
+		t.Errorf("expected tsnet login status, got %q", out)
+	}
+	if strings.Contains(out, "relay") {
+		t.Errorf("tsnet status should not mention relay, got %q", out)
+	}
+}
+
+func TestPrintRemoteStatusShowsMultipleRemoteModes(t *testing.T) {
+	var stdout bytes.Buffer
+	printRemoteStatus(&stdout, "tsnet, relay", "", &tsHealth{Connected: false}, &relayHealthStatus{URL: "wss://relay.example.com/_gmux/agent"})
+	out := stdout.String()
+	if !strings.Contains(out, "remote modes: tsnet, relay") {
+		t.Errorf("expected plural remote modes, got %q", out)
+	}
+	if !strings.Contains(out, "tsnet: connecting") {
+		t.Errorf("expected tsnet status, got %q", out)
+	}
+	if !strings.Contains(out, "relay agent: wss://relay.example.com/_gmux/agent") {
+		t.Errorf("expected relay agent status, got %q", out)
+	}
 }
 
 func TestRunAuthNoRunningDaemon(t *testing.T) {
@@ -469,11 +508,16 @@ func startTestSocketDaemonFull(t *testing.T) (stateDir string, cleanup func()) {
 	mux.HandleFunc("/v1/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		data := map[string]any{
-			"service":    "gmuxd",
-			"version":    "1.0.0",
-			"status":     "ready",
-			"listen":     "127.0.0.1:8790",
-			"auth_token": "test-token-abc",
+			"service":     "gmuxd",
+			"version":     "1.0.0",
+			"status":      "ready",
+			"listen":      "127.0.0.1:8790",
+			"auth_token":  "test-token-abc",
+			"remote_mode": "relay",
+			"relay": map[string]string{
+				"url":        "wss://relay.example.com/_gmux/agent",
+				"public_url": "https://gmux.example.com",
+			},
 			"sessions": map[string]int{
 				"local_alive":  2,
 				"remote_alive": 1,

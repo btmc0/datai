@@ -398,7 +398,7 @@ func startBackground(stdout, stderr io.Writer) int {
 	}
 
 	if !healthy {
-		_, _ = fmt.Fprintf(stderr, "gmuxd: started (pid %d) but not yet healthy\n  Logs: %s\n", cmd.Process.Pid, logPath)
+		_, _ = fmt.Fprintf(stderr, "gmuxd: started (pid %d); local daemon is still starting\n  This is startup readiness, not tsnet/relayd health. Check with `gmuxd status` or `gmuxd doctor`.\n  Logs: %s\n", cmd.Process.Pid, logPath)
 		return 1
 	}
 
@@ -635,6 +635,8 @@ func serve(stderr io.Writer) int {
 	// peerManager and tsDiscovery are initialized later after config is
 	// loaded. The closures capture the pointers so handlers work once set.
 	var peerManager *peering.Manager
+	var remoteMode string
+	var relayStatus map[string]string
 	var tsDiscovery *tsdiscovery.Watcher
 
 	// ── Health + Capabilities ──
@@ -648,6 +650,12 @@ func serve(stderr io.Writer) int {
 		}
 		if h, err := os.Hostname(); err == nil {
 			data["hostname"] = h
+		}
+		if remoteMode != "" {
+			data["remote_mode"] = remoteMode
+		}
+		if relayStatus != nil {
+			data["relay"] = relayStatus
 		}
 		if tsListener != nil {
 			diag := tsListener.Diag()
@@ -1596,6 +1604,24 @@ func serve(stderr io.Writer) int {
 		log.Fatalf("FATAL: %v", err)
 	}
 
+	remoteMode = cfg.Remote.Mode
+	if remoteMode == "" {
+		switch {
+		case cfg.Tailscale.Enabled && cfg.Relay.Enabled:
+			remoteMode = "tsnet, relay"
+		case cfg.Tailscale.Enabled:
+			remoteMode = "tsnet"
+		case cfg.Relay.Enabled:
+			remoteMode = "relay"
+		}
+	}
+	if cfg.Relay.Enabled {
+		relayStatus = map[string]string{"url": cfg.Relay.URL}
+		if cfg.Remote.PublicURL != "" {
+			relayStatus["public_url"] = cfg.Remote.PublicURL
+		}
+	}
+
 	// ── Resolve TCP listen address and auth token ──
 
 	resolved, err := cfg.ListenAddr()
@@ -1797,6 +1823,11 @@ func serve(stderr io.Writer) int {
 	return 0
 }
 
+type relayHealthStatus struct {
+	URL       string `json:"url"`
+	PublicURL string `json:"public_url,omitempty"`
+}
+
 // runStatus queries the running daemon via Unix socket and prints health info.
 func runStatus(stdout, stderr io.Writer) int {
 	sock := paths.SocketPath()
@@ -1812,11 +1843,14 @@ func runStatus(stdout, stderr io.Writer) int {
 	var health struct {
 		OK   bool `json:"ok"`
 		Data struct {
-			Version         string `json:"version"`
-			Status          string `json:"status"`
-			Listen          string `json:"listen"`
-			TailscaleURL    string `json:"tailscale_url,omitempty"`
-			UpdateAvailable string `json:"update_available,omitempty"`
+			Version         string             `json:"version"`
+			Status          string             `json:"status"`
+			Listen          string             `json:"listen"`
+			RemoteMode      string             `json:"remote_mode,omitempty"`
+			TailscaleURL    string             `json:"tailscale_url,omitempty"`
+			Tailscale       *tsHealth          `json:"tailscale,omitempty"`
+			Relay           *relayHealthStatus `json:"relay,omitempty"`
+			UpdateAvailable string             `json:"update_available,omitempty"`
 			Sessions        *struct {
 				LocalAlive  int `json:"local_alive"`
 				RemoteAlive int `json:"remote_alive"`
@@ -1840,9 +1874,7 @@ func runStatus(stdout, stderr io.Writer) int {
 	_, _ = fmt.Fprintf(stdout, "gmuxd %s (%s)\n", d.Version, d.Status)
 	_, _ = fmt.Fprintf(stdout, "  tcp:    %s\n", d.Listen)
 	_, _ = fmt.Fprintf(stdout, "  socket: %s\n", sock)
-	if d.TailscaleURL != "" {
-		_, _ = fmt.Fprintf(stdout, "  remote: %s\n", d.TailscaleURL)
-	}
+	printRemoteStatus(stdout, d.RemoteMode, d.TailscaleURL, d.Tailscale, d.Relay)
 	if d.UpdateAvailable != "" {
 		_, _ = fmt.Fprintf(stdout, "  update: %s available\n", d.UpdateAvailable)
 	}
@@ -1882,6 +1914,48 @@ func runStatus(stdout, stderr io.Writer) int {
 	}
 
 	return 0
+}
+
+func printRemoteStatus(stdout io.Writer, mode, tailscaleURL string, ts *tsHealth, relay *relayHealthStatus) {
+	if mode == "" && tailscaleURL == "" && ts == nil && relay == nil {
+		return
+	}
+	if mode != "" {
+		label := "remote mode"
+		if strings.Contains(mode, ",") {
+			label = "remote modes"
+		}
+		_, _ = fmt.Fprintf(stdout, "  %s: %s\n", label, mode)
+	}
+	if ts != nil {
+		switch {
+		case ts.AuthURL != "":
+			_, _ = fmt.Fprintf(stdout, "  tsnet: needs login\n")
+			_, _ = fmt.Fprintf(stdout, "    login: %s\n", ts.AuthURL)
+		case ts.Connected:
+			url := tailscaleURL
+			if url == "" && ts.FQDN != "" {
+				url = "https://" + ts.FQDN
+			}
+			if url != "" {
+				_, _ = fmt.Fprintf(stdout, "  tsnet: connected %s\n", url)
+			} else {
+				_, _ = fmt.Fprintf(stdout, "  tsnet: connected\n")
+			}
+		default:
+			_, _ = fmt.Fprintf(stdout, "  tsnet: connecting\n")
+		}
+	} else if tailscaleURL != "" {
+		_, _ = fmt.Fprintf(stdout, "  tsnet: %s\n", tailscaleURL)
+	}
+	if relay != nil {
+		if relay.PublicURL != "" {
+			_, _ = fmt.Fprintf(stdout, "  relayd: %s\n", relay.PublicURL)
+		}
+		if relay.URL != "" {
+			_, _ = fmt.Fprintf(stdout, "  relay agent: %s\n", relay.URL)
+		}
+	}
 }
 
 // appendOfflinePeers merges active peers from the manager with offline
