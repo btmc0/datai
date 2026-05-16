@@ -118,7 +118,7 @@ export function LaunchButton({ className, onLaunch, beforeLaunch, cwd, peer, ses
   const showTarget = target.cwd !== ''
 
   const [state, setState] = useState<'idle' | 'open' | 'launching'>('idle')
-  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null)
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number; maxWidth: number } | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const btnRef = useRef<HTMLButtonElement>(null)
 
@@ -130,13 +130,23 @@ export function LaunchButton({ className, onLaunch, beforeLaunch, cwd, peer, ses
     const btn = btnRef.current
     if (!btn) return
     const r = btn.getBoundingClientRect()
-    // Align the menu's default item (first adapter) with the button.
-    // The menu has 4px padding; if a target line is shown it adds ~32px
-    // (target line + divider) that we offset so the first adapter stays aligned.
+    const margin = 12
+    const menuWidth = Math.min(260, window.innerWidth - margin * 2)
+    const itemCount = (launchersSignal.value.length || 1) + (showTarget ? 2 : 0)
+    const estimatedHeight = 8 + itemCount * 34
     const targetOffset = showTarget ? 32 : 0
+
+    // Keep the default item aligned with the + button when possible, then
+    // clamp the fixed menu inside the viewport on both axes.
+    const wantedTop = r.top - 4 - targetOffset
+    const wantedLeft = r.right - menuWidth
+    const maxTop = Math.max(margin, window.innerHeight - estimatedHeight - margin)
+    const maxLeft = Math.max(margin, window.innerWidth - menuWidth - margin)
+
     setMenuPos({
-      top: r.top - 4 - targetOffset,       // 4px = menu padding-top
-      right: window.innerWidth - r.right,  // align menu's right edge with button's right edge
+      top: Math.max(margin, Math.min(wantedTop, maxTop)),
+      left: Math.max(margin, Math.min(wantedLeft, maxLeft)),
+      maxWidth: menuWidth,
     })
   }
 
@@ -182,6 +192,17 @@ export function LaunchButton({ className, onLaunch, beforeLaunch, cwd, peer, ses
     return () => document.removeEventListener('keydown', handler)
   }, [state])
 
+  useEffect(() => {
+    if (state !== 'open') return
+    const update = () => computeMenuPos()
+    window.addEventListener('resize', update)
+    window.addEventListener('scroll', update, true)
+    return () => {
+      window.removeEventListener('resize', update)
+      window.removeEventListener('scroll', update, true)
+    }
+  }, [state, showTarget])
+
   const isOpen = state === 'open' && hasLaunchers
   const isLoading = state === 'launching'
 
@@ -216,7 +237,7 @@ export function LaunchButton({ className, onLaunch, beforeLaunch, cwd, peer, ses
       {isOpen && menuPos && (
         <div
           class="launch-inline-menu"
-          style={{ top: menuPos.top, right: menuPos.right }}
+          style={{ top: menuPos.top, left: menuPos.left, maxWidth: menuPos.maxWidth }}
         >
           {showTarget && (
             <>

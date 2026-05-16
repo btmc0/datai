@@ -240,10 +240,14 @@ body {
   background: var(--bg-surface);
   border: 1px solid var(--border-strong);
   border-radius: 0;
-  min-width: 190px;
+  width: max-content;
+  min-width: min(190px, calc(100vw - 24px));
+  max-width: calc(100vw - 24px);
   z-index: 1000;
   padding: 4px;
-  overflow: hidden;
+  max-height: calc(100vh - 24px);
+  overflow: auto;
+  overscroll-behavior: contain;
 }
 
 .launch-target-line {
@@ -269,6 +273,8 @@ body {
   color: var(--text);
   font-size: 14px;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .launch-inline-item:hover {
