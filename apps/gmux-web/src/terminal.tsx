@@ -11,14 +11,6 @@ import { attachMobileInputHandler } from './mobile-input'
 import { createReplayBuffer } from './replay'
 import { createTerminalIO, type TerminalSize } from './terminal-io'
 import { addPageResumeListener } from './page-resume'
-import {
-  TERMINAL_FONT_SIZE_MAX,
-  TERMINAL_FONT_SIZE_MIN,
-  TERMINAL_FONT_SIZE_STEP,
-  adjustTerminalFontSize,
-  loadTerminalFontSize,
-  saveTerminalFontSize,
-} from './terminal-font-size'
 import { decideViewportResize, sameSize } from './terminal-resize'
 import { MOCK_BY_ID } from './mock-data/index'
 import type { Session } from './types'
@@ -218,6 +210,7 @@ export function TerminalView({
   onKeyboardToggleReady,
   onKeyboardHideReady,
   onKeyboardActiveChange,
+  terminalFontSize,
 }: {
   session: Session
   terminalOptions: ResolvedTerminalOptions
@@ -233,6 +226,7 @@ export function TerminalView({
   onKeyboardToggleReady?: (toggle: (() => void) | null) => void
   onKeyboardHideReady?: (hide: (() => void) | null) => void
   onKeyboardActiveChange?: (active: boolean) => void
+  terminalFontSize: number
 }) {
   const shellRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -252,7 +246,6 @@ export function TerminalView({
   // True once the terminal's font is downloaded; gates xterm mount.
   // See the preload effect below for why this matters.
   const [fontReady, setFontReady] = useState(false)
-  const [terminalFontSize, setTerminalFontSize] = useState(() => loadTerminalFontSize(terminalOptions.fontSize))
 
   const [termLoading, setTermLoading] = useState(true)
   const [wsState, setWsState] = useState<'connecting' | 'open' | 'lost'>('connecting')
@@ -1022,9 +1015,6 @@ export function TerminalView({
     }
   }, [fitAndResize, queueData, queueMany, queueResize, releaseResizeEchoGate, resetResizeEchoGate, session.id, fontReady])
 
-  const changeFontSize = useCallback((delta: number) => {
-    setTerminalFontSize(current => saveTerminalFontSize(adjustTerminalFontSize(current, delta)))
-  }, [])
 
   useEffect(() => {
     const term = termRef.current
@@ -1066,31 +1056,6 @@ export function TerminalView({
           </div>
         </div>
       )}
-      <div class="terminal-font-size-controls" aria-label="Terminal font size">
-        <button
-          type="button"
-          class="terminal-font-size-btn"
-          onClick={() => changeFontSize(-TERMINAL_FONT_SIZE_STEP)}
-          disabled={terminalFontSize <= TERMINAL_FONT_SIZE_MIN}
-          title="Decrease terminal font size"
-          aria-label="Decrease terminal font size"
-        >
-          −
-        </button>
-        <span class="terminal-font-size-value" aria-label={`Terminal font size ${terminalFontSize} pixels`}>
-          {terminalFontSize}px
-        </span>
-        <button
-          type="button"
-          class="terminal-font-size-btn"
-          onClick={() => changeFontSize(TERMINAL_FONT_SIZE_STEP)}
-          disabled={terminalFontSize >= TERMINAL_FONT_SIZE_MAX}
-          title="Increase terminal font size"
-          aria-label="Increase terminal font size"
-        >
-          +
-        </button>
-      </div>
       {showResizePill && (
         <div class="terminal-resize-anchor">
           <button

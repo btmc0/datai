@@ -18,6 +18,14 @@ import { Home } from './home'
 import { LaunchButton } from './launcher'
 import { installCopySession } from './mock-data/export-session'
 import { isCoarsePointerDevice } from './input-device'
+import {
+  TERMINAL_FONT_SIZE_MAX,
+  TERMINAL_FONT_SIZE_MIN,
+  TERMINAL_FONT_SIZE_STEP,
+  adjustTerminalFontSize,
+  loadTerminalFontSize,
+  saveTerminalFontSize,
+} from './terminal-font-size'
 
 import {
   sessions, connState, selected, selectedId, view, health, peers,
@@ -44,8 +52,10 @@ installCopySession()
 
 // ── Components ──
 
-function MainHeader({ session, onRestart }: {
+function MainHeader({ session, terminalFontSize, onTerminalFontSizeChange, onRestart }: {
   session: Session | null
+  terminalFontSize: number
+  onTerminalFontSizeChange: (delta: number) => void
   onRestart?: () => void
 }) {
   if (!session) {
@@ -80,14 +90,21 @@ function MainHeader({ session, onRestart }: {
             {session.status.label}
           </div>
         )}
-        <SessionMenu session={session} onRestart={onRestart} />
+        <SessionMenu
+          session={session}
+          onRestart={onRestart}
+          terminalFontSize={terminalFontSize}
+          onTerminalFontSizeChange={onTerminalFontSizeChange}
+        />
       </div>
     </div>
   )
 }
 
-function SessionMenu({ session, onRestart }: {
+function SessionMenu({ session, terminalFontSize, onTerminalFontSizeChange, onRestart }: {
   session: Session
+  terminalFontSize: number
+  onTerminalFontSizeChange: (delta: number) => void
   onRestart?: () => void
 }) {
   const [open, setOpen] = useState(false)
@@ -153,6 +170,32 @@ function SessionMenu({ session, onRestart }: {
               <div class="session-menu-divider" />
             </>
           )}
+          <div class="session-menu-section-title">Terminal</div>
+          <div class="session-menu-font-row">
+            <span class="session-menu-label">Font size</span>
+            <div class="session-menu-font-controls" aria-label="Terminal font size">
+              <button
+                type="button"
+                class="session-menu-font-btn"
+                onClick={() => onTerminalFontSizeChange(-TERMINAL_FONT_SIZE_STEP)}
+                disabled={terminalFontSize <= TERMINAL_FONT_SIZE_MIN}
+                aria-label="Decrease terminal font size"
+              >
+                −
+              </button>
+              <span class="session-menu-font-value">{terminalFontSize}px</span>
+              <button
+                type="button"
+                class="session-menu-font-btn"
+                onClick={() => onTerminalFontSizeChange(TERMINAL_FONT_SIZE_STEP)}
+                disabled={terminalFontSize >= TERMINAL_FONT_SIZE_MAX}
+                aria-label="Increase terminal font size"
+              >
+                +
+              </button>
+            </div>
+          </div>
+          <div class="session-menu-divider" />
           <div class="session-menu-section-title">Session info</div>
           <div class="session-menu-row">
             <span class="session-menu-label">Adapter</span>
@@ -389,6 +432,10 @@ function App() {
   const termOpts = terminalOptions.value
   const keybindsVal = keybinds.value
   const macCtrl = macCommandIsCtrl.value
+  const [terminalFontSize, setTerminalFontSize] = useState(() => loadTerminalFontSize(termOpts?.fontSize ?? 13))
+  const handleTerminalFontSizeChange = useCallback((delta: number) => {
+    setTerminalFontSize(current => saveTerminalFontSize(adjustTerminalFontSize(current, delta)))
+  }, [])
 
   const { notifPermission, requestNotifPermission } = usePresence()
 
@@ -504,6 +551,8 @@ function App() {
         {viewVal !== null && viewVal.kind !== 'project' && viewVal.kind !== 'home' && (
           <MainHeader
             session={selectedVal}
+            terminalFontSize={terminalFontSize}
+            onTerminalFontSizeChange={handleTerminalFontSizeChange}
             onRestart={selectedVal ? () => { restartSession(selectedVal.id).catch(err => console.error('restart failed:', err)) } : undefined}
           />
         )}
@@ -544,6 +593,7 @@ function App() {
             onKeyboardToggleReady={handleKeyboardToggleReady}
             onKeyboardHideReady={handleKeyboardHideReady}
             onKeyboardActiveChange={handleKeyboardActiveChange}
+            terminalFontSize={terminalFontSize}
           />
         ) : selectedVal && !selectedVal.alive && termOpts && !USE_MOCK ? (
           <ReplayView

@@ -1443,6 +1443,58 @@ body {
   color: var(--text-secondary);
 }
 
+.session-menu-font-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 12px 7px;
+}
+
+.session-menu-font-controls {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid color-mix(in oklch, var(--border) 82%, transparent);
+  background: oklch(100% 0 0 / 0.018);
+}
+
+.session-menu-font-btn {
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  appearance: none;
+}
+
+.session-menu-font-btn:hover:not(:disabled),
+.session-menu-font-btn:focus-visible {
+  background: color-mix(in oklch, var(--accent) 12%, var(--bg-hover));
+  color: var(--accent);
+  outline: none;
+}
+
+.session-menu-font-btn:disabled {
+  opacity: 0.32;
+  cursor: default;
+}
+
+.session-menu-font-value {
+  min-width: 34px;
+  padding: 0 5px;
+  font-family: 'Fira Code', monospace;
+  font-size: 11px;
+  color: var(--text-secondary);
+  text-align: center;
+  user-select: none;
+}
+
 .session-menu-value.stale {
   color: oklch(80% 0.15 65);
 }
@@ -1585,60 +1637,6 @@ body {
   color: oklch(76% 0.012 250);
 }
 
-.terminal-font-size-controls {
-  position: absolute;
-  top: 10px;
-  right: 12px;
-  display: inline-flex;
-  align-items: center;
-  gap: 0;
-  border: 1px solid oklch(from var(--border-strong) l c h / 0.7);
-  background: oklch(from var(--bg-surface) l c h / 0.38);
-  color: oklch(76% 0.012 250 / 0.9);
-  box-shadow: none;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-  z-index: 20;
-  pointer-events: auto;
-  font-family: 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 11px;
-  line-height: 1;
-}
-
-.terminal-font-size-btn {
-  width: 22px;
-  height: 22px;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  appearance: none;
-}
-
-.terminal-font-size-btn:hover:not(:disabled),
-.terminal-font-size-btn:focus-visible {
-  background: color-mix(in oklch, var(--accent) 18%, transparent);
-  color: var(--text);
-  outline: none;
-}
-
-.terminal-font-size-btn:disabled {
-  opacity: 0.32;
-  cursor: default;
-}
-
-.terminal-font-size-value {
-  min-width: 34px;
-  padding: 0 5px;
-  text-align: center;
-  color: var(--text-muted);
-  font-size: 11px;
-  user-select: none;
-}
 
 /* Use JetBrains Mono for italic glyphs since Fira Code has no italic variant.
    The bundled JetBrains Mono italic files (from fonts.css) are referenced here
@@ -3159,8 +3157,7 @@ code {
 
 .terminal-resize-overlay,
 .terminal-disconnected-pill,
-.terminal-scroll-end,
-.terminal-font-size-controls {
+.terminal-scroll-end {
   background: #000;
   border: 1px solid var(--accent-warn);
   color: var(--accent-warn);
@@ -3171,9 +3168,7 @@ code {
   text-transform: uppercase;
 }
 
-.terminal-resize-overlay:hover,
-.terminal-font-size-btn:hover:not(:disabled),
-.terminal-font-size-btn:focus-visible {
+.terminal-resize-overlay:hover {
   background: var(--accent-warn);
   color: #000;
 }
