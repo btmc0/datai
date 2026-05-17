@@ -180,7 +180,7 @@ func TestWriteAfterCloseIsNoOp(t *testing.T) {
 	}
 }
 
-// TestCloseIdempotent: gmuxd, run.go, and ptyserver could each call
+// TestCloseIdempotent: jumpd, run.go, and ptyserver could each call
 // Close on shutdown paths. Idempotence is the contract.
 func TestCloseIdempotent(t *testing.T) {
 	w, _ := writerForTest(t)
@@ -327,7 +327,7 @@ func checkChunkBoundaries(t *testing.T, got []byte, chunkLen int) {
 }
 
 // TestOpenReaderMissing returns the os.ErrNotExist sentinel so
-// gmuxd's broker handler can map it to a clean 404.
+// jumpd's broker handler can map it to a clean 404.
 func TestOpenReaderMissing(t *testing.T) {
 	dir := t.TempDir()
 	_, err := OpenReader(dir)

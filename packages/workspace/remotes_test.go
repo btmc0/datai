@@ -12,27 +12,27 @@ func TestNormalizeRemoteURL(t *testing.T) {
 		want  string
 	}{
 		// SCP-style
-		{"git@github.com:gmuxapp/gmux.git", "github.com/gmuxapp/gmux"},
-		{"git@github.com:gmuxapp/gmux", "github.com/gmuxapp/gmux"},
+		{"git@github.com:sting8k/jump.git", "github.com/sting8k/jump"},
+		{"git@github.com:sting8k/jump", "github.com/sting8k/jump"},
 		{"git@gitlab.com:org/sub/repo.git", "gitlab.com/org/sub/repo"},
 
 		// HTTPS
-		{"https://github.com/gmuxapp/gmux.git", "github.com/gmuxapp/gmux"},
-		{"https://github.com/gmuxapp/gmux", "github.com/gmuxapp/gmux"},
+		{"https://github.com/sting8k/jump.git", "github.com/sting8k/jump"},
+		{"https://github.com/sting8k/jump", "github.com/sting8k/jump"},
 		{"https://gitlab.com/org/sub/repo.git", "gitlab.com/org/sub/repo"},
 
 		// SSH with scheme
-		{"ssh://git@github.com/gmuxapp/gmux.git", "github.com/gmuxapp/gmux"},
-		{"ssh://git@github.com/gmuxapp/gmux", "github.com/gmuxapp/gmux"},
+		{"ssh://git@github.com/sting8k/jump.git", "github.com/sting8k/jump"},
+		{"ssh://git@github.com/sting8k/jump", "github.com/sting8k/jump"},
 
 		// Git protocol
-		{"git://github.com/gmuxapp/gmux.git", "github.com/gmuxapp/gmux"},
+		{"git://github.com/sting8k/jump.git", "github.com/sting8k/jump"},
 
 		// HTTP (some self-hosted)
 		{"http://gitea.local/org/repo.git", "gitea.local/org/repo"},
 
 		// Trailing slash
-		{"https://github.com/gmuxapp/gmux/", "github.com/gmuxapp/gmux"},
+		{"https://github.com/sting8k/jump/", "github.com/sting8k/jump"},
 
 		// Edge cases
 		{"", ""},
@@ -54,13 +54,13 @@ func TestNormalizeRemoteURLSymmetry(t *testing.T) {
 	// The same repo accessed via different protocols must normalize to the same value.
 	// This is the core property that makes "any shared remote" grouping work.
 	urls := []string{
-		"git@github.com:gmuxapp/gmux.git",
-		"https://github.com/gmuxapp/gmux.git",
-		"ssh://git@github.com/gmuxapp/gmux.git",
-		"git://github.com/gmuxapp/gmux.git",
-		"https://github.com/gmuxapp/gmux",
+		"git@github.com:sting8k/jump.git",
+		"https://github.com/sting8k/jump.git",
+		"ssh://git@github.com/sting8k/jump.git",
+		"git://github.com/sting8k/jump.git",
+		"https://github.com/sting8k/jump",
 	}
-	want := "github.com/gmuxapp/gmux"
+	want := "github.com/sting8k/jump"
 	for _, u := range urls {
 		got := NormalizeRemoteURL(u)
 		if got != want {
@@ -76,10 +76,10 @@ func TestParseGitConfigRemotes(t *testing.T) {
 	repositoryformatversion = 0
 	bare = false
 [remote "origin"]
-	url = https://github.com/gmuxapp/gmux.git
+	url = https://github.com/sting8k/jump.git
 	fetch = +refs/heads/*:refs/remotes/origin/*
 [remote "upstream"]
-	url = git@github.com:other/gmux.git
+	url = git@github.com:other/jump.git
 	fetch = +refs/heads/*:refs/remotes/upstream/*
 [branch "main"]
 	remote = origin
@@ -90,10 +90,10 @@ func TestParseGitConfigRemotes(t *testing.T) {
 	if len(got) != 2 {
 		t.Fatalf("expected 2 remotes, got %d: %v", len(got), got)
 	}
-	if got["origin"] != "https://github.com/gmuxapp/gmux.git" {
+	if got["origin"] != "https://github.com/sting8k/jump.git" {
 		t.Errorf("origin = %q", got["origin"])
 	}
-	if got["upstream"] != "git@github.com:other/gmux.git" {
+	if got["upstream"] != "git@github.com:other/jump.git" {
 		t.Errorf("upstream = %q", got["upstream"])
 	}
 }
@@ -103,15 +103,15 @@ func TestDetectRemotesGitRepo(t *testing.T) {
 	gitDir := filepath.Join(root, ".git")
 	os.MkdirAll(gitDir, 0o755)
 	os.WriteFile(filepath.Join(gitDir, "config"), []byte(`[remote "origin"]
-	url = https://github.com/gmuxapp/gmux.git
+	url = https://github.com/sting8k/jump.git
 `), 0o644)
 
 	remotes := DetectRemotes(root)
 	if remotes == nil {
 		t.Fatal("expected remotes, got nil")
 	}
-	if remotes["origin"] != "github.com/gmuxapp/gmux" {
-		t.Errorf("origin = %q, want %q", remotes["origin"], "github.com/gmuxapp/gmux")
+	if remotes["origin"] != "github.com/sting8k/jump" {
+		t.Errorf("origin = %q, want %q", remotes["origin"], "github.com/sting8k/jump")
 	}
 }
 
@@ -123,14 +123,14 @@ func TestDetectRemotesJJColocated(t *testing.T) {
 
 	os.WriteFile(filepath.Join(root, ".jj", "repo", "store", "git_target"), []byte("../../../.git"), 0o644)
 	os.WriteFile(filepath.Join(root, ".git", "config"), []byte(`[remote "origin"]
-	url = git@github.com:gmuxapp/gmux.git
+	url = git@github.com:sting8k/jump.git
 `), 0o644)
 
 	remotes := DetectRemotes(root)
 	if remotes == nil {
 		t.Fatal("expected remotes, got nil")
 	}
-	if remotes["origin"] != "github.com/gmuxapp/gmux" {
+	if remotes["origin"] != "github.com/sting8k/jump" {
 		t.Errorf("origin = %q", remotes["origin"])
 	}
 }
@@ -144,14 +144,14 @@ func TestDetectRemotesJJNonColocated(t *testing.T) {
 
 	os.WriteFile(filepath.Join(root, ".jj", "repo", "store", "git_target"), []byte("git"), 0o644)
 	os.WriteFile(filepath.Join(gitDir, "config"), []byte(`[remote "origin"]
-	url = https://github.com/gmuxapp/gmux.git
+	url = https://github.com/sting8k/jump.git
 `), 0o644)
 
 	remotes := DetectRemotes(root)
 	if remotes == nil {
 		t.Fatal("expected remotes, got nil")
 	}
-	if remotes["origin"] != "github.com/gmuxapp/gmux" {
+	if remotes["origin"] != "github.com/sting8k/jump" {
 		t.Errorf("origin = %q", remotes["origin"])
 	}
 }
@@ -168,7 +168,7 @@ func TestDetectRemotesWorktree(t *testing.T) {
 	os.MkdirAll(worktreeRoot, 0o755)
 
 	os.WriteFile(filepath.Join(mainGit, "config"), []byte(`[remote "origin"]
-	url = https://github.com/gmuxapp/gmux.git
+	url = https://github.com/sting8k/jump.git
 `), 0o644)
 	os.WriteFile(filepath.Join(wtGitdir, "commondir"), []byte("../..\n"), 0o644)
 	os.WriteFile(filepath.Join(worktreeRoot, ".git"), []byte("gitdir: "+wtGitdir+"\n"), 0o644)
@@ -177,7 +177,7 @@ func TestDetectRemotesWorktree(t *testing.T) {
 	if remotes == nil {
 		t.Fatal("expected remotes, got nil")
 	}
-	if remotes["origin"] != "github.com/gmuxapp/gmux" {
+	if remotes["origin"] != "github.com/sting8k/jump" {
 		t.Errorf("origin = %q", remotes["origin"])
 	}
 }
@@ -214,19 +214,19 @@ func TestDetectRemotesMultiple(t *testing.T) {
 	root := t.TempDir()
 	os.MkdirAll(filepath.Join(root, ".git"), 0o755)
 	os.WriteFile(filepath.Join(root, ".git", "config"), []byte(`[remote "origin"]
-	url = git@github.com:mgabor3141/gmux.git
+	url = git@github.com:mgabor3141/jump.git
 [remote "upstream"]
-	url = git@github.com:gmuxapp/gmux.git
+	url = git@github.com:sting8k/jump.git
 `), 0o644)
 
 	remotes := DetectRemotes(root)
 	if len(remotes) != 2 {
 		t.Fatalf("expected 2 remotes, got %d: %v", len(remotes), remotes)
 	}
-	if remotes["origin"] != "github.com/mgabor3141/gmux" {
+	if remotes["origin"] != "github.com/mgabor3141/jump" {
 		t.Errorf("origin = %q", remotes["origin"])
 	}
-	if remotes["upstream"] != "github.com/gmuxapp/gmux" {
+	if remotes["upstream"] != "github.com/sting8k/jump" {
 		t.Errorf("upstream = %q", remotes["upstream"])
 	}
 }

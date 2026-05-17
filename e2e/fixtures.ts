@@ -1,6 +1,6 @@
 /**
  * Adapter session-file fixtures used by both global-setup (pre-seeded
- * before gmuxd starts, so the bootstrap scan picks them up) and by
+ * before jumpd starts, so the bootstrap scan picks them up) and by
  * test specs (written at test time to exercise the watcher path).
  *
  * Each fixture is a minimally valid JSONL document for its adapter.
@@ -177,7 +177,7 @@ export function appendToSession(filePath: string, jsonLine: object): void {
 }
 
 /**
- * Pre-seeded smoke fixtures, written by global-setup before gmuxd
+ * Pre-seeded smoke fixtures, written by global-setup before jumpd
  * starts. Each tests the bootstrap scan path through a real parser.
  *
  * These slugs and toolIDs are referenced from the smoke spec, so the
@@ -187,19 +187,19 @@ export function appendToSession(filePath: string, jsonLine: object): void {
 export const SMOKE_FIXTURES: FixtureSpec[] = [
   {
     kind: 'pi',
-    cwd: '/var/gmux-e2e/smoke-pi',
+    cwd: '/var/jump-e2e/smoke-pi',
     toolID: '00000000-0000-0000-0000-0000000000a1',
     title: 'pi smoke fixture',
   },
   {
     kind: 'claude',
-    cwd: '/var/gmux-e2e/smoke-claude',
+    cwd: '/var/jump-e2e/smoke-claude',
     toolID: '00000000-0000-0000-0000-0000000000a2',
     title: 'claude smoke fixture',
   },
   {
     kind: 'codex',
-    cwd: '/var/gmux-e2e/smoke-codex',
+    cwd: '/var/jump-e2e/smoke-codex',
     toolID: '00000000-0000-0000-0000-0000000000a3',
     title: 'codex smoke fixture',
   },

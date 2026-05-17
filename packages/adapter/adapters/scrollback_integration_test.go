@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gmuxapp/gmux/packages/adapter/adapters/testutil"
+	"github.com/sting8k/jump/packages/adapter/adapters/testutil"
 )
 
 // --- Pi scrollback tests ---
@@ -25,7 +25,7 @@ import (
 func TestScrollbackPiConversation(t *testing.T) {
 	requirePiIntegration(t)
 
-	g := testutil.StartGmuxd(t)
+	g := testutil.StartJumpd(t)
 	cwd := t.TempDir()
 
 	sess := g.Launch(piModel, cwd)
@@ -62,7 +62,7 @@ func TestScrollbackPiConversation(t *testing.T) {
 func TestScrollbackPiMultiTurn(t *testing.T) {
 	requirePiIntegration(t)
 
-	g := testutil.StartGmuxd(t)
+	g := testutil.StartJumpd(t)
 	cwd := t.TempDir()
 
 	sess := g.Launch(piModel, cwd)
@@ -99,7 +99,7 @@ func TestScrollbackPiMultiTurn(t *testing.T) {
 func TestScrollbackPiNoSpinnerFrames(t *testing.T) {
 	requirePiIntegration(t)
 
-	g := testutil.StartGmuxd(t)
+	g := testutil.StartJumpd(t)
 	cwd := t.TempDir()
 
 	sess := g.Launch(piModel, cwd)
@@ -141,7 +141,7 @@ func TestScrollbackPiNoSpinnerFrames(t *testing.T) {
 // TestScrollbackShellPreservesOutput verifies plain shell output is
 // retained in scrollback.
 func TestScrollbackShellPreservesOutput(t *testing.T) {
-	g := testutil.StartGmuxd(t)
+	g := testutil.StartJumpd(t)
 	cwd := t.TempDir()
 
 	sess := g.Launch([]string{"bash"}, cwd)
@@ -171,7 +171,7 @@ func TestScrollbackShellPreservesOutput(t *testing.T) {
 // buffer resets on clear so that reconnecting clients see a clean screen
 // instead of stale pre-clear lines.
 func TestScrollbackShellClearDiscardsOldContent(t *testing.T) {
-	g := testutil.StartGmuxd(t)
+	g := testutil.StartJumpd(t)
 	cwd := t.TempDir()
 
 	sess := g.Launch([]string{"bash"}, cwd)

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gmuxapp/gmux/packages/adapter"
+	"github.com/sting8k/jump/packages/adapter"
 )
 
 // --- Matching ---
@@ -193,13 +193,13 @@ func TestParseSessionFileStringContent(t *testing.T) {
 
 func TestParseNewLinesCwd(t *testing.T) {
 	events := NewPi().ParseNewLines([]string{
-		`{"type":"session","id":"abc","cwd":"/home/user/dev/gmux","timestamp":"2026-03-19T10:00:00Z"}`,
+		`{"type":"session","id":"abc","cwd":"/home/user/dev/jump","timestamp":"2026-03-19T10:00:00Z"}`,
 	}, "")
 	if len(events) != 1 {
 		t.Fatalf("expected 1 event, got %d: %v", len(events), events)
 	}
-	if events[0].Cwd != "/home/user/dev/gmux" {
-		t.Errorf("expected cwd '/home/user/dev/gmux', got %q", events[0].Cwd)
+	if events[0].Cwd != "/home/user/dev/jump" {
+		t.Errorf("expected cwd '/home/user/dev/jump', got %q", events[0].Cwd)
 	}
 }
 
@@ -582,9 +582,9 @@ func TestCanResume(t *testing.T) {
 // --- Helpers ---
 
 func TestSessionDirEncoding(t *testing.T) {
-	dir := NewPi().SessionDir("/home/mg/dev/gmux")
-	if base := filepath.Base(dir); base != "--home-mg-dev-gmux--" {
-		t.Errorf("expected --home-mg-dev-gmux--, got %s", base)
+	dir := NewPi().SessionDir("/home/mg/dev/jump")
+	if base := filepath.Base(dir); base != "--home-mg-dev-jump--" {
+		t.Errorf("expected --home-mg-dev-jump--, got %s", base)
 	}
 }
 

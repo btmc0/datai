@@ -3,12 +3,12 @@ title: Multi-Machine Sessions
 description: See sessions from every machine, container, and VM in one dashboard.
 ---
 
-gmux uses a hub-and-spoke model to aggregate sessions across machines. You pick one gmuxd as your dashboard (the hub). It connects outward to other gmuxd instances (the spokes) and merges their sessions into a single UI. The browser only talks to the hub.
+jump uses a hub-and-spoke model to aggregate sessions across machines. You pick one jumpd as your dashboard (the hub). It connects outward to other jumpd instances (the spokes) and merges their sessions into a single UI. The browser only talks to the hub.
 
 ```
-browser --> gmux-laptop (hub)
+browser --> jump-laptop (hub)
                |-- local sessions
-               |-- <-- gmux-desktop (spoke, via Tailscale)
+               |-- <-- jump-desktop (spoke, via Tailscale)
                |       \-- desktop sessions
                \-- <-- devcontainer (spoke, Docker bridge)
                        \-- container sessions
@@ -18,9 +18,9 @@ Spokes need zero configuration changes. The hub authenticates with each spoke's 
 
 ## Tailscale auto-discovery
 
-When [Tailscale](/remote-access) is enabled, gmuxd automatically discovers other gmux instances on the same tailnet. No manual peer configuration is needed: install gmux on two machines, enable Tailscale on both, and they find each other.
+When [Tailscale](/remote-access) is enabled, jumpd automatically discovers other jump instances on the same tailnet. No manual peer configuration is needed: install jump on two machines, enable Tailscale on both, and they find each other.
 
-gmuxd subscribes to tailnet changes via Tailscale's `WatchIPNBus` API and reacts immediately when devices come online. Each new device is probed with a `/v1/health` request to confirm it's running gmux, then added as a peer. Results are cached so known devices are re-registered instantly on restart without re-probing.
+jumpd subscribes to tailnet changes via Tailscale's `WatchIPNBus` API and reacts immediately when devices come online. Each new device is probed with a `/v1/health` request to confirm it's running jump, then added as a peer. Results are cached so known devices are re-registered instantly on restart without re-probing.
 
 Authentication is handled by Tailscale identity. The tailscale listener uses `WhoIs` to verify the connecting peer belongs to the same user. No bearer tokens are exchanged.
 
@@ -37,20 +37,20 @@ Add one line to your `devcontainer.json` and sessions from inside the container 
 
 ```json
 "features": {
-  "ghcr.io/gmuxapp/features/gmux": {}
+  "ghcr.io/sting8k/features/jump": {}
 }
 ```
 
-The host gmuxd detects the container via Docker events, reads the auth token, and connects over the Docker bridge. See the [Devcontainers](/devcontainers) guide for setup, options, and details.
+The host jumpd detects the container via Docker events, reads the auth token, and connects over the Docker bridge. See the [Devcontainers](/devcontainers) guide for setup, options, and details.
 
 ## Manual peers
 
-For machines that aren't on the same tailnet, configure peers explicitly in `~/.config/gmux/host.toml`:
+For machines that aren't on the same tailnet, configure peers explicitly in `~/.config/jump/host.toml`:
 
 ```toml
 [[peers]]
 name = "server"
-url = "https://gmux-server.your-tailnet.ts.net"
+url = "https://jump-server.your-tailnet.ts.net"
 token = "the-spoke-auth-token"
 ```
 
@@ -91,9 +91,9 @@ This pair covers the common failure modes: NAT rebinds, tunnel hiccups, and netw
 
 ## Protocol details
 
-A peer gmuxd is a regular client of the spoke's public API. There are no peer-only endpoints and no peer-only auth scheme; the hub uses the spoke's bearer token exactly the same way a browser uses it on the TCP listener. If the browser path works, the peer path works.
+A peer jumpd is a regular client of the spoke's public API. There are no peer-only endpoints and no peer-only auth scheme; the hub uses the spoke's bearer token exactly the same way a browser uses it on the TCP listener. If the browser path works, the peer path works.
 
-The hub connects to these public gmuxd endpoints on each spoke:
+The hub connects to these public jumpd endpoints on each spoke:
 
 | Endpoint | Purpose |
 |----------|---------|

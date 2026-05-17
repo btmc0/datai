@@ -1,9 +1,9 @@
 ---
 title: Adapters
-description: How gmux understands different tools.
+description: How jump understands different tools.
 ---
 
-Adapters teach gmux how to interpret specific tools. When you launch a session, gmux automatically detects what you're running and applies the right adapter.
+Adapters teach jump how to interpret specific tools. When you launch a session, jump automatically detects what you're running and applies the right adapter.
 
 ## What adapters do
 
@@ -12,18 +12,18 @@ An adapter watches the terminal output of your process and reports structured st
 - **Working** — the tool is busy (cyan pulsing dot)
 - **Idle** — the tool is waiting (no dot)
 
-Without an adapter, gmux still tracks whether the process is alive — but with one, you get meaningful at-a-glance status like "thinking" or "42/50 passed".
+Without an adapter, jump still tracks whether the process is alive — but with one, you get meaningful at-a-glance status like "thinking" or "42/50 passed".
 
 ## Automatic detection
 
-You don't configure adapters. gmux recognizes tools by their command name:
+You don't configure adapters. jump recognizes tools by their command name:
 
 ```bash
-gmux claude        # → claude adapter
-gmux codex         # → codex adapter
-gmux pi            # → pi adapter
-gmux bash          # → shell adapter (fallback)
-gmux make build    # → shell adapter (fallback)
+jump claude        # → claude adapter
+jump codex         # → codex adapter
+jump pi            # → pi adapter
+jump bash          # → shell adapter (fallback)
+jump make build    # → shell adapter (fallback)
 ```
 
 If no specific adapter matches, the **shell** adapter handles it.
@@ -66,10 +66,10 @@ See [pi integration](/integrations/pi) for details.
 
 ## Self-reporting
 
-Any process can report its own status without a custom adapter. `gmux` sets `$GMUX_SOCKET` in the child's environment:
+Any process can report its own status without a custom adapter. `jump` sets `$JUMP_SOCKET` in the child's environment:
 
 ```bash
-curl -X PUT --unix-socket "$GMUX_SOCKET" \
+curl -X PUT --unix-socket "$JUMP_SOCKET" \
   http://localhost/status \
   -H 'Content-Type: application/json' \
   -d '{"label": "building", "working": true}'

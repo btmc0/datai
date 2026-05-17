@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-// Schema v2 — matches gmuxd's API response (GET /v1/sessions, session-upsert SSE)
+// Schema v2 — matches jumpd's API response (GET /v1/sessions, session-upsert SSE)
 
 export const SessionStatusSchema = z.object({
   label: z.string(),

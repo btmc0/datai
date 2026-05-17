@@ -1,6 +1,6 @@
-// Package adapter defines the interface for teaching gmux how to work
+// Package adapter defines the interface for teaching jump how to work
 // with specific tools. Adapters are matched by command and produce
-// Status events for the sidebar. Both gmux and gmuxd import this package.
+// Status events for the sidebar. Both jump and jumpd import this package.
 package adapter
 
 import (
@@ -16,14 +16,14 @@ type Status struct {
 	Error   bool   `json:"error,omitempty"` // true when the adapter hit a retryable error (red dot)
 }
 
-// Adapter teaches gmux how to work with a specific child process.
+// Adapter teaches jump how to work with a specific child process.
 // This is the base interface — all adapters must implement it.
 type Adapter interface {
 	// Name returns the adapter identifier (e.g. "pi", "shell").
 	Name() string
 
 	// Discover reports whether this adapter's backing tool is available on
-	// the current machine. gmuxd calls this during startup to decide which
+	// the current machine. jumpd calls this during startup to decide which
 	// adapter launchers should be exposed on this system.
 	Discover() bool
 
@@ -31,7 +31,7 @@ type Adapter interface {
 	Match(command []string) bool
 
 	// Env returns adapter-specific environment variables for the child.
-	// Common GMUX_* vars are set automatically by the runner.
+	// Common JUMP_* vars are set automatically by the runner.
 	// Return nil if no extra env is needed.
 	Env(ctx EnvContext) []string
 
@@ -50,7 +50,7 @@ type EnvContext struct {
 }
 
 // Launcher describes how to start a new session with a given adapter.
-// Available is populated by gmuxd after adapter discovery runs on the current host.
+// Available is populated by jumpd after adapter discovery runs on the current host.
 type Launcher struct {
 	ID          string   `json:"id"`
 	Label       string   `json:"label"`

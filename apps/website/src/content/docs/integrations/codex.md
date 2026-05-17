@@ -1,19 +1,19 @@
 ---
 title: Codex
-description: How gmux works with OpenAI Codex CLI.
+description: How jump works with OpenAI Codex CLI.
 ---
 
-gmux has built-in support for [Codex CLI](https://developers.openai.com/codex/cli). No configuration is needed — launch Codex through gmux and everything works automatically.
+jump has built-in support for [Codex CLI](https://developers.openai.com/codex/cli). No configuration is needed — launch Codex through jump and everything works automatically.
 
 ## What you get
 
 ### Live status
 
-The sidebar shows when Codex is actively working. gmux detects `user_message` and `task_complete` events in the session file — a user message sets the status to **working** (pulsing cyan dot), and a completed task clears it.
+The sidebar shows when Codex is actively working. jump detects `user_message` and `task_complete` events in the session file — a user message sets the status to **working** (pulsing cyan dot), and a completed task clears it.
 
 ### Session titles
 
-Instead of showing "codex" for every session, gmux extracts the text of your first prompt as the title:
+Instead of showing "codex" for every session, jump extracts the text of your first prompt as the title:
 
 ```
 ▼ ~/dev/myapp
@@ -26,30 +26,30 @@ System-injected context (permissions, environment, AGENTS.md) is automatically f
 
 ### Resumable sessions
 
-When a Codex session exits, it remains in the sidebar as a resumable entry. Click it to resume — gmux launches `codex resume <session-id>`.
+When a Codex session exits, it remains in the sidebar as a resumable entry. Click it to resume — jump launches `codex resume <session-id>`.
 
 ### Launch from the UI
 
-Codex appears in the launch menu only when the `codex` binary is on `PATH`. `gmuxd` checks this at startup; if not found, the Codex launcher is omitted from the UI.
+Codex appears in the launch menu only when the `codex` binary is on `PATH`. `jumpd` checks this at startup; if not found, the Codex launcher is omitted from the UI.
 
 ## How it works
 
 ### Detection
 
-- **Availability discovery** in `gmuxd`: `LookPath("codex")` at startup
-- **Runtime matching** in `gmux`: scan the launched command for a `codex` binary name
+- **Availability discovery** in `jumpd`: `LookPath("codex")` at startup
+- **Runtime matching** in `jump`: scan the launched command for a `codex` binary name
 
 ```bash
-gmux codex                           # ✓ matched
-gmux codex "Fix the auth bug"        # ✓ matched
-gmux /usr/bin/codex                  # ✓ matched
-gmux echo "not codex"             # ✗ not matched
+jump codex                           # ✓ matched
+jump codex "Fix the auth bug"        # ✓ matched
+jump /usr/bin/codex                  # ✓ matched
+jump echo "not codex"             # ✗ not matched
 ```
 
 If detection fails, override it:
 
 ```bash
-GMUX_ADAPTER=codex gmux my-codex-wrapper
+JUMP_ADAPTER=codex jump my-codex-wrapper
 ```
 
 ### Session files
@@ -67,7 +67,7 @@ Codex stores sessions as JSONL files in `~/.codex/sessions/`, organized by date:
 
 Unlike Claude Code and pi which organize by working directory, Codex uses a flat date-based structure. The working directory is stored inside each session's `session_meta` header.
 
-gmuxd walks the full date tree to discover session files.
+jumpd walks the full date tree to discover session files.
 
 ### Session file format
 
@@ -82,7 +82,7 @@ Each line is a JSON object with a `type` field:
 
 ### Status detection
 
-gmux watches event_msg lines in the session file for status signals:
+jump watches event_msg lines in the session file for status signals:
 
 | Event type | Sidebar effect |
 |---|---|
@@ -92,6 +92,6 @@ gmux watches event_msg lines in the session file for status signals:
 
 ## Limitations
 
-- **No custom titles.** Codex doesn't generate session titles like Claude Code does. gmux uses the first user prompt as the title.
-- **Date-based storage.** Sessions aren't grouped by project. gmux scans all session files and matches them to working directories by reading the `session_meta` header.
-- **Status is event-based.** gmux doesn't distinguish between "thinking", "running a command", or "writing code" — all are shown as "working" between `user_message` and `task_complete`.
+- **No custom titles.** Codex doesn't generate session titles like Claude Code does. jump uses the first user prompt as the title.
+- **Date-based storage.** Sessions aren't grouped by project. jump scans all session files and matches them to working directories by reading the `session_meta` header.
+- **Status is event-based.** jump doesn't distinguish between "thinking", "running a command", or "writing code" — all are shown as "working" between `user_message` and `task_complete`.

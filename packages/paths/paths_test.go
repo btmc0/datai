@@ -16,11 +16,11 @@ func TestNormalizePath(t *testing.T) {
 		want  string
 	}{
 		{"~", home},
-		{"~/dev/gmux", home + "/dev/gmux"},
+		{"~/dev/jump", home + "/dev/jump"},
 		{"/opt/data", "/opt/data"},
 		{"", ""},
 		// Already absolute: unchanged.
-		{home + "/dev/gmux", home + "/dev/gmux"},
+		{home + "/dev/jump", home + "/dev/jump"},
 	}
 	for _, tt := range tests {
 		got := NormalizePath(tt.input)
@@ -41,13 +41,13 @@ func TestCanonicalizePath(t *testing.T) {
 		want  string
 	}{
 		{home, "~"},
-		{home + "/dev/gmux", "~/dev/gmux"},
+		{home + "/dev/jump", "~/dev/jump"},
 		{home + "/", "~"},
 		{"/opt/data", "/opt/data"},
-		{"/tmp/../tmp", "/tmp"},
+		{"/jump-definitely-not-existing/../jump-definitely-not-existing", "/jump-definitely-not-existing"},
 		{"", ""},
 		// Already canonical: passes through unchanged.
-		{"~/dev/gmux", "~/dev/gmux"},
+		{"~/dev/jump", "~/dev/jump"},
 		{"~", "~"},
 	}
 	for _, tt := range tests {

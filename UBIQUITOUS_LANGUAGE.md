@@ -19,14 +19,14 @@
 | **Resumable**           | Dead session whose `Command` is set so a new runner can be spawned from it                          | Restartable            |
 | **Pre-attribution**     | Transient phase for tool-backed sessions before their adapter file appears: has ID, no slug yet     | Ephemeral, unattributed |
 | **Attributed**          | Tool-backed session whose adapter file exists, giving it a real slug                                | Named                  |
-| **Fast-exit**           | A runner whose child finished before gmuxd's `queryMeta` reaches it; lands in the store as Alive=false directly, never as Alive=true | Quick-exit |
+| **Fast-exit**           | A runner whose child finished before jumpd's `queryMeta` reaches it; lands in the store as Alive=false directly, never as Alive=true | Quick-exit |
 
 ## Components
 
 | Term            | Definition                                                                                       | Aliases to avoid            |
 | --------------- | ------------------------------------------------------------------------------------------------ | --------------------------- |
-| **Runner**      | A `gmux` process holding a child PTY and serving WS / scrollback over a per-session Unix socket  | gmux process, child         |
-| **Daemon**      | The single per-host `gmuxd` process; central registry, broker, and proxy                         | Server, gmuxd (in prose)    |
+| **Runner**      | A `jump` process holding a child PTY and serving WS / scrollback over a per-session Unix socket  | jump process, child         |
+| **Daemon**      | The single per-host `jumpd` process; central registry, broker, and proxy                         | Server, jumpd (in prose)    |
 | **Broker**      | The daemon's role serving readonly state (today: scrollback) sourced from disk for dead sessions | Replay server               |
 | **Adapter**     | A plugin (pi, claude, shell, ...) that resolves commands, derives slugs, and may write tool files | Plugin, kind                |
 | **Frontend**    | The web UI consuming `/v1/events` SSE and `/ws/<id>` WebSockets                                  | Client (overloaded), web    |
@@ -88,7 +88,7 @@ The four stores have orthogonal concerns. Mixing them is a smell:
 
 ## Example dialogue
 
-> **Dev:** "User dismisses a session, then runs `gmux bash` in the same cwd. New session, same slug. What happens?"
+> **Dev:** "User dismisses a session, then runs `jump bash` in the same cwd. New session, same slug. What happens?"
 
 > **Domain expert:** "It's a fresh **Session** with a new **Session ID** but the same **Slug** — same cwd, same derivation. The **Store** does **Slug-takeover**: evicts the old dead one if it's still around, inserts the new live one. **Projects.json** doesn't notice — its **Key** for that slot is the slug, which is unchanged."
 
@@ -116,6 +116,6 @@ The four stores have orthogonal concerns. Mixing them is a smell:
 
 - **"Identity"**: in this codebase, **Slug** is identity, **Session ID** is instance. Treat them as distinct columns even though `SessionKey` coalesces them for projects.json's purposes.
 
-- **"Local"** has two meanings: the local *machine* (where this gmuxd runs), and a **Local peer** (`PeerConfig.Local = true`, currently devcontainers only). Prefer **Local peer** for the latter to avoid collision with "the local daemon".
+- **"Local"** has two meanings: the local *machine* (where this jumpd runs), and a **Local peer** (`PeerConfig.Local = true`, currently devcontainers only). Prefer **Local peer** for the latter to avoid collision with "the local daemon".
 
 - **"Broker"** was introduced for the scrollback endpoint. Reserve it for read-only daemon endpoints serving disk-backed state for dead sessions; not a synonym for the daemon as a whole.

@@ -3,10 +3,10 @@ import starlight from '@astrojs/starlight';
 import mermaid from 'astro-mermaid';
 
 export default defineConfig({
-  site: 'https://gmux.app',
+  site: 'https://github.com/sting8k/jump',
   integrations: [
     starlight({
-      title: 'gmux',
+      title: 'jump',
       description: 'Keep tabs on every AI agent, test runner, and long-running process across your machines.',
       logo: {
         light: './src/assets/logo-light.svg',
@@ -14,7 +14,7 @@ export default defineConfig({
         replacesTitle: true,
       },
       social: [
-        { icon: 'github', label: 'GitHub', href: 'https://github.com/gmuxapp/gmux' },
+        { icon: 'github', label: 'GitHub', href: 'https://github.com/sting8k/jump' },
         { icon: 'discord', label: 'Discord', href: 'https://discord.gg/Mg6EJHFZxu' },
       ],
       customCss: ['./src/styles/custom.css'],

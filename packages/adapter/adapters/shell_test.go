@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/gmuxapp/gmux/packages/adapter"
+	"github.com/sting8k/jump/packages/adapter"
 )
 
 func TestShellImplementsInterfaces(t *testing.T) {
@@ -102,7 +102,7 @@ func TestShellSessionDir(t *testing.T) {
 
 	sh := NewShell()
 	dir := sh.SessionDir("/home/user/dev/project")
-	expected := filepath.Join(tmp, "gmux", "shell-sessions", "--home-user-dev-project--")
+	expected := filepath.Join(tmp, "jump", "shell-sessions", "--home-user-dev-project--")
 	if dir != expected {
 		t.Errorf("SessionDir = %q, want %q", dir, expected)
 	}

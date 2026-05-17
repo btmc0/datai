@@ -16,7 +16,7 @@
   },
   {
     "label": "test all",
-    "command": "pnpm test && cd cli/gmux && go test ./... && cd ../../services/gmuxd && go test ./... && cd ../../packages/adapter && go test ./...",
+    "command": "pnpm test && cd cli/jump && go test ./... && cd ../../services/jumpd && go test ./... && cd ../../packages/adapter && go test ./...",
     "allow_concurrent_runs": false,
     "show_command": false
   },

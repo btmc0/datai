@@ -113,7 +113,7 @@ All third-party actions are pinned to full commit SHAs to prevent supply-chain a
 
 ### Environments
 
-The `release` job uses the `release` environment. Sensitive secrets (`HOMEBREW_TAP_TOKEN`, `DISCORD_WEBHOOK_URL`) should be configured as environment secrets there, not as repo-level secrets. This scopes them to only the release job and allows deployment branch restrictions.
+The `release` job uses the `release` environment. Sensitive secrets such as `DISCORD_WEBHOOK_URL` should be configured as environment secrets there, not as repo-level secrets. This scopes them to only the release job and allows deployment branch restrictions.
 
 ### Loop prevention
 
@@ -133,7 +133,7 @@ The release PR (`release/next`) is also rebase-merged: it lands as a single `rel
 These settings should be configured in the GitHub repository:
 
 1. **Settings → Actions → General → Workflow permissions**: select **"Read repository contents and packages permissions"** (least-privilege default for all workflows).
-2. **Settings → Environments**: create a `release` environment with deployment branches restricted to `main`. Move `HOMEBREW_TAP_TOKEN` and `DISCORD_WEBHOOK_URL` there.
+2. **Settings → Environments**: create a `release` environment with deployment branches restricted to `main`. Move `DISCORD_WEBHOOK_URL` there if release notifications are enabled.
 3. **Settings → Branches → main → Branch protection**: require the `regen / regen` status check. Don't enable "require branches to be up to date before merging."
 
 ## Scripts

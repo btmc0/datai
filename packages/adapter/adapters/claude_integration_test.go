@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gmuxapp/gmux/packages/adapter/adapters/testutil"
+	"github.com/sting8k/jump/packages/adapter/adapters/testutil"
 )
 
 func requireClaudeIntegration(t *testing.T) {
@@ -26,7 +26,7 @@ var claudeModel = []string{"claude", "--model", "claude-haiku-4-5"}
 // claudeSendAndWait sends a message to claude and waits for the response.
 // Claude streams output to the terminal, so we wait for the scrollback to
 // grow. File attribution happens after the turn completes.
-func claudeSendAndWait(t *testing.T, g *testutil.Gmuxd, send func(string), sessID string) {
+func claudeSendAndWait(t *testing.T, g *testutil.Jumpd, send func(string), sessID string) {
 	t.Helper()
 	// Claude shows a trust prompt for new workspaces — dismiss it.
 	s, _ := g.GetSession(sessID)
@@ -48,7 +48,7 @@ func claudeSendAndWait(t *testing.T, g *testutil.Gmuxd, send func(string), sessI
 func TestClaudeTurnAndTitle(t *testing.T) {
 	requireClaudeIntegration(t)
 
-	g := testutil.StartGmuxd(t)
+	g := testutil.StartJumpd(t)
 	cwd := t.TempDir()
 
 	sess := g.Launch(claudeModel, cwd)
@@ -75,7 +75,7 @@ func TestClaudeTurnAndTitle(t *testing.T) {
 func TestClaudeSecondTurnKeepsTitle(t *testing.T) {
 	requireClaudeIntegration(t)
 
-	g := testutil.StartGmuxd(t)
+	g := testutil.StartJumpd(t)
 	cwd := t.TempDir()
 
 	sess := g.Launch(claudeModel, cwd)
@@ -105,7 +105,7 @@ func TestClaudeSecondTurnKeepsTitle(t *testing.T) {
 func TestClaudeResumability(t *testing.T) {
 	requireClaudeIntegration(t)
 
-	g := testutil.StartGmuxd(t)
+	g := testutil.StartJumpd(t)
 	cwd := t.TempDir()
 
 	sess := g.Launch(claudeModel, cwd)

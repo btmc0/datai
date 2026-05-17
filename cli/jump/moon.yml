@@ -1,0 +1,17 @@
+language: bash
+
+tasks:
+  dev:
+    script: watchexec -r -e go -w . -w ../../packages/adapter -- 'go build -o ../../bin/jump ./cmd/jump && exec ../../bin/jump pi'
+    preset: server
+  build:
+    script: go build -o ../../bin/jump ./cmd/jump
+    inputs:
+      - "cmd/**/*"
+      - "internal/**/*"
+      - "go.mod"
+      - "/packages/adapter/**/*.go"
+  test:
+    command: go test ./...
+  lint:
+    command: go vet ./...

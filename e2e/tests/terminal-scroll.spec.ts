@@ -10,12 +10,12 @@ import { openApp, gotoTestSession } from '../helpers'
  *
  * These tests bypass the WebSocket and inject pre-built frames through the
  * exact same code path as ws.onmessage (terminal-io's enqueue), via the
- * test-only `window.__gmuxInject(b64)` hook installed by terminal.tsx.
+ * test-only `window.__jumpInject(b64)` hook installed by terminal.tsx.
  * That tests the real xterm.js + terminal-io + replay interaction with
  * deterministic byte sequences and frame boundaries — which is where the
  * synthetic scroll harness in terminal-io.test.ts cannot reach.
  *
- * Frame boundaries matter: each call to __gmuxInject is one logical WS
+ * Frame boundaries matter: each call to __jumpInject is one logical WS
  * message, so splitting BSU/content/ESU across multiple inject calls
  * exercises the same paths a real WS message stream does.
  */
@@ -28,12 +28,12 @@ function b64(s: string): string {
   return Buffer.from(s, 'utf8').toString('base64')
 }
 
-/** Pump one frame through __gmuxInject. */
+/** Pump one frame through __jumpInject. */
 async function inject(page: Page, frame: string): Promise<void> {
   const encoded = b64(frame)
   await page.evaluate((data) => {
-    const inject = (window as any).__gmuxInject as ((b: string) => void) | null
-    if (!inject) throw new Error('__gmuxInject not available')
+    const inject = (window as any).__jumpInject as ((b: string) => void) | null
+    if (!inject) throw new Error('__jumpInject not available')
     inject(data)
   }, encoded)
 }
@@ -57,7 +57,7 @@ interface ScrollState {
 
 async function getScroll(page: Page): Promise<ScrollState> {
   return page.evaluate(() => {
-    const term = (window as any).__gmuxTerm
+    const term = (window as any).__jumpTerm
     const buf = term.buffer.active
     return {
       viewportY: buf.viewportY as number,
@@ -86,7 +86,7 @@ async function seedScrollback(page: Page, lines: number): Promise<void> {
 }
 
 async function scrollToBottom(page: Page): Promise<void> {
-  await page.evaluate(() => (window as any).__gmuxTerm.scrollToBottom())
+  await page.evaluate(() => (window as any).__jumpTerm.scrollToBottom())
 }
 
 test.describe('terminal scrollback (jump-to-top bug)', () => {
@@ -96,7 +96,7 @@ test.describe('terminal scrollback (jump-to-top bug)', () => {
     // Replay phase finishes inside gotoTestSession's settle.
     await page.evaluate(() => {
       // Sanity: the inject hook must be installed before any test runs.
-      if (!(window as any).__gmuxInject) throw new Error('__gmuxInject missing')
+      if (!(window as any).__jumpInject) throw new Error('__jumpInject missing')
     })
   })
 
@@ -281,7 +281,7 @@ test.describe('terminal scrollback (jump-to-top bug)', () => {
 
     // Scroll up by 20 lines. We pick an absolute line halfway up.
     const target = Math.max(1, baseline.baseY - 20)
-    await page.evaluate((line) => (window as any).__gmuxTerm.scrollToLine(line), target)
+    await page.evaluate((line) => (window as any).__jumpTerm.scrollToLine(line), target)
     const beforeBurst = await getScroll(page)
     expect(beforeBurst.viewportY).toBe(target)
     expect(beforeBurst.viewportY).toBeLessThan(beforeBurst.baseY)
@@ -318,8 +318,8 @@ test.describe('terminal scrollback (jump-to-top bug)', () => {
     for (const c of chunks.slice(from, to)) {
       const encoded = bytes.subarray(c.offset, c.offset + c.len).toString('base64')
       await page.evaluate((data) => {
-        const inj = (window as any).__gmuxInject as ((b: string) => void) | null
-        if (!inj) throw new Error('__gmuxInject not available')
+        const inj = (window as any).__jumpInject as ((b: string) => void) | null
+        if (!inj) throw new Error('__jumpInject not available')
         inj(data)
       }, encoded)
       await page.evaluate(() =>
@@ -349,10 +349,10 @@ test.describe('terminal scrollback (jump-to-top bug)', () => {
    * `pi-turn.chunks.json` records the original PTY-read boundaries
    * (107 chunks). Replaying along those boundaries keeps the BSU and
    * ESU split that the production WebSocket path actually sees,
-   * because gmuxd forwards each PTY read as one frame.
+   * because jumpd forwards each PTY read as one frame.
    *
    * In a real terminal pi's end-of-turn lands the cursor at the
-   * bottom of the screen. In gmux it jumps to the top: this test
+   * bottom of the screen. In jump it jumps to the top: this test
    * encodes the contract that the user reports.
    */
   test('real pi end-of-turn fixture: stays at bottom', async ({ page }) => {
@@ -373,7 +373,7 @@ test.describe('terminal scrollback (jump-to-top bug)', () => {
     // Without this the absolute layout drifts but the bug shape (if
     // any) still appears; matching the recording keeps the test
     // focused on scroll behavior rather than reflow artifacts.
-    await page.evaluate(() => (window as any).__gmuxTerm.resize(120, 40))
+    await page.evaluate(() => (window as any).__jumpTerm.resize(120, 40))
     await settle(page)
 
     // Some pre-existing scrollback so baseY is non-trivially large
@@ -417,7 +417,7 @@ test.describe('terminal scrollback (jump-to-top bug)', () => {
    * at viewportY=0 while baseY>0.
    */
   test('user scrolled up: real pi end-of-turn does not jump to top', async ({ page }) => {
-    await page.evaluate(() => (window as any).__gmuxTerm.resize(120, 40))
+    await page.evaluate(() => (window as any).__jumpTerm.resize(120, 40))
     await settle(page)
 
     await seedScrollback(page, 200)
@@ -427,7 +427,7 @@ test.describe('terminal scrollback (jump-to-top bug)', () => {
 
     // Scroll up well into the seeded backscroll.
     const target = Math.floor(baseline.baseY / 2)
-    await page.evaluate((line) => (window as any).__gmuxTerm.scrollToLine(line), target)
+    await page.evaluate((line) => (window as any).__jumpTerm.scrollToLine(line), target)
     const beforeBurst = await getScroll(page)
     expect(beforeBurst.viewportY).toBe(target)
 
@@ -471,7 +471,7 @@ test.describe('terminal scrollback (jump-to-top bug)', () => {
 
     const distance = 3
     const target = baseline.baseY - distance
-    await page.evaluate((line) => (window as any).__gmuxTerm.scrollToLine(line), target)
+    await page.evaluate((line) => (window as any).__jumpTerm.scrollToLine(line), target)
     const beforeBurst = await getScroll(page)
     expect(beforeBurst.baseY - beforeBurst.viewportY).toBe(distance)
 
@@ -513,7 +513,7 @@ test.describe('terminal scrollback (jump-to-top bug)', () => {
     // Pin the terminal size so the post-redraw layout is
     // deterministic: 80 redraw lines with rows=40 means baseY=40
     // (lines 0..39 in scrollback, 40..79 visible).
-    await page.evaluate(() => (window as any).__gmuxTerm.resize(120, 40))
+    await page.evaluate(() => (window as any).__jumpTerm.resize(120, 40))
     await settle(page)
 
     await seedScrollback(page, 200)
@@ -527,11 +527,11 @@ test.describe('terminal scrollback (jump-to-top bug)', () => {
     // contract under test is content matching, not seed numbering.
     const distance = 10
     const targetY = baseline.baseY - distance
-    await page.evaluate((line) => (window as any).__gmuxTerm.scrollToLine(line), targetY)
+    await page.evaluate((line) => (window as any).__jumpTerm.scrollToLine(line), targetY)
     const beforeBurst = await getScroll(page)
     expect(beforeBurst.viewportY).toBe(targetY)
     const targetText = await page.evaluate((y) => {
-      const term = (window as any).__gmuxTerm
+      const term = (window as any).__jumpTerm
       const line = term.buffer.active.getLine(y)
       return line ? line.translateToString(true) : null
     }, targetY)
@@ -551,7 +551,7 @@ test.describe('terminal scrollback (jump-to-top bug)', () => {
 
     const after = await getScroll(page)
     const landedText = await page.evaluate((y) => {
-      const term = (window as any).__gmuxTerm
+      const term = (window as any).__jumpTerm
       const line = term.buffer.active.getLine(y)
       return line ? line.translateToString(true) : null
     }, after.viewportY)
@@ -582,7 +582,7 @@ test.describe('terminal scrollback (jump-to-top bug)', () => {
    * would scroll past it.
    */
   test('user scrolled up: anchor in post-wipe visible region keeps it in view', async ({ page }) => {
-    await page.evaluate(() => (window as any).__gmuxTerm.resize(120, 40))
+    await page.evaluate(() => (window as any).__jumpTerm.resize(120, 40))
     await settle(page)
 
     await seedScrollback(page, 200)
@@ -592,9 +592,9 @@ test.describe('terminal scrollback (jump-to-top bug)', () => {
 
     const distance = 5
     const targetY = baseline.baseY - distance
-    await page.evaluate((line) => (window as any).__gmuxTerm.scrollToLine(line), targetY)
+    await page.evaluate((line) => (window as any).__jumpTerm.scrollToLine(line), targetY)
     const targetText = await page.evaluate((y) => {
-      const term = (window as any).__gmuxTerm
+      const term = (window as any).__jumpTerm
       const line = term.buffer.active.getLine(y)
       return line ? line.translateToString(true) : null
     }, targetY)
@@ -626,7 +626,7 @@ test.describe('terminal scrollback (jump-to-top bug)', () => {
     // Sanity: the anchor really is somewhere in the viewport. Walk
     // visible rows looking for the target text.
     const anchorVisible = await page.evaluate(({ vy, rows, target }) => {
-      const term = (window as any).__gmuxTerm
+      const term = (window as any).__jumpTerm
       for (let y = vy; y < vy + rows; y++) {
         const line = term.buffer.active.getLine(y)
         if (line && line.translateToString(true) === target) return { y, offset: y - vy }
@@ -651,7 +651,7 @@ test.describe('terminal scrollback (jump-to-top bug)', () => {
    * rebuilt scrollback and jump directly there.
    */
   test('pi-fixture: user reading the version banner stays on it across the wipe', async ({ page }) => {
-    await page.evaluate(() => (window as any).__gmuxTerm.resize(120, 40))
+    await page.evaluate(() => (window as any).__jumpTerm.resize(120, 40))
     await settle(page)
 
     // Replay everything before pi's wipe so the buffer is in its
@@ -663,7 +663,7 @@ test.describe('terminal scrollback (jump-to-top bug)', () => {
     // chunks may emit slightly different layouts as pi evolves, but
     // the banner string is stable.
     const found = await page.evaluate(() => {
-      const term = (window as any).__gmuxTerm
+      const term = (window as any).__jumpTerm
       const buf = term.buffer.active
       const total = buf.baseY + term.rows
       for (let y = 0; y < buf.baseY; y++) {
@@ -683,7 +683,7 @@ test.describe('terminal scrollback (jump-to-top bug)', () => {
     const preWipeDistance = preWipeBaseY - targetY
     expect(preWipeDistance).toBeGreaterThan(15)
 
-    await page.evaluate((line) => (window as any).__gmuxTerm.scrollToLine(line), targetY)
+    await page.evaluate((line) => (window as any).__jumpTerm.scrollToLine(line), targetY)
     const beforeBurst = await getScroll(page)
     expect(beforeBurst.viewportY).toBe(targetY)
 
@@ -692,7 +692,7 @@ test.describe('terminal scrollback (jump-to-top bug)', () => {
 
     const after = await getScroll(page)
     const landedText = await page.evaluate((y) => {
-      const term = (window as any).__gmuxTerm
+      const term = (window as any).__jumpTerm
       const line = term.buffer.active.getLine(y)
       return line ? line.translateToString(true) : null
     }, after.viewportY)
@@ -736,7 +736,7 @@ test.describe('terminal scrollback (jump-to-top bug)', () => {
    * which side of `prevBaseY` the rebuilt buffer ends up on.
    */
   test('user scrolled up: BSU + clear-scrollback + redraw growing baseY past prevBaseY preserves distance', async ({ page }) => {
-    await page.evaluate(() => (window as any).__gmuxTerm.resize(120, 40))
+    await page.evaluate(() => (window as any).__jumpTerm.resize(120, 40))
     await settle(page)
 
     // Modest seed so the redraw can grow baseY past it. With rows=40
@@ -752,7 +752,7 @@ test.describe('terminal scrollback (jump-to-top bug)', () => {
     // dramatic in the assertion message.
     const distance = 3
     const target = baseline.baseY - distance
-    await page.evaluate((line) => (window as any).__gmuxTerm.scrollToLine(line), target)
+    await page.evaluate((line) => (window as any).__jumpTerm.scrollToLine(line), target)
     const beforeBurst = await getScroll(page)
     expect(beforeBurst.baseY - beforeBurst.viewportY).toBe(distance)
     const prevBaseY = beforeBurst.baseY

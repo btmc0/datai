@@ -1,13 +1,13 @@
 ---
 title: Session Schema
-description: The session metadata model shared between gmux, gmuxd, and the web UI.
+description: The session metadata model shared between jump, jumpd, and the web UI.
 ---
 
 > Application-agnostic session metadata. For how this state flows between components, see [State Management](/develop/state-management).
 
 ## Design Principles
 
-1. **gmux owns process lifecycle; the child owns application state.** gmux knows if a process is alive. Only the child process knows if it's "thinking" or "waiting for input."
+1. **jump owns process lifecycle; the child owns application state.** jump knows if a process is alive. Only the child process knows if it's "thinking" or "waiting for input."
 
 2. **Two-layer model.** Process state is authoritative and simple (alive/exited). Application state is advisory and rich (set by the child via well-known env/socket).
 
@@ -19,11 +19,11 @@ description: The session metadata model shared between gmux, gmuxd, and the web 
 
 Session data flows through three boundaries. Not every field crosses every boundary.
 
-### Runner → gmuxd
+### Runner → jumpd
 
 Two paths: the runner's `GET /meta` endpoint (polled by discovery) and its SSE `/events` stream (subscribed for live updates).
 
-**GET /meta** returns the full session state including internal title inputs (`shell_title`, `adapter_title`) and build identity (`binary_hash`). gmuxd deserializes this into `store.Session`.
+**GET /meta** returns the full session state including internal title inputs (`shell_title`, `adapter_title`) and build identity (`binary_hash`). jumpd deserializes this into `store.Session`.
 
 **SSE events** carry incremental updates:
 
@@ -35,13 +35,13 @@ Two paths: the runner's `GET /meta` endpoint (polled by discovery) and its SSE `
 | `terminal_resize` | `cols`, `rows` |
 | `activity` | (no fields, signal only) |
 
-### gmuxd → frontend
+### jumpd → frontend
 
-gmuxd exposes the aggregated store via `GET /v1/sessions` and `session-upsert` / `session-remove` SSE events. A custom `MarshalJSON` on `store.Session` controls which fields are serialized. Internal fields are excluded; their derived outputs are included instead.
+jumpd exposes the aggregated store via `GET /v1/sessions` and `session-upsert` / `session-remove` SSE events. A custom `MarshalJSON` on `store.Session` controls which fields are serialized. Internal fields are excluded; their derived outputs are included instead.
 
 ### Field map
 
-| Field | Runner sends | gmuxd stores | API sends | Frontend reads |
+| Field | Runner sends | jumpd stores | API sends | Frontend reads |
 |-------|:---:|:---:|:---:|:---:|
 | **Core identity** |
 | `id` | ✓ | ✓ | ✓ | ✓ selection, WS URL |
@@ -104,7 +104,7 @@ Internal fields are inputs to derived fields. The API only exposes the derived o
 | `workspace_root` | string? | Root of the workspace (jj/git), if detected. Used for folder grouping. |
 | `remotes` | map? | Git/jj remote URLs. Used for cross-machine folder grouping. |
 
-### Process State (owned by gmux, authoritative)
+### Process State (owned by jump, authoritative)
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -114,7 +114,7 @@ Internal fields are inputs to derived fields. The API only exposes the derived o
 | `started_at` | ISO 8601 | When the process was started |
 | `exited_at` | ISO 8601? | When the process exited |
 
-### Resume (derived by gmuxd)
+### Resume (derived by jumpd)
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -129,11 +129,11 @@ All dead sessions with a command are resumable.
 |-------|------|-------------|
 | `slug` | string? | Stable URL-friendly identifier. Auto-derived from resume_key basename, command basename, or session ID prefix. Unique within a kind. Adapters can override via the runner's `PUT /slug` endpoint. | Adapters with native resume (pi, claude, codex) provide a tool-specific resume command derived from the session file. Adapters without native resume (shell) keep the original command, so "resume" re-runs it in the same working directory.
 
-### Display (set by child or gmux, mutable)
+### Display (set by child or jump, mutable)
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `title` | string | Primary display name. Resolved by gmuxd: adapter title > shell title > CommandTitler > adapter kind. |
+| `title` | string | Primary display name. Resolved by jumpd: adapter title > shell title > CommandTitler > adapter kind. |
 | `subtitle` | string? | Secondary context line. |
 | `status` | Status? | Application-reported status (see below). |
 | `unread` | boolean | Whether this session has unseen activity. |
@@ -150,7 +150,7 @@ All dead sessions with a command are resumable.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `stale` | boolean | True when the session's binary hash doesn't match the current gmux binary. Derived from the internal `binary_hash` field. |
+| `stale` | boolean | True when the session's binary hash doesn't match the current jump binary. Derived from the internal `binary_hash` field. |
 
 ### Status Object (set by child process)
 
@@ -175,52 +175,52 @@ interface Status {
 
 **Option A — Environment variable + HTTP** (preferred):
 ```bash
-# gmux sets this in the child's environment
-GMUX_SOCKET=/tmp/gmux-sessions/sess-abc123.sock
+# jump sets this in the child's environment
+JUMP_SOCKET=/tmp/jump-sessions/sess-abc123.sock
 
 # Child (or a hook) sets status via HTTP on the same socket
-curl --unix-socket $GMUX_SOCKET http://localhost/status \
+curl --unix-socket $JUMP_SOCKET http://localhost/status \
   -X PUT -d '{"label":"thinking","working":true}'
 ```
 
 **Option B — OSC escape sequences** (terminal-native):
 ```bash
-# OSC 7777 ; json ST  (custom, parsed by gmux's PTY reader)
+# OSC 7777 ; json ST  (custom, parsed by jump's PTY reader)
 printf '\e]7777;{"label":"waiting","working":false}\e\\'
 ```
 
 ### Full Example
 
-As served by `GET /meta` on a runner's Unix socket (runner → gmuxd):
+As served by `GET /meta` on a runner's Unix socket (runner → jumpd):
 
 ```json
 {
   "id": "sess-abc123",
   "created_at": "2026-03-14T10:00:00Z",
   "command": ["pi"],
-  "cwd": "/home/user/dev/gmux",
+  "cwd": "/home/user/dev/jump",
   "kind": "pi",
   "alive": true,
   "pid": 12345,
   "started_at": "2026-03-14T10:00:01Z",
   "title": "fix auth bug",
-  "shell_title": "user@host:~/dev/gmux",
+  "shell_title": "user@host:~/dev/jump",
   "adapter_title": "fix auth bug",
   "status": { "label": "thinking", "working": true },
   "unread": false,
-  "socket_path": "/tmp/gmux-sessions/sess-abc123.sock",
+  "socket_path": "/tmp/jump-sessions/sess-abc123.sock",
   "binary_hash": "a1b2c3d4e5f6..."
 }
 ```
 
-As served by `GET /v1/sessions` (gmuxd → frontend):
+As served by `GET /v1/sessions` (jumpd → frontend):
 
 ```json
 {
   "id": "sess-abc123",
   "created_at": "2026-03-14T10:00:00Z",
   "command": ["pi"],
-  "cwd": "/home/user/dev/gmux",
+  "cwd": "/home/user/dev/jump",
   "kind": "pi",
   "alive": true,
   "pid": 12345,
@@ -228,7 +228,7 @@ As served by `GET /v1/sessions` (gmuxd → frontend):
   "title": "fix auth bug",
   "status": { "label": "thinking", "working": true },
   "unread": false,
-  "socket_path": "/tmp/gmux-sessions/sess-abc123.sock",
+  "socket_path": "/tmp/jump-sessions/sess-abc123.sock",
   "slug": "fix-auth-bug",
   "resume_key": "2026-03-14T10-00-00_abc123",
   "stale": false
@@ -239,7 +239,7 @@ Note the differences: `shell_title`, `adapter_title`, and `binary_hash` are abse
 
 ## What's NOT in This Schema
 
-- **Model/provider** — application-specific, not gmux's concern
+- **Model/provider** — application-specific, not jump's concern
 - **Cost/tokens** — same
 - **Git branch / PR status** — could be a future Status extension, not core
 - **Conversation history** — belongs to the application, not the multiplexer

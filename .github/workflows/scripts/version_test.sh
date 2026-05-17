@@ -68,7 +68,7 @@ assert_not_contains() {
   fi
 }
 
-# Lay out a temp repo that mirrors the bits of the gmux tree version.sh
+# Lay out a temp repo that mirrors the bits of the jump tree version.sh
 # touches: cliff.toml at the root, the changelog under apps/website/...
 # Tag v1.0.0 on the initial commit so git-cliff's --bump always has a
 # baseline.
@@ -89,7 +89,7 @@ title: Changelog
 Initial release.
 
 ### Features
-- everything ([#1](https://github.com/gmuxapp/gmux/pull/1))
+- everything ([#1](https://github.com/sting8k/jump/pull/1))
 
 ---
 EOF

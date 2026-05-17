@@ -36,7 +36,7 @@ type Launchable interface {
 }
 
 // SessionFiler is implemented by adapters whose tools write session
-// files to disk (pi, claude-code, etc). Used by gmuxd for resumable
+// files to disk (pi, claude-code, etc). Used by jumpd for resumable
 // session discovery and session file attribution.
 type SessionFiler interface {
 	// SessionRootDir returns the parent directory containing all per-cwd
@@ -49,12 +49,12 @@ type SessionFiler interface {
 	SessionDir(cwd string) string
 
 	// ParseSessionFile reads a session file and returns display metadata.
-	// Called by gmuxd for resumable discovery and live file monitoring.
+	// Called by jumpd for resumable discovery and live file monitoring.
 	ParseSessionFile(path string) (*SessionFileInfo, error)
 }
 
 // FileMonitor is implemented by adapters that want to react to changes
-// in their attributed session file. gmuxd calls ParseNewLines when
+// in their attributed session file. jumpd calls ParseNewLines when
 // inotify fires on an attributed file.
 type FileMonitor interface {
 	// ParseNewLines receives newly visible lines from an attributed session
@@ -122,15 +122,15 @@ type RegistrationInfo struct {
 }
 
 // SessionRegistrar is optionally implemented by adapters that need to perform
-// work when gmuxd registers a new session (e.g. writing a state file for
+// work when jumpd registers a new session (e.g. writing a state file for
 // restart recovery). Returns initial metadata like the session slug.
-// A non-nil error is logged by gmuxd but does not abort registration.
+// A non-nil error is logged by jumpd but does not abort registration.
 type SessionRegistrar interface {
 	OnRegister(id, cwd string, command []string) (RegistrationInfo, error)
 }
 
 // SessionFinalizer is optionally implemented by adapters that need cleanup
-// when a session is dismissed from gmuxd (e.g. removing a state file).
+// when a session is dismissed from jumpd (e.g. removing a state file).
 type SessionFinalizer interface {
 	OnDismiss(id, cwd string)
 }

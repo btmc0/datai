@@ -13,7 +13,7 @@ import {
  * Watcher-driven conversation discovery spec.
  *
  * Each test creates a fresh adapter session file under the daemon's
- * fakeHome at runtime (after gmuxd is already up) and asserts that
+ * fakeHome at runtime (after jumpd is already up) and asserts that
  * the public API reflects the change within a tight timeout. The
  * watcher path should be sub-second; 2s is the ceiling that catches
  * regression to a periodic scan (which would land on a tick \u22650.5s
@@ -31,8 +31,8 @@ interface ConvBody {
 }
 
 const TEST_HOME = (): string => {
-  const home = process.env.GMUX_TEST_HOME
-  if (!home) throw new Error('GMUX_TEST_HOME not set; global-setup did not run')
+  const home = process.env.JUMP_TEST_HOME
+  if (!home) throw new Error('JUMP_TEST_HOME not set; global-setup did not run')
   return home
 }
 
@@ -68,7 +68,7 @@ function uniqueFixture(kind: AdapterKind, label: string): FixtureSpec {
   const tag = `${label}-${Math.random().toString(36).slice(2, 10)}`
   return {
     kind,
-    cwd: `/var/gmux-e2e/discovery/${tag}`,
+    cwd: `/var/jump-e2e/discovery/${tag}`,
     toolID: `disc-${tag}`,
     title: `${kind} discovery ${tag}`,
   }

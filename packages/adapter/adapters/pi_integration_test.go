@@ -1,6 +1,6 @@
 //go:build integration
 
-// Pi adapter integration tests. These launch real pi processes through gmuxd
+// Pi adapter integration tests. These launch real pi processes through jumpd
 // and verify the full pipeline: launch → title → attribution → resume.
 //
 // Run: go test -tags integration -v -timeout 300s -run TestPi ./packages/adapter/adapters/
@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gmuxapp/gmux/packages/adapter/adapters/testutil"
+	"github.com/sting8k/jump/packages/adapter/adapters/testutil"
 )
 
 func requirePiIntegration(t *testing.T) {
@@ -28,7 +28,7 @@ var piModel = []string{"pi", "--model", "claude-haiku-4-5"}
 // complete. Pi writes user+assistant messages to the JSONL as a batch after
 // the turn finishes, so we detect completion via file attribution + title
 // rather than transient working status.
-func sendAndWaitForTurn(t *testing.T, g *testutil.Gmuxd, send func(string), sessID string) {
+func sendAndWaitForTurn(t *testing.T, g *testutil.Jumpd, send func(string), sessID string) {
 	t.Helper()
 	// Brief pause for TUI input handler to be fully ready after render.
 	time.Sleep(2 * time.Second)
@@ -52,7 +52,7 @@ func sendAndWaitForTurn(t *testing.T, g *testutil.Gmuxd, send func(string), sess
 func TestPiTurnAndTitle(t *testing.T) {
 	requirePiIntegration(t)
 
-	g := testutil.StartGmuxd(t)
+	g := testutil.StartJumpd(t)
 	cwd := t.TempDir()
 
 	sess := g.Launch(piModel, cwd)
@@ -76,7 +76,7 @@ func TestPiTurnAndTitle(t *testing.T) {
 func TestPiNameOverridesTitle(t *testing.T) {
 	requirePiIntegration(t)
 
-	g := testutil.StartGmuxd(t)
+	g := testutil.StartJumpd(t)
 	cwd := t.TempDir()
 
 	sess := g.Launch(piModel, cwd)
@@ -102,7 +102,7 @@ func TestPiNameOverridesTitle(t *testing.T) {
 func TestPiSecondTurnKeepsTitle(t *testing.T) {
 	requirePiIntegration(t)
 
-	g := testutil.StartGmuxd(t)
+	g := testutil.StartJumpd(t)
 	cwd := t.TempDir()
 
 	sess := g.Launch(piModel, cwd)
@@ -136,7 +136,7 @@ func TestPiSecondTurnKeepsTitle(t *testing.T) {
 func TestPiResumability(t *testing.T) {
 	requirePiIntegration(t)
 
-	g := testutil.StartGmuxd(t)
+	g := testutil.StartJumpd(t)
 	cwd := t.TempDir()
 
 	sess := g.Launch(piModel, cwd)

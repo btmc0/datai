@@ -3,7 +3,7 @@ import * as os from 'os'
 import * as path from 'path'
 import type { FullConfig } from '@playwright/test'
 
-const STATE_FILE = path.join(os.tmpdir(), 'gmux-e2e-state.json')
+const STATE_FILE = path.join(os.tmpdir(), 'jump-e2e-state.json')
 
 export default async function globalTeardown(_config: FullConfig) {
   let state: { tmpDir: string; pids: number[]; port: string }
@@ -13,7 +13,7 @@ export default async function globalTeardown(_config: FullConfig) {
     return // no state file — nothing to clean up
   }
 
-  // Ask gmuxd to shut down gracefully
+  // Ask jumpd to shut down gracefully
   try {
     await fetch(`http://127.0.0.1:${state.port}/v1/shutdown`, { method: 'POST' })
   } catch { /* already gone */ }

@@ -1,0 +1,396 @@
+package main
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"net"
+	"net/http"
+	"os"
+	"sort"
+	"strings"
+	"time"
+)
+
+// session is the subset of jumpd's Session model that the CLI cares
+// about. Defined locally to avoid pulling in the jumpd store package.
+type cliSession struct {
+	ID         string   `json:"id"`
+	Peer       string   `json:"peer,omitempty"`
+	Cwd        string   `json:"cwd,omitempty"`
+	Kind       string   `json:"kind"`
+	Alive      bool     `json:"alive"`
+	Pid        int      `json:"pid,omitempty"`
+	Title      string   `json:"title,omitempty"`
+	Slug       string   `json:"slug,omitempty"`
+	SocketPath string   `json:"socket_path,omitempty"`
+	Command    []string `json:"command,omitempty"`
+	StartedAt  string   `json:"started_at,omitempty"`
+	ExitedAt   string   `json:"exited_at,omitempty"`
+	ExitCode   *int     `json:"exit_code,omitempty"`
+}
+
+// fetchSessions queries jumpd for the full session list. Starts jumpd
+// if it's not already running so management commands work on a cold
+// machine, the same way `jump <cmd>` does.
+func fetchSessions() ([]cliSession, error) {
+	ensureJumpd()
+	client := jumpdClient()
+	resp, err := client.Get(jumpdBaseURL() + "/v1/sessions")
+	if err != nil {
+		return nil, fmt.Errorf("contact jumpd: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("jumpd returned %s", resp.Status)
+	}
+
+	var envelope struct {
+		OK   bool         `json:"ok"`
+		Data []cliSession `json:"data"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&envelope); err != nil {
+		return nil, fmt.Errorf("decode sessions: %w", err)
+	}
+	return envelope.Data, nil
+}
+
+// resolveSession fetches the session list from jumpd and finds the one
+// the user's reference points to. See matchSession for the matching rules.
+func resolveSession(ref string) (cliSession, error) {
+	sessions, err := fetchSessions()
+	if err != nil {
+		return cliSession{}, err
+	}
+	return matchSession(sessions, ref)
+}
+
+// matchSession resolves a user-supplied reference to a single session.
+//
+// A reference can be:
+//   - the full session ID ("sess-abcd1234") or full slug
+//   - the short form shown by --list ("abcd1234", i.e. the ID with its
+//     "sess-" prefix stripped)
+//   - a unique prefix of any of the above
+//
+// Exact matches (on either ID or slug) always win, even when a shorter
+// prefix would also match something else. Ambiguous prefixes return a
+// human-readable error listing the candidates.
+func matchSession(sessions []cliSession, ref string) (cliSession, error) {
+	if ref == "" {
+		return cliSession{}, fmt.Errorf("empty session reference")
+	}
+
+	// Pass 1: exact matches take precedence, so "abcd" never accidentally
+	// resolves to a prefix when a session is literally named "abcd".
+	for _, s := range sessions {
+		if s.ID == ref || s.Slug == ref || shortID(s.ID) == ref {
+			return s, nil
+		}
+	}
+
+	// Pass 2: unique prefix match. We also match against the short form
+	// so "abcd" (a prefix of the short id shown by --list) resolves
+	// as users expect, not only "sess-abcd...".
+	var matches []cliSession
+	for _, s := range sessions {
+		switch {
+		case strings.HasPrefix(s.ID, ref),
+			strings.HasPrefix(shortID(s.ID), ref),
+			s.Slug != "" && strings.HasPrefix(s.Slug, ref):
+			matches = append(matches, s)
+		}
+	}
+
+	switch len(matches) {
+	case 0:
+		return cliSession{}, fmt.Errorf("no session matches %q", ref)
+	case 1:
+		return matches[0], nil
+	default:
+		var ids []string
+		for _, m := range matches {
+			ids = append(ids, shortID(m.ID))
+		}
+		return cliSession{}, fmt.Errorf("ambiguous session %q matches: %s", ref, strings.Join(ids, ", "))
+	}
+}
+
+// shortID returns the 8-char display form of a session id, matching
+// what the web UI uses.
+func shortID(id string) string {
+	const prefix = "sess-"
+	trimmed := strings.TrimPrefix(id, prefix)
+	if len(trimmed) > 8 {
+		trimmed = trimmed[:8]
+	}
+	return trimmed
+}
+
+// cmdList implements `jump --list`.
+//
+// Prints one row per session, grouped alive-first then by start time.
+// The columns are kept intentionally shallow (id, status, kind, title,
+// cwd) so the output stays readable in a narrow terminal; anyone who
+// wants richer data can open the UI.
+func cmdList() int {
+	sessions, err := fetchSessions()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "jump:", err)
+		return 1
+	}
+
+	if len(sessions) == 0 {
+		fmt.Println("no sessions")
+		return 0
+	}
+
+	// Alive first; within each group, newest first.
+	sort.SliceStable(sessions, func(i, j int) bool {
+		if sessions[i].Alive != sessions[j].Alive {
+			return sessions[i].Alive
+		}
+		return sessions[i].StartedAt > sessions[j].StartedAt
+	})
+
+	// Measure columns.
+	idW, statusW, kindW := len("ID"), len("STATUS"), len("KIND")
+	rows := make([][5]string, 0, len(sessions))
+	for _, s := range sessions {
+		status := "dead"
+		if s.Alive {
+			status = "alive"
+		}
+		if s.Peer != "" {
+			status += "@" + s.Peer
+		}
+		title := s.Title
+		if title == "" {
+			title = strings.Join(s.Command, " ")
+		}
+		row := [5]string{shortID(s.ID), status, s.Kind, title, s.Cwd}
+		rows = append(rows, row)
+		if n := len(row[0]); n > idW {
+			idW = n
+		}
+		if n := len(row[1]); n > statusW {
+			statusW = n
+		}
+		if n := len(row[2]); n > kindW {
+			kindW = n
+		}
+	}
+
+	fmt.Printf("%-*s  %-*s  %-*s  %s\n", idW, "ID", statusW, "STATUS", kindW, "KIND", "TITLE")
+	for _, r := range rows {
+		line := fmt.Sprintf("%-*s  %-*s  %-*s  %s", idW, r[0], statusW, r[1], kindW, r[2], r[3])
+		if r[4] != "" {
+			line += "  (" + r[4] + ")"
+		}
+		fmt.Println(line)
+	}
+	return 0
+}
+
+// cmdKill implements `jump --kill <id>`.
+//
+// Routes through jumpd rather than the session's own socket so remote
+// peers work the same way local sessions do. jumpd translates this into
+// a SIGTERM on the child process and lets the normal exit lifecycle
+// update the store.
+func cmdKill(ref string) int {
+	sess, err := resolveSession(ref)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "jump:", err)
+		return 1
+	}
+	client := jumpdClient()
+	url := jumpdBaseURL() + "/v1/sessions/" + sess.ID + "/kill"
+	resp, err := client.Post(url, "application/json", strings.NewReader("{}"))
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "jump:", err)
+		return 1
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		fmt.Fprintf(os.Stderr, "jump: kill failed: %s: %s\n", resp.Status, strings.TrimSpace(string(body)))
+		return 1
+	}
+	fmt.Printf("killed %s\n", shortID(sess.ID))
+	return 0
+}
+
+// cmdTail implements `jump --tail N <id>`.
+//
+// Reads from the session's own Unix socket (/scrollback/tail) rather
+// than going through jumpd: the socket path is already in the jumpd
+// session record, and this keeps the scrollback data off the daemon
+// path. Remote peer sessions (no local socket_path) are rejected with
+// a clear error rather than silently falling back to something lossy.
+func cmdTail(ref string, n int) int {
+	sess, err := resolveSession(ref)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "jump:", err)
+		return 1
+	}
+	if sess.SocketPath == "" {
+		switch {
+		case sess.Peer != "":
+			fmt.Fprintf(os.Stderr, "jump: --tail is only supported for local sessions (%s is on peer %q)\n",
+				shortID(sess.ID), sess.Peer)
+		case !sess.Alive:
+			fmt.Fprintf(os.Stderr, "jump: session %s is not running\n", shortID(sess.ID))
+		default:
+			fmt.Fprintf(os.Stderr, "jump: session %s has no socket path\n", shortID(sess.ID))
+		}
+		return 1
+	}
+
+	client := sessionSocketClient(sess.SocketPath)
+	url := fmt.Sprintf("http://session/scrollback/tail?n=%d", n)
+	resp, err := client.Get(url)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "jump:", err)
+		return 1
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		// Older runners may not have the tail endpoint yet; give a
+		// specific hint instead of a bare 404.
+		if resp.StatusCode == http.StatusNotFound {
+			fmt.Fprintln(os.Stderr, "jump: this session's runner is too old for --tail (restart it to upgrade)")
+			return 1
+		}
+		fmt.Fprintf(os.Stderr, "jump: tail failed: %s: %s\n", resp.Status, strings.TrimSpace(string(body)))
+		return 1
+	}
+	if _, err := io.Copy(os.Stdout, resp.Body); err != nil && !errors.Is(err, io.EOF) {
+		fmt.Fprintln(os.Stderr, "jump:", err)
+		return 1
+	}
+	return 0
+}
+
+// cmdSend implements `jump --send [--no-submit] <id> [text]`.
+//
+// Sends bytes to the session's PTY as if they had been typed at the
+// terminal, then appends a carriage return so the input is submitted.
+// The submit-by-default shape matches what every other "send a message"
+// CLI does (gh issue comment, slack send, jira issue comment add) and
+// avoids the silent-failure trap of bytes-without-\r sitting in the
+// agent's input box forever. `--no-submit` opts out for the rare
+// flow where you want to pre-fill input without dispatching it.
+//
+// When text is provided inline it is sent verbatim before the submit;
+// when text is omitted, stdin is read until EOF — the natural shape
+// for piping: `echo hello | jump --send abc`.
+//
+// Access control is delegated to the session socket's file permissions
+// (owner-only, 0o700): if you can connect to the socket you already
+// own the process and could do worse things without going through us.
+// For the same reason we don't support sending to remote peer sessions
+// — doing that safely would require a per-peer authorization model
+// that doesn't exist yet.
+func cmdSend(ref string, text *string, noSubmit bool) int {
+	sess, err := resolveSession(ref)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "jump:", err)
+		return 1
+	}
+	if sess.SocketPath == "" {
+		switch {
+		case sess.Peer != "":
+			fmt.Fprintf(os.Stderr, "jump: --send is only supported for local sessions (%s is on peer %q)\n",
+				shortID(sess.ID), sess.Peer)
+		case !sess.Alive:
+			fmt.Fprintf(os.Stderr, "jump: session %s is not running\n", shortID(sess.ID))
+		default:
+			fmt.Fprintf(os.Stderr, "jump: session %s has no socket path\n", shortID(sess.ID))
+		}
+		return 1
+	}
+	if !sess.Alive {
+		fmt.Fprintf(os.Stderr, "jump: session %s is not running\n", shortID(sess.ID))
+		return 1
+	}
+
+	body := buildSendBody(text, os.Stdin, noSubmit)
+
+	client := sessionSocketClient(sess.SocketPath)
+	// When reading from stdin, the request body may be paced by the
+	// user or another process; the default 5s client timeout would cut
+	// off legitimately slow inputs. Since the socket is local and the
+	// handler just writes to the PTY, it's fine to let the call run
+	// for as long as stdin keeps producing bytes.
+	client.Timeout = 0
+	req, err := http.NewRequest(http.MethodPost, "http://session/input", body)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "jump:", err)
+		return 1
+	}
+	req.Header.Set("Content-Type", "application/octet-stream")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "jump:", err)
+		return 1
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		msg, _ := io.ReadAll(resp.Body)
+		if resp.StatusCode == http.StatusNotFound {
+			fmt.Fprintln(os.Stderr, "jump: this session's runner is too old for --send (restart it to upgrade)")
+			return 1
+		}
+		fmt.Fprintf(os.Stderr, "jump: send failed: %s: %s\n", resp.Status, strings.TrimSpace(string(msg)))
+		return 1
+	}
+	return 0
+}
+
+// maxSendBytes caps the number of bytes read from stdin for a single
+// --send invocation. Matches the runner's maxInputBytes so we fail
+// fast on the client side rather than letting the server truncate us.
+const maxSendBytes = 1 << 20 // 1 MiB
+
+// buildSendBody assembles the bytes that --send writes to the session's
+// PTY input. When text is non-nil it is sent verbatim; otherwise stdin
+// is read up to maxSendBytes. Unless noSubmit is set, a trailing \r is
+// appended — that's what xterm sends for Enter and what every PTY
+// (agent or shell) treats as "submit this line." \n alone is not
+// enough: most agents see it as a literal newline and keep buffering,
+// which is how `jump --send <id> < prompt.txt` ended up silently
+// failing for users who expected `cat`-style behavior. A redundant \r
+// in the input is harmless (submits an empty line at most), so we don't
+// try to detect and dedupe.
+func buildSendBody(text *string, stdin io.Reader, noSubmit bool) io.Reader {
+	var body io.Reader
+	if text != nil {
+		body = strings.NewReader(*text)
+	} else {
+		body = io.LimitReader(stdin, maxSendBytes)
+	}
+	if !noSubmit {
+		body = io.MultiReader(body, strings.NewReader("\r"))
+	}
+	return body
+}
+
+// sessionSocketClient builds an HTTP client that dials a session's
+// Unix socket directly. The host portion of URLs passed through this
+// client is ignored — we use "session" by convention.
+func sessionSocketClient(sockPath string) *http.Client {
+	return &http.Client{
+		Transport: &http.Transport{
+			DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+				var d net.Dialer
+				return d.DialContext(ctx, "unix", sockPath)
+			},
+		},
+		Timeout: 5 * time.Second,
+	}
+}

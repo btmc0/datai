@@ -1,4 +1,4 @@
-# Contributing to gmux
+# Contributing to jump
 
 ## Prerequisites
 
@@ -6,7 +6,7 @@
 |------|---------|---------|
 | **Node.js** ≥ 20 | JS/TS tooling | [nodejs.org](https://nodejs.org) |
 | **pnpm** ≥ 9 | Package manager | `npm i -g pnpm` |
-| **Go** ≥ 1.22 | Native services (gmuxd, gmux) | [go.dev](https://go.dev/dl/) |
+| **Go** ≥ 1.22 | Native services (jumpd, jump) | [go.dev](https://go.dev/dl/) |
 | **watchexec** | Auto-rebuild Go on file change (dev mode) | `pacman -S watchexec` / `cargo install watchexec-cli` / [github.com/watchexec/watchexec](https://github.com/watchexec/watchexec/releases) |
 | **jj** | Version control | [martinvonz.github.io/jj](https://martinvonz.github.io/jj/) |
 
@@ -27,16 +27,16 @@ moon run :dev
 ```
 
 This starts:
-- **gmuxd** (`:8790`) — Go, auto-restarts on `.go` changes via watchexec
-- **gmux-web** (`:5173`) — Vite HMR, proxies `/v1/*` and `/ws/*` to gmuxd
+- **jumpd** (`:8790`) — Go, auto-restarts on `.go` changes via watchexec
+- **jump-web** (`:5173`) — Vite HMR, proxies `/v1/*` and `/ws/*` to jumpd
 
-**No manual kill needed.** When gmuxd starts, it asks any existing instance to shut down gracefully via the Unix socket before binding.
+**No manual kill needed.** When jumpd starts, it asks any existing instance to shut down gracefully via the Unix socket before binding.
 
 To run services individually:
 
 ```bash
-moon run gmuxd:dev        # just gmuxd with watchexec
-moon run gmux-web:dev     # just vite
+moon run jumpd:dev        # just jumpd with watchexec
+moon run jump-web:dev     # just vite
 ```
 
 ## Tests & linting

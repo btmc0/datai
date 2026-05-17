@@ -2,7 +2,7 @@
 // dead session can still serve its terminal history.
 //
 // File layout under the per-session state dir
-// ($XDG_STATE_HOME/gmux/sessions/<id>/):
+// ($XDG_STATE_HOME/jump/sessions/<id>/):
 //
 //	scrollback     append-only active file, capped at MaxBytes
 //	scrollback.0   previous active file (rotated; overwritten on each rotation)
@@ -17,7 +17,7 @@
 // straight to Terminal.write().
 //
 // This package is the single source of truth for the on-disk
-// contract: the runner imports the Writer half, gmuxd imports the
+// contract: the runner imports the Writer half, jumpd imports the
 // Reader half.
 package scrollback
 

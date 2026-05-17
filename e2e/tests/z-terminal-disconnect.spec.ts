@@ -10,13 +10,13 @@ test.describe('connection lost', () => {
     const pill = page.locator('.terminal-disconnected-pill')
     await expect(pill).not.toBeVisible()
 
-    // Kill the gmuxd process via the page's fetch (triggers connection drop)
+    // Kill the jumpd process via the page's fetch (triggers connection drop)
     // Instead, we can just close the WebSocket from the page side to simulate
     // a backend going away. But for a real test, we kill the process.
     const fs = await import('fs')
     const os = await import('os')
     const path = await import('path')
-    const stateFile = path.join(os.tmpdir(), 'gmux-e2e-state.json')
+    const stateFile = path.join(os.tmpdir(), 'jump-e2e-state.json')
     const state = JSON.parse(fs.readFileSync(stateFile, 'utf8'))
     process.kill(state.pids[0], 'SIGTERM')
 

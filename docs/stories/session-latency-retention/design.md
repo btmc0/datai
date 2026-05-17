@@ -3,7 +3,7 @@
 ## Domain Model
 
 - A session is alive until its runner reports exit or becomes unreachable.
-- A dead local session may be persisted for replay/resume using session metadata and scrollback in the gmux state directory.
+- A dead local session may be persisted for replay/resume using session metadata and scrollback in the jump state directory.
 - `exited_at` is the retention timestamp. Sessions with missing or invalid `exited_at` are skipped rather than guessed.
 - Peer-owned sessions are outside the local daemon's retention authority.
 
@@ -14,7 +14,7 @@
 - Larger accumulated output uses the existing 8 ms burst interval.
 - `sessionfiles.Scanner` keeps the existing 10 minute cleanup for unattributed ephemeral dead sessions.
 - The same scanner additionally prunes local dead sessions older than 7 days.
-- Scanner-driven removals call an `OnRemove` hook before store removal so `gmuxd` can remove project membership keys while the full session record is still known.
+- Scanner-driven removals call an `OnRemove` hook before store removal so `jumpd` can remove project membership keys while the full session record is still known.
 
 ## Interface Contract
 
@@ -48,4 +48,4 @@ The behavior depends on local Unix PTY/session code and is validated with Go pac
 1. Keep only manual dismiss. Rejected because dead history accumulates for single-user usage.
 2. Add a UI button for dismiss-all-dead. Deferred because the selected direction was automatic TTL pruning.
 3. Add configurable TTL. Deferred to avoid extra config surface until a real need appears.
-4. Move PTYs into `gmuxd`. Rejected because measured local proxy overhead was insignificant and isolation is valuable.
+4. Move PTYs into `jumpd`. Rejected because measured local proxy overhead was insignificant and isolation is valuable.

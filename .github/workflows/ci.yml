@@ -39,13 +39,13 @@ jobs:
         run: cd packages/protocol && pnpm exec vitest run --passWithNoTests
 
       - name: Lint web
-        run: cd apps/gmux-web && pnpm exec tsc --noEmit
+        run: cd apps/jump-web && pnpm exec tsc --noEmit
 
       - name: Test web
-        run: cd apps/gmux-web && pnpm exec vitest run --passWithNoTests
+        run: cd apps/jump-web && pnpm exec vitest run --passWithNoTests
 
       - name: Build web
-        run: cd apps/gmux-web && pnpm exec vite build
+        run: cd apps/jump-web && pnpm exec vite build
 
   go:
     name: Go (lint, build, test)
@@ -59,24 +59,24 @@ jobs:
 
       - name: Vet
         run: |
-          go vet ./cli/gmux/...
+          go vet ./cli/jump/...
           go vet ./packages/adapter/...
-          go vet ./services/gmuxd/...
+          go vet ./services/jumpd/...
         env:
           GOWORK: ${{ github.workspace }}/go.work
 
       - name: Build
         run: |
-          go build ./cli/gmux/...
-          go build ./services/gmuxd/...
+          go build ./cli/jump/...
+          go build ./services/jumpd/...
         env:
           GOWORK: ${{ github.workspace }}/go.work
 
       - name: Test
         run: |
-          go test ./cli/gmux/...
+          go test ./cli/jump/...
           go test ./packages/adapter/...
-          go test ./services/gmuxd/...
+          go test ./services/jumpd/...
         env:
           GOWORK: ${{ github.workspace }}/go.work
 
@@ -103,7 +103,7 @@ jobs:
       - name: Install Playwright browsers
         run: pnpm exec playwright install --with-deps chromium
 
-      - name: Build gmux + frontend
+      - name: Build jump + frontend
         run: ./scripts/build.sh
         env:
           GOWORK: ${{ github.workspace }}/go.work

@@ -13,19 +13,19 @@ snapshot:
 before:
   hooks:
     # VERSION must be passed explicitly: vite reads it from process.env
-    # at build time and bakes it into the bundle as __GMUX_VERSION__.
+    # at build time and bakes it into the bundle as __JUMP_VERSION__.
     # Without this the frontend always reports 'dev' even on tagged
-    # releases, while gmuxd reports the real version, which makes the
+    # releases, while jumpd reports the real version, which makes the
     # home page footer permanently show "Frontend vdev / reload to
     # update" because the two never match.
-    - bash -c 'cd apps/gmux-web && VERSION={{ .Version }} npx vite build'
-    - bash -c 'rm -rf services/gmuxd/cmd/gmuxd/web/assets services/gmuxd/cmd/gmuxd/web/favicon.svg services/gmuxd/cmd/gmuxd/web/manifest.json && cp -r apps/gmux-web/dist/* services/gmuxd/cmd/gmuxd/web/'
+    - bash -c 'cd apps/jump-web && VERSION={{ .Version }} npx vite build'
+    - bash -c 'rm -rf services/jumpd/cmd/jumpd/web/assets services/jumpd/cmd/jumpd/web/favicon.svg services/jumpd/cmd/jumpd/web/manifest.json && cp -r apps/jump-web/dist/* services/jumpd/cmd/jumpd/web/'
 
 builds:
-  - id: gmuxd
-    main: ./cmd/gmuxd
-    dir: services/gmuxd
-    binary: gmuxd
+  - id: jumpd
+    main: ./cmd/jumpd
+    dir: services/jumpd
+    binary: jumpd
     env:
       - CGO_ENABLED=0
     goos:
@@ -37,10 +37,10 @@ builds:
     ldflags:
       - -s -w -X main.version={{ .Version }}
 
-  - id: gmux
-    main: ./cmd/gmux
-    dir: cli/gmux
-    binary: gmux
+  - id: jump
+    main: ./cmd/jump
+    dir: cli/jump
+    binary: jump
     env:
       - CGO_ENABLED=0
     goos:
@@ -55,9 +55,9 @@ builds:
 archives:
   - id: default
     ids:
-      - gmuxd
-      - gmux
-    name_template: "gmux_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+      - jumpd
+      - jump
+    name_template: "jump_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     formats:
       - tar.gz
     format_overrides:
@@ -70,32 +70,3 @@ checksum:
 
 changelog:
   disable: true
-
-homebrew_casks:
-  - name: gmux
-    repository:
-      owner: gmuxapp
-      name: homebrew-tap
-      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
-    homepage: "https://gmux.app"
-    description: "See every running process in your browser"
-    license: "MIT"
-    binaries:
-      - gmux
-      - gmuxd
-    hooks:
-      post:
-        install: |
-          if OS.mac?
-            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/gmux"]
-            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/gmuxd"]
-          end
-          # Seamless daemon upgrade: if a daemon was running, restart it with
-          # the new version. If it wasn't running, do nothing — the next
-          # `gmux` invocation will start it on demand.
-          system_command "/bin/sh", args: ["-c", <<~EOS
-            if "#{staged_path}/gmuxd" status >/dev/null 2>&1; then
-              "#{staged_path}/gmuxd" start
-            fi
-          EOS
-          ]

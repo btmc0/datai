@@ -9,6 +9,6 @@ Probes would add project-level context to folder groups in the sidebar — thing
 
 Open questions:
 
-- Where probes run (gmuxd, shell scripts, or plugins)
+- Where probes run (jumpd, shell scripts, or plugins)
 - What the plugin/script contract looks like
 - How probe results affect sorting, grouping, and folder display

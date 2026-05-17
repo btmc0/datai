@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gmuxapp/gmux/packages/adapter"
-	"github.com/gmuxapp/gmux/packages/paths"
+	"github.com/sting8k/jump/packages/adapter"
+	"github.com/sting8k/jump/packages/paths"
 )
 
 // All contains instances of all non-fallback adapters, registered via init().
@@ -42,9 +42,9 @@ func FindByKind(kind string) adapter.Adapter {
 
 // Compile-time interface checks.
 var (
-	_ adapter.SessionFiler    = (*Shell)(nil)
-	_ adapter.Resumer         = (*Shell)(nil)
-	_ adapter.CommandTitler   = (*Shell)(nil)
+	_ adapter.SessionFiler     = (*Shell)(nil)
+	_ adapter.Resumer          = (*Shell)(nil)
+	_ adapter.CommandTitler    = (*Shell)(nil)
 	_ adapter.SessionRegistrar = (*Shell)(nil)
 	_ adapter.SessionFinalizer = (*Shell)(nil)
 )
@@ -84,7 +84,7 @@ func (g *Shell) Launchers() []adapter.Launcher {
 }
 
 func (g *Shell) Monitor(_ []byte) *adapter.Event {
-	// Shell title parsing is handled centrally in gmux so all sessions
+	// Shell title parsing is handled centrally in jump so all sessions
 	// can use terminal titles as a fallback, not just shell sessions.
 	return nil
 }
@@ -163,7 +163,7 @@ func (g *Shell) CanResume(path string) bool {
 
 // --- SessionRegistrar ---
 
-// OnRegister writes a shell state file so gmuxd can rediscover the session
+// OnRegister writes a shell state file so jumpd can rediscover the session
 // after a restart, and returns the initial slug derived from the cwd.
 func (g *Shell) OnRegister(id, cwd string, command []string) (adapter.RegistrationInfo, error) {
 	_, err := WriteShellStateFile(id, cwd, command)
@@ -186,7 +186,7 @@ func (g *Shell) OnDismiss(id, cwd string) {
 
 // WriteShellStateFile creates a shell state file for a session. Called by
 // OnRegister. The file allows the session scanner to rediscover the session
-// after a gmuxd restart.
+// after a jumpd restart.
 func WriteShellStateFile(sessionID, cwd string, command []string) (string, error) {
 	sh := NewShell()
 	dir := sh.SessionDir(cwd)

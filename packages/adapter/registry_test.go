@@ -13,10 +13,10 @@ func (a *testAdapter) Name() string              { return a.name }
 func (a *testAdapter) Discover() bool            { return true }
 func (a *testAdapter) Match(_ []string) bool     { return a.matches }
 func (a *testAdapter) Env(_ EnvContext) []string { return nil }
-func (a *testAdapter) Monitor(_ []byte) *Event { return nil }
+func (a *testAdapter) Monitor(_ []byte) *Event   { return nil }
 
 func TestRegistryFallback(t *testing.T) {
-	t.Setenv("GMUX_ADAPTER", "") // isolate from ambient env (e.g. running inside gmux)
+	t.Setenv("JUMP_ADAPTER", "") // isolate from ambient env (e.g. running inside jump)
 	r := NewRegistry()
 	r.SetFallback(&testAdapter{name: "shell", matches: true})
 	a := r.Resolve([]string{"unknown"})
@@ -26,7 +26,7 @@ func TestRegistryFallback(t *testing.T) {
 }
 
 func TestRegistryFirstMatch(t *testing.T) {
-	t.Setenv("GMUX_ADAPTER", "") // isolate from ambient env (e.g. running inside gmux)
+	t.Setenv("JUMP_ADAPTER", "") // isolate from ambient env (e.g. running inside jump)
 	r := NewRegistry()
 	r.SetFallback(&testAdapter{name: "shell", matches: true})
 	r.Register(&testAdapter{name: "pi", matches: true})
@@ -38,7 +38,7 @@ func TestRegistryFirstMatch(t *testing.T) {
 }
 
 func TestRegistrySkipNonMatch(t *testing.T) {
-	t.Setenv("GMUX_ADAPTER", "") // isolate from ambient env (e.g. running inside gmux)
+	t.Setenv("JUMP_ADAPTER", "") // isolate from ambient env (e.g. running inside jump)
 	r := NewRegistry()
 	r.SetFallback(&testAdapter{name: "shell", matches: true})
 	r.Register(&testAdapter{name: "pi", matches: false})
@@ -50,7 +50,7 @@ func TestRegistrySkipNonMatch(t *testing.T) {
 }
 
 func TestRegistryEnvOverrideMatches(t *testing.T) {
-	t.Setenv("GMUX_ADAPTER", "pi")
+	t.Setenv("JUMP_ADAPTER", "pi")
 	r := NewRegistry()
 	r.SetFallback(&testAdapter{name: "shell", matches: true})
 	r.Register(&testAdapter{name: "pi", matches: true})
@@ -61,9 +61,9 @@ func TestRegistryEnvOverrideMatches(t *testing.T) {
 }
 
 func TestRegistryEnvOverrideNoMatch(t *testing.T) {
-	// GMUX_ADAPTER=pi but the command doesn't match pi.
+	// JUMP_ADAPTER=pi but the command doesn't match pi.
 	// Should fall through to normal resolution, not force pi.
-	t.Setenv("GMUX_ADAPTER", "pi")
+	t.Setenv("JUMP_ADAPTER", "pi")
 	r := NewRegistry()
 	r.SetFallback(&testAdapter{name: "shell", matches: true})
 	r.Register(&testAdapter{name: "pi", matches: false})
@@ -74,7 +74,7 @@ func TestRegistryEnvOverrideNoMatch(t *testing.T) {
 }
 
 func TestRegistryEnvOverrideUnknown(t *testing.T) {
-	t.Setenv("GMUX_ADAPTER", "nonexistent")
+	t.Setenv("JUMP_ADAPTER", "nonexistent")
 	r := NewRegistry()
 	r.SetFallback(&testAdapter{name: "shell", matches: true})
 	r.Register(&testAdapter{name: "pi", matches: false})

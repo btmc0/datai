@@ -23,7 +23,7 @@ test.describe('terminal connection', () => {
     // We can't easily read xterm's rendered content, but we can check that
     // the terminal has been written to by verifying it has a cursor.
     const hasCursor = await page.evaluate(() => {
-      const term = (window as any).__gmuxTerm
+      const term = (window as any).__jumpTerm
       return term ? term.buffer.active.cursorY >= 0 : false
     })
     expect(hasCursor).toBe(true)

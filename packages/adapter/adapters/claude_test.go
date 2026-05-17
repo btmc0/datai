@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/gmuxapp/gmux/packages/adapter"
+	"github.com/sting8k/jump/packages/adapter"
 )
 
 // --- Matching ---
@@ -124,7 +124,7 @@ func TestClaudeSessionDirEncoding(t *testing.T) {
 		cwd  string
 		want string
 	}{
-		{"/home/mg/dev/gmux", "-home-mg-dev-gmux"},
+		{"/home/mg/dev/jump", "-home-mg-dev-jump"},
 		{"/home/mg/.local/share/chezmoi", "-home-mg--local-share-chezmoi"},
 		{"/tmp/test", "-tmp-test"},
 		{"/home/user/my.project", "-home-user-my-project"},
@@ -143,7 +143,7 @@ func TestEncodeClaudeCwd(t *testing.T) {
 	tests := []struct {
 		in, want string
 	}{
-		{"/home/mg/dev/gmux", "-home-mg-dev-gmux"},
+		{"/home/mg/dev/jump", "-home-mg-dev-jump"},
 		{"/home/mg/.local/share/chezmoi", "-home-mg--local-share-chezmoi"},
 		{"/home/mg/dev/komodo/apps/max", "-home-mg-dev-komodo-apps-max"},
 	}
@@ -282,12 +282,12 @@ func TestClaudeParseSessionFileNoSessionID(t *testing.T) {
 func TestClaudeParseNewLinesCwd(t *testing.T) {
 	// First user message carries the cwd — should emit a cwd event plus a working event.
 	events := NewClaude().ParseNewLines([]string{
-		`{"type":"user","cwd":"/home/user/dev/gmux","message":{"role":"user","content":"fix bug"},"uuid":"u1"}`,
+		`{"type":"user","cwd":"/home/user/dev/jump","message":{"role":"user","content":"fix bug"},"uuid":"u1"}`,
 	}, "")
 	if len(events) != 2 {
 		t.Fatalf("expected 2 events (cwd + working), got %d: %v", len(events), events)
 	}
-	if events[0].Cwd != "/home/user/dev/gmux" {
+	if events[0].Cwd != "/home/user/dev/jump" {
 		t.Errorf("expected first event to be cwd, got %+v", events[0])
 	}
 	if events[1].Status == nil || !events[1].Status.Working {
@@ -298,8 +298,8 @@ func TestClaudeParseNewLinesCwd(t *testing.T) {
 func TestClaudeParseNewLinesCwdOnlyEmittedOnce(t *testing.T) {
 	// cwd should only be emitted for the first user message, not subsequent ones.
 	events := NewClaude().ParseNewLines([]string{
-		`{"type":"user","cwd":"/home/user/dev/gmux","message":{"role":"user","content":"first"},"uuid":"u1"}`,
-		`{"type":"user","cwd":"/home/user/dev/gmux","message":{"role":"user","content":"second"},"uuid":"u2"}`,
+		`{"type":"user","cwd":"/home/user/dev/jump","message":{"role":"user","content":"first"},"uuid":"u1"}`,
+		`{"type":"user","cwd":"/home/user/dev/jump","message":{"role":"user","content":"second"},"uuid":"u2"}`,
 	}, "")
 	cwdCount := 0
 	for _, ev := range events {

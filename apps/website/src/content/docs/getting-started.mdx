@@ -1,40 +1,35 @@
 ---
 title: Getting Started
-description: Install gmux and launch your first session in under a minute.
+description: Install jump and launch your first session in under a minute.
 ---
 
-import { Tabs, TabItem, LinkCard, CardGrid } from '@astrojs/starlight/components';
+import { LinkCard, CardGrid } from '@astrojs/starlight/components';
 
-gmux is a browser-based session manager for AI agents, test runners, and long-running processes. Long-running command-line work is easy to start and annoying to supervise: agents, watchers, builds, and shells end up buried in tabs or tmux panes. gmux gives you a live sidebar of everything running across a machine, visible from any browser.
+jump is a browser-based session manager for AI agents, test runners, and long-running processes. Long-running command-line work is easy to start and annoying to supervise: agents, watchers, builds, and shells end up buried in tabs or tmux panes. jump gives you a live sidebar of everything running across a machine, visible from any browser.
 
 ## Install
 
-<Tabs>
-  <TabItem label="macOS (Homebrew)">
-    ```bash
-    brew install gmuxapp/tap/gmux
-    ```
-  </TabItem>
-  <TabItem label="Linux">
-    ```bash
-    curl -sSfL https://gmux.app/install.sh | sh
-    ```
-    [What does this script do?](/install.sh)
-  </TabItem>
-</Tabs>
+This fork does not currently publish Homebrew or install-script releases. Build the binaries from the GitHub repo for now:
 
-Or download both binaries (`gmuxd` + `gmux`) from [GitHub Releases](https://github.com/gmuxapp/gmux/releases). On Windows, the Linux instructions work inside WSL.
+```bash
+git clone https://github.com/sting8k/jump.git
+cd jump
+TMPDIR=/tmp GOWORK=$PWD/go.work go build -o ~/.local/bin/jump ./cli/jump/cmd/jump
+TMPDIR=/tmp GOWORK=$PWD/go.work go build -o ~/.local/bin/jumpd ./services/jumpd/cmd/jumpd
+```
+
+When release automation is restored, binaries will be published through [GitHub Releases](https://github.com/sting8k/jump/releases). On Windows, use WSL.
 
 ## Run
 
 ```bash
-gmux pi              # launch a coding agent
-gmux pytest --watch  # or any command
+jump pi              # launch a coding agent
+jump pytest --watch  # or any command
 
-gmux                 # open the dashboard
+jump                 # open the dashboard
 ```
 
-`gmux` auto-starts the daemon (`gmuxd`) on first run. Running `gmux` with no arguments opens the dashboard in a dedicated browser window (Chrome/Chromium `--app` mode when available, otherwise your default browser).
+`jump` auto-starts the daemon (`jumpd`) on first run. Running `jump` with no arguments opens the dashboard in a dedicated browser window (Chrome/Chromium `--app` mode when available, otherwise your default browser).
 
 The first time, the sidebar will be empty. Click **Add project** to pick which project directories appear. Once added, sessions in those directories show up automatically. Click a session to attach a live terminal.
 
@@ -44,7 +39,7 @@ See [Using the UI](/using-the-ui) for a full walkthrough.
 
 <div class="discord-card">
 <LinkCard
-  title="gmux Discord"
+  title="jump Discord"
   description="Share your setup, ask questions, report bugs, or just say hi."
   href="https://discord.gg/Mg6EJHFZxu"
 />
@@ -55,7 +50,7 @@ See [Using the UI](/using-the-ui) for a full walkthrough.
 <CardGrid>
   <LinkCard title="Using the UI" description="What you see and how to work with it." href="/using-the-ui" />
   <LinkCard title="Devcontainers" description="One line in devcontainer.json, sessions appear on your host." href="/devcontainers" />
-  <LinkCard title="Remote Access" description="Access gmux from your phone or another machine." href="/remote-access" />
+  <LinkCard title="Remote Access" description="Access jump from your phone or another machine." href="/remote-access" />
   <LinkCard title="Configuration" description="Config files, CLI commands, environment variables." href="/configuration" />
   <LinkCard title="Troubleshooting" description="Dashboard not opening, sessions not appearing, updating." href="/troubleshooting" />
 </CardGrid>

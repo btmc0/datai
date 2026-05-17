@@ -1,18 +1,18 @@
 import type { Page } from '@playwright/test'
 
 /**
- * Bearer-auth wrapper around `fetch` against the test gmuxd. Returns
+ * Bearer-auth wrapper around `fetch` against the test jumpd. Returns
  * the parsed JSON body and the response status; tests assert on both.
  *
- * Targeting `127.0.0.1:${GMUXD_TEST_PORT}` directly (not via Playwright's
+ * Targeting `127.0.0.1:${JUMPD_TEST_PORT}` directly (not via Playwright's
  * baseURL) keeps these calls independent of any browser/page context
  * so they work in `test.beforeAll`, helpers, and global setup teardown.
  */
 export async function apiGet<T = unknown>(urlPath: string): Promise<{ status: number; body: T }> {
-  const port = process.env.GMUXD_TEST_PORT
-  const token = process.env.GMUX_TEST_TOKEN
-  if (!port) throw new Error('GMUXD_TEST_PORT not set; global-setup did not run')
-  if (!token) throw new Error('GMUX_TEST_TOKEN not set; global-setup did not run')
+  const port = process.env.JUMPD_TEST_PORT
+  const token = process.env.JUMP_TEST_TOKEN
+  if (!port) throw new Error('JUMPD_TEST_PORT not set; global-setup did not run')
+  if (!token) throw new Error('JUMP_TEST_TOKEN not set; global-setup did not run')
   const resp = await fetch(`http://127.0.0.1:${port}${urlPath}`, {
     headers: { Authorization: `Bearer ${token}` },
   })
@@ -61,18 +61,18 @@ export interface TermState {
  * redirects to `/`. Subsequent navigations in this context use the cookie.
  */
 export async function openApp(page: Page, urlPath: string = '/'): Promise<void> {
-  const token = process.env.GMUX_TEST_TOKEN
-  if (!token) throw new Error('GMUX_TEST_TOKEN not set; global-setup did not run')
+  const token = process.env.JUMP_TEST_TOKEN
+  if (!token) throw new Error('JUMP_TEST_TOKEN not set; global-setup did not run')
   // Always go through the login endpoint first; it'll redirect to `/`.
   await page.goto(`/auth/login?token=${token}`)
   // If the target path isn't `/`, navigate there after auth is established.
   if (urlPath !== '/') await page.goto(urlPath)
 }
 
-/** Read the xterm terminal dimensions exposed via window.__gmuxTerm. */
+/** Read the xterm terminal dimensions exposed via window.__jumpTerm. */
 export async function getTermState(page: Page): Promise<TermState> {
   return page.evaluate(() => {
-    const term = (window as any).__gmuxTerm
+    const term = (window as any).__jumpTerm
     return {
       termCols: term?.cols as number | undefined,
       termRows: term?.rows as number | undefined,
@@ -89,20 +89,20 @@ export async function isPillVisible(page: Page): Promise<boolean> {
  * Navigate to the test session and wait for the terminal to be visible.
  *
  * The home page no longer auto-selects a session, so we drive
- * navigation via the test-only `__gmuxNavigateToSession(id)` hook
+ * navigation via the test-only `__jumpNavigateToSession(id)` hook
  * installed by main.tsx. The session ID is set by global-setup and
- * exposed via GMUX_TEST_SESSION_ID.
+ * exposed via JUMP_TEST_SESSION_ID.
  */
 export async function gotoTestSession(page: Page): Promise<void> {
-  const sessionId = process.env.GMUX_TEST_SESSION_ID
-  if (!sessionId) throw new Error('GMUX_TEST_SESSION_ID not set; global-setup did not run')
+  const sessionId = process.env.JUMP_TEST_SESSION_ID
+  if (!sessionId) throw new Error('JUMP_TEST_SESSION_ID not set; global-setup did not run')
 
   // Drive navigation via the test hook. It returns true only once
   // the session and its project are both in the store and the URL
   // change has been dispatched, so by the time this resolves the
   // app is on the session route.
   await page.waitForFunction((id) => {
-    const navigate = (window as any).__gmuxNavigateToSession
+    const navigate = (window as any).__jumpNavigateToSession
     if (typeof navigate !== 'function') return false
     return navigate(id) === true
   }, sessionId, { timeout: 10_000 })

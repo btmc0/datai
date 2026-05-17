@@ -1,5 +1,5 @@
-// Package relayproto defines gmux-specific relay frames exchanged between
-// gmuxd and gmux-relayd over a single authenticated WebSocket.
+// Package relayproto defines jump-specific relay frames exchanged between
+// jumpd and jump-relayd over a single authenticated WebSocket.
 package relayproto
 
 import (
@@ -30,7 +30,7 @@ const (
 	wireWSClose
 )
 
-// Frame is intentionally gmux-specific. It carries HTTP requests/responses and
+// Frame is intentionally jump-specific. It carries HTTP requests/responses and
 // WebSocket messages only; it is not a generic TCP tunneling protocol.
 type Frame struct {
 	Type string `json:"type"`

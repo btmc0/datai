@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gmuxapp/gmux/packages/adapter"
-	"github.com/gmuxapp/gmux/packages/paths"
+	"github.com/sting8k/jump/packages/adapter"
+	"github.com/sting8k/jump/packages/paths"
 )
 
 // Compile-time interface checks.
@@ -97,7 +97,7 @@ func (p *Pi) SessionRootDir() string {
 
 // SessionDir returns pi's session directory for a given cwd.
 // Pi encodes: strip leading /, replace remaining / with -, wrap in --.
-// /home/mg/dev/gmux → --home-mg-dev-gmux--
+// /home/mg/dev/jump → --home-mg-dev-jump--
 func (p *Pi) SessionDir(cwd string) string {
 	root := p.SessionRootDir()
 	if root == "" {

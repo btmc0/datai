@@ -20,12 +20,12 @@ Apple introduced [Declarative Web Push](https://webkit.org/blog/16535/meet-decla
 A minimal WKWebView app wrapping the existing web UI. The web UI and daemon need no changes — the native layer is purely a shell for APNs access and correct notification tap routing.
 
 **iOS app (~150 lines of Swift)**
-- `WKWebView` loading gmuxd's URL (Tailscale address or local network)
-- APNs registration on launch; device token sent to gmuxd
+- `WKWebView` loading jumpd's URL (Tailscale address or local network)
+- APNs registration on launch; device token sent to jumpd
 - `UNUserNotificationCenterDelegate` — notification tap brings the app to foreground
 - Safe area / keyboard inset passthrough
 
-**gmuxd additions**
+**jumpd additions**
 - Endpoint to store APNs device tokens per device
 - APNs HTTP/2 client ([`sideshow/apns2`](https://github.com/sideshow/apns2)) + APNs auth key (`.p8`, generated once in the Apple Developer portal)
 - Push triggers: session has unread output, session finishes

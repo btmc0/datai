@@ -12,7 +12,7 @@ structure is healthier than fake product truth.
 
 ## Product Contracts
 
-- `remote-access.md` defines the accepted local, tsnet, and relay access model for gmux.
+- `remote-access.md` defines the accepted local, tsnet, and relay access model for jump.
 - `session-lifecycle.md` defines session ownership, dead-session replay, and retention behavior.
 
 ## Update Rule

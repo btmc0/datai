@@ -1,24 +1,24 @@
 ---
 title: Running in Docker
-description: Run gmux in a container with remote access or LAN port mapping.
+description: Run jump in a container with remote access or LAN port mapping.
 ---
 
 > For native devcontainer integration (auto-discovery, session aggregation), see [Multi-Machine Sessions](/multi-machine#devcontainer-auto-discovery).
 
-There are several ways to access a containerized gmux, depending on your network setup. Each is available as a ready-to-run example in the [`examples/`](https://github.com/gmuxapp/gmux/tree/main/examples) directory.
+There are several ways to access a containerized jump, depending on your network setup. Each is available as a ready-to-run example in the [`examples/`](https://github.com/sting8k/jump/tree/main/examples) directory.
 
 ## Tailscale (recommended)
 
 The container registers as its own device on your tailnet. You get HTTPS, cryptographic identity, and access from any device on your tailnet.
 
-**Example:** [`examples/docker-tailscale/`](https://github.com/gmuxapp/gmux/tree/main/examples/docker-tailscale)
+**Example:** [`examples/docker-tailscale/`](https://github.com/sting8k/jump/tree/main/examples/docker-tailscale)
 
 ```bash
-git clone https://github.com/gmuxapp/gmux
-cd gmux/examples/docker-tailscale
+git clone https://github.com/sting8k/jump
+cd jump/examples/docker-tailscale
 
-mkdir -p data/{workspace,gmux-config,gmux-state}
-cat > data/gmux-config/host.toml << 'EOF'
+mkdir -p data/{workspace,jump-config,jump-state}
+cat > data/jump-config/host.toml << 'EOF'
 [tailscale]
 enabled = true
 hostname = "dev"
@@ -33,29 +33,29 @@ See [Remote Access](/remote-access/) for Tailscale setup details.
 
 ## WireGuard
 
-If you already have a WireGuard tunnel on the host, bind gmux to the tunnel interface IP so it's only reachable through the VPN. The tunnel provides encryption; gmux provides token authentication.
+If you already have a WireGuard tunnel on the host, bind jump to the tunnel interface IP so it's only reachable through the VPN. The tunnel provides encryption; jump provides token authentication.
 
-**Example:** [`examples/docker-wireguard/`](https://github.com/gmuxapp/gmux/tree/main/examples/docker-wireguard)
+**Example:** [`examples/docker-wireguard/`](https://github.com/sting8k/jump/tree/main/examples/docker-wireguard)
 
-The compose file binds to your WireGuard IP (e.g. `10.0.0.2:8790:8790`) so gmux is only reachable through the tunnel.
+The compose file binds to your WireGuard IP (e.g. `10.0.0.2:8790:8790`) so jump is only reachable through the tunnel.
 
 ## Reverse proxy with OIDC (Traefik + PocketID)
 
-For a full HTTPS setup with OIDC authentication, put Traefik in front of gmux with PocketID handling login. Traefik injects the gmux bearer token into forwarded requests via a headers middleware, so you only authenticate through your OIDC provider.
+For a full HTTPS setup with OIDC authentication, put Traefik in front of jump with PocketID handling login. Traefik injects the jump bearer token into forwarded requests via a headers middleware, so you only authenticate through your OIDC provider.
 
-**Example:** [`examples/docker-traefik-pocketid/`](https://github.com/gmuxapp/gmux/tree/main/examples/docker-traefik-pocketid)
+**Example:** [`examples/docker-traefik-pocketid/`](https://github.com/sting8k/jump/tree/main/examples/docker-traefik-pocketid)
 
 ```
-browser → Traefik (HTTPS) → PocketID (OIDC) → gmux (HTTP + token)
+browser → Traefik (HTTPS) → PocketID (OIDC) → jump (HTTP + token)
 ```
 
-This gives you a valid Let's Encrypt certificate on your own domain, with the gmux token as a second layer you never interact with directly. The example uses PocketID but works with any OIDC provider (Authelia, Authentik, Keycloak).
+This gives you a valid Let's Encrypt certificate on your own domain, with the jump token as a second layer you never interact with directly. The example uses PocketID but works with any OIDC provider (Authelia, Authentik, Keycloak).
 
 ## Setting the auth token
 
-By default, gmuxd generates a random auth token on first start. For container deployments where you need a known value (reverse proxy injection, health checks, scripting), there are two options.
+By default, jumpd generates a random auth token on first start. For container deployments where you need a known value (reverse proxy injection, health checks, scripting), there are two options.
 
-**Option 1: Environment variable (recommended for containers).** Set `GMUXD_TOKEN` in your compose file. On first start, gmuxd writes it to disk. On subsequent starts, the file already exists and the env var is verified against it.
+**Option 1: Environment variable (recommended for containers).** Set `JUMPD_TOKEN` in your compose file. On first start, jumpd writes it to disk. On subsequent starts, the file already exists and the env var is verified against it.
 
 ```bash
 openssl rand -hex 32   # copy the output into your compose.yaml or .env
@@ -63,31 +63,31 @@ openssl rand -hex 32   # copy the output into your compose.yaml or .env
 
 ```yaml
 environment:
-  GMUXD_TOKEN: "paste-hex-here"
-  GMUXD_LISTEN: "0.0.0.0"
+  JUMPD_TOKEN: "paste-hex-here"
+  JUMPD_LISTEN: "0.0.0.0"
 ```
 
 **Option 2: Pre-generated file.** Write the token to the state directory before starting the container.
 
 ```bash
-mkdir -p data/gmux-state
-openssl rand -hex 32 > data/gmux-state/auth-token
-chmod 600 data/gmux-state/auth-token
+mkdir -p data/jump-state
+openssl rand -hex 32 > data/jump-state/auth-token
+chmod 600 data/jump-state/auth-token
 ```
 
 Either way, any client that needs access can set the `Authorization: Bearer <token>` header. See [Environment variables](/reference/environment/#auth-token) for the full behavior table.
 
 ## How it works
 
-The container runs `gmuxd` as its entrypoint. Inside the container, `GMUXD_LISTEN=0.0.0.0` binds to all interfaces so the host (or Tailscale) can reach the port. The entrypoint script auto-updates gmux binaries on each start.
+The container runs `jumpd` as its entrypoint. Inside the container, `JUMPD_LISTEN=0.0.0.0` binds to all interfaces so the host (or Tailscale) can reach the port. The entrypoint script auto-updates jump binaries on each start.
 
 ### Bind address
 
-`GMUXD_LISTEN` controls which address gmuxd binds to inside the container. It's an environment variable, not a config file option, because it's a deployment concern. The default (`127.0.0.1`) only accepts local connections, which is correct for bare-metal installs but unreachable from outside a container. See [Environment variables](/reference/environment/#bind-address) for details.
+`JUMPD_LISTEN` controls which address jumpd binds to inside the container. It's an environment variable, not a config file option, because it's a deployment concern. The default (`127.0.0.1`) only accepts local connections, which is correct for bare-metal installs but unreachable from outside a container. See [Environment variables](/reference/environment/#bind-address) for details.
 
 ### What's blocked over TCP
 
-The `/v1/shutdown` endpoint is blocked on the TCP listener regardless of authentication. Stopping the daemon is a local-only operation available through the Unix socket. This prevents an authenticated network user from killing gmuxd.
+The `/v1/shutdown` endpoint is blocked on the TCP listener regardless of authentication. Stopping the daemon is a local-only operation available through the Unix socket. This prevents an authenticated network user from killing jumpd.
 
 ## Customization
 
@@ -106,21 +106,21 @@ To keep installed tools and shell history across container rebuilds, mount a vol
 ```yaml
 volumes:
   - ./data/home:/root
-  - ./data/gmux-config:/root/.config/gmux
-  - ./data/gmux-state:/root/.local/state/gmux
+  - ./data/jump-config:/root/.config/jump
+  - ./data/jump-state:/root/.local/state/jump
 ```
 
-The overlay mounts for gmux config and state give the container its own Tailscale identity and hostname, separate from the host.
+The overlay mounts for jump config and state give the container its own Tailscale identity and hostname, separate from the host.
 
 ### Multiple projects
 
 Run separate containers for different projects. Each gets its own Tailscale hostname:
 
 ```toml
-# data/project-a/gmux-config/host.toml
+# data/project-a/jump-config/host.toml
 [tailscale]
 enabled = true
 hostname = "project-a"
 ```
 
-To see sessions from all containers in a single dashboard instead, set up [Multi-Machine Sessions](/multi-machine) with one gmuxd as the hub.
+To see sessions from all containers in a single dashboard instead, set up [Multi-Machine Sessions](/multi-machine) with one jumpd as the hub.

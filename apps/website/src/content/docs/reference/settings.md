@@ -1,17 +1,17 @@
 ---
 title: settings.jsonc
-description: Reference for ~/.config/gmux/settings.jsonc — terminal options, keybinds, and UI preferences.
+description: Reference for ~/.config/jump/settings.jsonc — terminal options, keybinds, and UI preferences.
 tableOfContents:
   maxHeadingLevel: 4
 ---
 
-<!-- Generated from apps/gmux-web/src/settings-schema.ts — edit the schema, then run pnpm generate. -->
+<!-- Generated from apps/jump-web/src/settings-schema.ts — edit the schema, then run pnpm generate. -->
 
 :::note
-This page is generated from the [validation schema](https://github.com/gmuxapp/gmux/blob/main/apps/gmux-web/src/settings-schema.ts).
+This page is generated from the [validation schema](https://github.com/sting8k/jump/blob/main/apps/jump-web/src/settings-schema.ts).
 :::
 
-`~/.config/gmux/settings.jsonc` (or `$XDG_CONFIG_HOME/gmux/settings.jsonc`)
+`~/.config/jump/settings.jsonc` (or `$XDG_CONFIG_HOME/jump/settings.jsonc`)
 
 Terminal options, keybinds, and frontend preferences. All fields are optional.
 Missing fields use the defaults shown below. Numeric values are clamped to
@@ -52,7 +52,7 @@ Terminal font size in pixels.
 Font family (CSS font-family value).
 
 - **Type:** `string`
-- **Default:** <code>"'Fira Code', monospace"</code>
+- **Default:** <code>"'Roboto Mono', 'Fira Code', monospace"</code>
 
 ### `fontWeight`
 
@@ -218,7 +218,7 @@ On macOS, remap every Cmd+character to its Ctrl equivalent. Cmd+arrow/backspace 
 
 ## Keybinds guide
 
-gmux ships a complete default keymap. Every key combo that does something other than "send bytes to the terminal" is listed explicitly; nothing relies on implicit browser or xterm.js passthrough.
+jump ships a complete default keymap. Every key combo that does something other than "send bytes to the terminal" is listed explicitly; nothing relies on implicit browser or xterm.js passthrough.
 
 Your `keybinds` array layers on top: same-key entries override the defaults, and the `none` action disables a default. See [Keyboard shortcuts](/using-the-ui#keyboard-shortcuts) for the full default keymap.
 
@@ -240,7 +240,7 @@ Note: `secondary` works well for keys that do the same thing on both platforms. 
 
 ### macCommandIsCtrl
 
-On Mac, Command is the primary modifier, but terminals expect Ctrl. By default gmux maps a handful of Cmd shortcuts (copy, paste, select all, navigation). If you want *every* Cmd+character to send its Ctrl equivalent instead, set `macCommandIsCtrl`:
+On Mac, Command is the primary modifier, but terminals expect Ctrl. By default jump maps a handful of Cmd shortcuts (copy, paste, select all, navigation). If you want *every* Cmd+character to send its Ctrl equivalent instead, set `macCommandIsCtrl`:
 
 ```jsonc
 {
@@ -313,7 +313,7 @@ These are ready to paste into `settings.jsonc`.
 }
 ```
 
-**Disable all browser workarounds** -- if you run gmux as a PWA or `--app` window, the browser doesn't steal Ctrl+T/N/W, so the Ctrl+Alt workarounds are unnecessary:
+**Disable all browser workarounds** -- if you run jump as a PWA or `--app` window, the browser doesn't steal Ctrl+T/N/W, so the Ctrl+Alt workarounds are unnecessary:
 
 ```jsonc
 {

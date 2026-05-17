@@ -7,11 +7,11 @@ import type { FullConfig } from '@playwright/test'
 import { SMOKE_FIXTURES, writeFakeSession } from './fixtures'
 
 const ROOT = path.resolve(__dirname, '..')
-const GMUXD = path.join(ROOT, 'bin', 'gmuxd')
-const GMUX = path.join(ROOT, 'bin', 'gmux')
+const JUMPD = path.join(ROOT, 'bin', 'jumpd')
+const JUMP = path.join(ROOT, 'bin', 'jump')
 
 // Shared state file so teardown can find the PIDs and tmpDir.
-const STATE_FILE = path.join(os.tmpdir(), 'gmux-e2e-state.json')
+const STATE_FILE = path.join(os.tmpdir(), 'jump-e2e-state.json')
 
 /** Find a free port by briefly binding to :0. */
 async function freePort(): Promise<number> {
@@ -35,7 +35,7 @@ async function waitForHealth(port: number, token: string, timeoutMs = 15_000): P
     } catch { /* retry */ }
     await new Promise(r => setTimeout(r, 200))
   }
-  throw new Error(`gmuxd did not become healthy on port ${port} within ${timeoutMs}ms`)
+  throw new Error(`jumpd did not become healthy on port ${port} within ${timeoutMs}ms`)
 }
 
 /**
@@ -69,12 +69,12 @@ export default async function globalSetup(_config: FullConfig) {
   //
   // Set E2E_SKIP_BUILD=1 to skip (e.g. in CI where builds are a separate job).
   if (!process.env.E2E_SKIP_BUILD) {
-    console.log('\n[e2e] building gmux (E2E_SKIP_BUILD=1 to skip)…')
+    console.log('\n[e2e] building jump (E2E_SKIP_BUILD=1 to skip)…')
     execSync('./scripts/build.sh', { cwd: ROOT, stdio: 'inherit' })
   }
 
   const port = await freePort()
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gmux-e2e-'))
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'jump-e2e-'))
   const socketDir = path.join(tmpDir, 'sockets')
   const configDir = path.join(tmpDir, 'config')
   const stateDir = path.join(tmpDir, 'state')
@@ -93,11 +93,11 @@ export default async function globalSetup(_config: FullConfig) {
   // navigateToSession (called from the test helper) needs the session
   // to belong to *some* project to compute a URL.
   //
-  // Path layout matches paths.StateDir(): $XDG_STATE_HOME/gmux/.
-  const gmuxStateDir = path.join(stateDir, 'gmux')
-  fs.mkdirSync(gmuxStateDir, { recursive: true })
+  // Path layout matches paths.StateDir(): $XDG_STATE_HOME/jump/.
+  const jumpStateDir = path.join(stateDir, 'jump')
+  fs.mkdirSync(jumpStateDir, { recursive: true })
   fs.writeFileSync(
-    path.join(gmuxStateDir, 'projects.json'),
+    path.join(jumpStateDir, 'projects.json'),
     JSON.stringify({
       version: 2,
       items: [
@@ -107,16 +107,16 @@ export default async function globalSetup(_config: FullConfig) {
   )
 
   // Write host.toml with:
-  //  - the allocated port (so gmuxd doesn't fight a dev instance on 8790)
+  //  - the allocated port (so jumpd doesn't fight a dev instance on 8790)
   //  - devcontainer discovery disabled (so the test daemon doesn't
   //    enumerate the operator's running docker containers via the
   //    host's docker socket; that's the last non-HOME, non-socketdir
   //    path that can leak the operator's environment into the test).
   //  - tailscale stays off by default; mention it explicitly so a
   //    future default change doesn't silently re-enable it for tests.
-  fs.mkdirSync(path.join(configDir, 'gmux'))
+  fs.mkdirSync(path.join(configDir, 'jump'))
   fs.writeFileSync(
-    path.join(configDir, 'gmux', 'host.toml'),
+    path.join(configDir, 'jump', 'host.toml'),
     [
       `port = ${port}`,
       ``,
@@ -134,16 +134,16 @@ export default async function globalSetup(_config: FullConfig) {
   // generated token file. Must be >= 64 hex chars (authtoken.validateFormat).
   const testToken = 'e2e'.padEnd(64, '0')
 
-  // Isolation: a fake HOME under tmpDir prevents gmuxd's adapters
+  // Isolation: a fake HOME under tmpDir prevents jumpd's adapters
   // (pi, claude, codex, shell) from discovering the operator's real
   // session files via os.UserHomeDir(). Without this, the test
-  // gmuxd's session list contains every pi/claude/codex conversation
-  // the operator has on their machine. With it, gmuxd starts blank.
+  // jumpd's session list contains every pi/claude/codex conversation
+  // the operator has on their machine. With it, jumpd starts blank.
   const fakeHome = path.join(tmpDir, 'home')
   fs.mkdirSync(fakeHome)
 
   // Pre-seed smoke fixtures (one valid JSONL per adapter) before
-  // gmuxd starts. The bootstrap scan picks them up and the smoke spec
+  // jumpd starts. The bootstrap scan picks them up and the smoke spec
   // asserts they're reachable at /v1/conversations/{kind}/{slug}. If a
   // fixture is invalid for its parser, the smoke spec fails first with
   // a clear "fixture didn't reach the index" signal, before the
@@ -156,57 +156,57 @@ export default async function globalSetup(_config: FullConfig) {
     PATH: process.env.PATH || '',
     HOME: fakeHome,
     TERM: 'xterm-256color',
-    GMUX_SOCKET_DIR: socketDir,
-    GMUXD_TOKEN: testToken,
+    JUMP_SOCKET_DIR: socketDir,
+    JUMPD_TOKEN: testToken,
     XDG_CONFIG_HOME: configDir,
     XDG_STATE_HOME: stateDir,
   }
 
   const pids: number[] = []
 
-  // Start gmuxd in foreground mode (`run`, not `start`).
+  // Start jumpd in foreground mode (`run`, not `start`).
   //
-  // `gmuxd start` daemonizes by re-execing itself, and on the way
-  // strips every GMUX_* env var ("so the daemon doesn't inherit
+  // `jumpd start` daemonizes by re-execing itself, and on the way
+  // strips every JUMP_* env var ("so the daemon doesn't inherit
   // session identity"). That's correct for production, but it means
-  // GMUX_SOCKET_DIR and GMUXD_TOKEN never reach the actual daemon
-  // process; the test gmuxd would then read /tmp/gmux-sessions and
+  // JUMP_SOCKET_DIR and JUMPD_TOKEN never reach the actual daemon
+  // process; the test jumpd would then read /tmp/jump-sessions and
   // surface the operator's real sessions as its own.
   //
-  // `gmuxd run` doesn't strip the env, and we already detach the
+  // `jumpd run` doesn't strip the env, and we already detach the
   // process ourselves, so we get the foreground process tree we need
   // for both isolation and clean teardown by PID.
-  const gmuxd = spawn(GMUXD, ['run'], {
+  const jumpd = spawn(JUMPD, ['run'], {
     env,
     stdio: ['ignore', 'pipe', 'pipe'],
     detached: true,
   })
-  if (gmuxd.pid) pids.push(gmuxd.pid)
+  if (jumpd.pid) pids.push(jumpd.pid)
 
-  gmuxd.stderr?.on('data', (d: Buffer) => {
-    if (process.env.DEBUG) process.stderr.write(`[gmuxd] ${d}`)
+  jumpd.stderr?.on('data', (d: Buffer) => {
+    if (process.env.DEBUG) process.stderr.write(`[jumpd] ${d}`)
   })
-  gmuxd.on('exit', (code) => {
-    if (process.env.DEBUG) console.error(`[gmuxd] exited with code ${code}`)
+  jumpd.on('exit', (code) => {
+    if (process.env.DEBUG) console.error(`[jumpd] exited with code ${code}`)
   })
 
   await waitForHealth(port, testToken)
 
   // Start a test shell session (non-interactive — no local terminal attach).
   // cwd=workspaceDir so the session is matched into the seeded project.
-  const gmux = spawn(GMUX, ['bash', '-c', 'echo READY; while true; do sleep 60; done'], {
+  const jump = spawn(JUMP, ['bash', '-c', 'echo READY; while true; do sleep 60; done'], {
     env,
     cwd: workspaceDir,
     stdio: ['ignore', 'pipe', 'pipe'],
     detached: true,
   })
-  if (gmux.pid) pids.push(gmux.pid)
+  if (jump.pid) pids.push(jump.pid)
 
-  gmux.stderr?.on('data', (d: Buffer) => {
-    if (process.env.DEBUG) process.stderr.write(`[gmux] ${d}`)
+  jump.stderr?.on('data', (d: Buffer) => {
+    if (process.env.DEBUG) process.stderr.write(`[jump] ${d}`)
   })
 
-  // Wait for the session to appear in gmuxd. Matched by cwd so we get
+  // Wait for the session to appear in jumpd. Matched by cwd so we get
   // exactly the session we just spawned (see comment on waitForSession
   // for why this assertion still earns its keep after isolation).
   const sessionId = await waitForSession(port, testToken, workspaceDir)
@@ -223,12 +223,12 @@ export default async function globalSetup(_config: FullConfig) {
   // Playwright reads baseURL from config, but config is evaluated before
   // globalSetup. So env vars from here propagate to the worker process that
   // runs the tests.
-  process.env.GMUXD_TEST_PORT = String(port)
-  process.env.GMUX_TEST_SESSION_ID = sessionId
-  process.env.GMUX_TEST_TOKEN = testToken
+  process.env.JUMPD_TEST_PORT = String(port)
+  process.env.JUMP_TEST_SESSION_ID = sessionId
+  process.env.JUMP_TEST_TOKEN = testToken
   // Tests that write into adapter session roots (conversation
   // discovery, etc.) need to know where the daemon is looking for
   // session files. fakeHome is the daemon's HOME, so adapters resolve
   // their roots under it.
-  process.env.GMUX_TEST_HOME = fakeHome
+  process.env.JUMP_TEST_HOME = fakeHome
 }

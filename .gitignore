@@ -17,8 +17,8 @@ bin/*
 !bin/.keep
 out/
 *.test
-services/gmuxd/gmuxd
-cli/gmux/gmux
+services/jumpd/jumpd
+cli/jump/jump
 
 # ralph state
 .ralph
@@ -32,7 +32,7 @@ cli/gmux/gmux
 *.local.*
 test-results/
 tests/pi-adapter/pi-adapter
-gmux gmuxd
+jump jumpd
 
 # local agent/harness state
 .pi/

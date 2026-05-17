@@ -24,13 +24,13 @@ that show what the daemon tells them to.
 | **Session finished** | `status.working` true → false on a live session |
 | **New output** | `unread` false → true |
 
-Both are skipped if any client is focused on gmux or viewing the session.
+Both are skipped if any client is focused on jump or viewing the session.
 
 ### Escalation model
 
 1. **In-app dot** (always) — yellow/blue indicator on sidebar and hamburger button
-2. **Tab title badge** — `(1) gmux` when sessions have unread output
-3. **OS notification** — after a 5-second grace period; cancelled if user focuses gmux within that window
+2. **Tab title badge** — `(1) jump` when sessions have unread output
+3. **OS notification** — after a 5-second grace period; cancelled if user focuses jump within that window
 4. **Cross-device routing** — if the active device is idle (>2 min since last interaction), route to the most recently used other device
 
 ### Coalescing
@@ -43,7 +43,7 @@ individual notifications.
 
 - `internal/presence` — presence table tracking connected clients
 - `internal/notify` — notification router with grace period, coalescing, device routing
-- `apps/gmux-web/src/presence.ts` — presence WebSocket client with auto-reconnect
+- `apps/jump-web/src/presence.ts` — presence WebSocket client with auto-reconnect
 - Permission UI: "Enable notifications" button in sidebar footer
 
 ## Open items

@@ -40,7 +40,7 @@ async function drainCaptured(page: Page): Promise<string[]> {
 /** Override term.modes on the xterm instance to force a specific bracketedPasteMode value. */
 async function setBracketedPasteMode(page: Page, enabled: boolean): Promise<void> {
   await page.evaluate((val) => {
-    const term = (window as any).__gmuxTerm
+    const term = (window as any).__jumpTerm
     Object.defineProperty(term, 'modes', {
       get: () => ({ bracketedPasteMode: val }),
       configurable: true,
@@ -51,7 +51,7 @@ async function setBracketedPasteMode(page: Page, enabled: boolean): Promise<void
 /** Remove any instance-level override of term.modes (restores prototype getter). */
 async function resetBracketedPasteMode(page: Page): Promise<void> {
   await page.evaluate(() => {
-    try { delete (window as any).__gmuxTerm.modes } catch { /* noop */ }
+    try { delete (window as any).__jumpTerm.modes } catch { /* noop */ }
   })
 }
 

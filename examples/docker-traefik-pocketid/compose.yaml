@@ -52,41 +52,41 @@ services:
       - OIDC_CLIENT_ID=${OIDC_CLIENT_ID}
       - OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET}
       - AUTH_SECRET=${AUTH_SECRET}
-      - CALLBACK_URL=https://gmux.${DOMAIN}/_auth/callback
+      - CALLBACK_URL=https://jump.${DOMAIN}/_auth/callback
     labels:
       - traefik.enable=true
       - traefik.http.services.forward-auth.loadbalancer.server.port=4181
-      # ForwardAuth middleware: Traefik calls this on every request to gmux.
+      # ForwardAuth middleware: Traefik calls this on every request to jump.
       - traefik.http.middlewares.pocket-id-auth.forwardauth.address=http://forward-auth:4181
       - traefik.http.middlewares.pocket-id-auth.forwardauth.authResponseHeaders=X-Forwarded-User
       # Route for the OIDC callback
-      - traefik.http.routers.forward-auth.rule=Host(`gmux.${DOMAIN}`) && PathPrefix(`/_auth`)
+      - traefik.http.routers.forward-auth.rule=Host(`jump.${DOMAIN}`) && PathPrefix(`/_auth`)
       - traefik.http.routers.forward-auth.entrypoints=websecure
       - traefik.http.routers.forward-auth.tls.certresolver=letsencrypt
     networks:
       - proxy
 
-  gmux:
+  jump:
     build: .
-    container_name: gmux
+    container_name: jump
     restart: unless-stopped
     environment:
       - TERM=xterm-256color
       - SHELL=/bin/bash
-      - GMUXD_TOKEN=${GMUX_TOKEN}
-      - GMUXD_LISTEN=0.0.0.0
+      - JUMPD_TOKEN=${JUMP_TOKEN}
+      - JUMPD_LISTEN=0.0.0.0
     volumes:
       - ./data/workspace:/workspace
-      - ./data/gmux-state:/root/.local/state/gmux
+      - ./data/jump-state:/root/.local/state/jump
     labels:
       - traefik.enable=true
-      - traefik.http.routers.gmux.rule=Host(`gmux.${DOMAIN}`)
-      - traefik.http.routers.gmux.entrypoints=websecure
-      - traefik.http.routers.gmux.tls.certresolver=letsencrypt
-      # Apply PocketID auth, then inject the gmux bearer token.
-      - traefik.http.routers.gmux.middlewares=pocket-id-auth,gmux-token
-      - traefik.http.middlewares.gmux-token.headers.customrequestheaders.Authorization=Bearer ${GMUX_TOKEN}
-      - traefik.http.services.gmux.loadbalancer.server.port=8790
+      - traefik.http.routers.jump.rule=Host(`jump.${DOMAIN}`)
+      - traefik.http.routers.jump.entrypoints=websecure
+      - traefik.http.routers.jump.tls.certresolver=letsencrypt
+      # Apply PocketID auth, then inject the jump bearer token.
+      - traefik.http.routers.jump.middlewares=pocket-id-auth,jump-token
+      - traefik.http.middlewares.jump-token.headers.customrequestheaders.Authorization=Bearer ${JUMP_TOKEN}
+      - traefik.http.services.jump.loadbalancer.server.port=8790
     networks:
       - proxy
 

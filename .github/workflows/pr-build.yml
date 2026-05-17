@@ -88,8 +88,8 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
         with:
-          name: gmux-pr${{ env.PR }}
-          path: dist/gmux_*
+          name: jump-pr${{ env.PR }}
+          path: dist/jump_*
           retention-days: 7
 
       - name: Comment install instructions
@@ -100,17 +100,16 @@ jobs:
           HEAD_SUBJECT: ${{ steps.commit.outputs.subject }}
         run: |
           set -eu
-          body="<!-- gmux-pr-build -->
+          body="<!-- jump-pr-build -->
           ### Try this PR
-          \`\`\`sh
-          curl -sSfL https://gmux.app/install-pr.sh | sh -s -- ${PR}
-          \`\`\`
-          Built from [\`${HEAD_SHORT}\`](https://github.com/${{ github.repository }}/pull/${PR}/commits/${HEAD_SHORT}) — ${HEAD_SUBJECT}
-          <sub>Requires [GitHub CLI](https://cli.github.com/) with auth. Artifacts expire after 7 days.</sub>"
+          Download the jump-pr${PR} artifact from this workflow run and copy jump + jumpd into your PATH.
+
+          Built from ${HEAD_SHORT}: https://github.com/${{ github.repository }}/pull/${PR}/commits/${HEAD_SHORT} — ${HEAD_SUBJECT}
+          <sub>Artifacts expire after 7 days. Public install scripts are disabled for this fork.</sub>"
 
           # Update existing comment or create a new one
           comment_id=$(gh api --paginate "repos/${{ github.repository }}/issues/${PR}/comments" \
-            --jq '.[] | select(.body | startswith("<!-- gmux-pr-build -->")) | .id' | head -1)
+            --jq '.[] | select(.body | startswith("<!-- jump-pr-build -->")) | .id' | head -1)
 
           if [ -n "$comment_id" ]; then
             gh api "repos/${{ github.repository }}/issues/comments/${comment_id}" -X PATCH -f body="$body"

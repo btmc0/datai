@@ -1,8 +1,8 @@
 {
-  "name": "@gmux/root",
+  "name": "@jump/root",
   "private": true,
   "version": "0.1.0",
-  "description": "gmux monorepo",
+  "description": "jump monorepo",
   "packageManager": "pnpm@10.32.1",
   "scripts": {
     "build": "moon run :build",

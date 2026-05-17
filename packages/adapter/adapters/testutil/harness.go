@@ -1,7 +1,7 @@
 //go:build integration
 
-// Harness provides a full gmuxd test environment for adapter integration tests.
-// It starts a real gmuxd, launches sessions via the API, and observes state
+// Harness provides a full jumpd test environment for adapter integration tests.
+// It starts a real jumpd, launches sessions via the API, and observes state
 // transitions via SSE polling.
 
 package testutil
@@ -24,7 +24,7 @@ import (
 	"nhooyr.io/websocket"
 )
 
-// Session mirrors the gmuxd session schema fields we care about.
+// Session mirrors the jumpd session schema fields we care about.
 type Session struct {
 	ID           string   `json:"id"`
 	Kind         string   `json:"kind"`
@@ -36,7 +36,7 @@ type Session struct {
 	SocketPath   string   `json:"socket_path"`
 	Status       *Status  `json:"status"`
 	Resumable    bool     `json:"resumable"`
-	Slug    string   `json:"slug"`
+	Slug         string   `json:"slug"`
 	Command      []string `json:"command"`
 }
 
@@ -45,8 +45,8 @@ type Status struct {
 	Working bool   `json:"working"`
 }
 
-// Gmuxd manages a gmuxd process for testing.
-type Gmuxd struct {
+// Jumpd manages a jumpd process for testing.
+type Jumpd struct {
 	Addr   string // TCP address (for browser-like access)
 	Socket string // Unix socket path (for IPC)
 	client *http.Client
@@ -55,15 +55,15 @@ type Gmuxd struct {
 	cancel context.CancelFunc
 }
 
-// StartGmuxd starts a real gmuxd with isolated socket dir and port.
-// The binaries must be pre-built at bin/gmux and bin/gmuxd.
-func StartGmuxd(t *testing.T) *Gmuxd {
+// StartJumpd starts a real jumpd with isolated socket dir and port.
+// The binaries must be pre-built at bin/jump and bin/jumpd.
+func StartJumpd(t *testing.T) *Jumpd {
 	t.Helper()
 	repoRoot := findRepoRoot(t)
-	gmuxdBin := filepath.Join(repoRoot, "bin", "gmuxd")
-	gmuxBin := filepath.Join(repoRoot, "bin", "gmux")
+	jumpdBin := filepath.Join(repoRoot, "bin", "jumpd")
+	jumpBin := filepath.Join(repoRoot, "bin", "jump")
 
-	for _, bin := range []string{gmuxdBin, gmuxBin} {
+	for _, bin := range []string{jumpdBin, jumpBin} {
 		if _, err := os.Stat(bin); err != nil {
 			t.Fatalf("binary not found at %s — run scripts/build.sh first", bin)
 		}
@@ -73,54 +73,54 @@ func StartGmuxd(t *testing.T) *Gmuxd {
 	port := freePort(t)
 	addr := fmt.Sprintf("http://localhost:%d", port)
 	stateDir := t.TempDir()
-	gmuxdSock := filepath.Join(stateDir, "gmux", "gmuxd.sock")
+	jumpdSock := filepath.Join(stateDir, "jump", "jumpd.sock")
 	configDir := t.TempDir()
 
 	// Write config with the chosen port.
-	cfgDir := filepath.Join(configDir, "gmux")
+	cfgDir := filepath.Join(configDir, "jump")
 	os.MkdirAll(cfgDir, 0o755)
 	os.WriteFile(filepath.Join(cfgDir, "host.toml"),
 		[]byte(fmt.Sprintf("port = %d\n", port)), 0o644)
 
 	ctx, cancel := context.WithCancel(context.Background())
-	cmd := exec.CommandContext(ctx, gmuxdBin)
+	cmd := exec.CommandContext(ctx, jumpdBin)
 	cmd.Env = append(os.Environ(),
-		fmt.Sprintf("GMUX_SOCKET_DIR=%s", socketDir),
+		fmt.Sprintf("JUMP_SOCKET_DIR=%s", socketDir),
 		fmt.Sprintf("XDG_CONFIG_HOME=%s", configDir),
 		fmt.Sprintf("XDG_STATE_HOME=%s", stateDir),
-		fmt.Sprintf("PATH=%s:%s", filepath.Dir(gmuxBin), os.Getenv("PATH")),
+		fmt.Sprintf("PATH=%s:%s", filepath.Dir(jumpBin), os.Getenv("PATH")),
 	)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
 	if err := cmd.Start(); err != nil {
 		cancel()
-		t.Fatalf("start gmuxd: %v", err)
+		t.Fatalf("start jumpd: %v", err)
 	}
 
 	// Build a Unix socket HTTP client for IPC.
 	sockClient := &http.Client{
 		Transport: &http.Transport{
 			DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
-				return net.DialTimeout("unix", gmuxdSock, 2*time.Second)
+				return net.DialTimeout("unix", jumpdSock, 2*time.Second)
 			},
 		},
 		Timeout: 5 * time.Second,
 	}
 
-	g := &Gmuxd{Addr: addr, Socket: gmuxdSock, client: sockClient, t: t, cmd: cmd, cancel: cancel}
+	g := &Jumpd{Addr: addr, Socket: jumpdSock, client: sockClient, t: t, cmd: cmd, cancel: cancel}
 	t.Cleanup(func() {
 		cancel()
 		cmd.Process.Kill()
 		cmd.Wait()
 	})
 
-	waitForSocket(t, gmuxdSock, 5*time.Second)
+	waitForSocket(t, jumpdSock, 5*time.Second)
 	return g
 }
 
 // Launch starts a session and waits for it to appear alive.
-func (g *Gmuxd) Launch(command []string, cwd string) Session {
+func (g *Jumpd) Launch(command []string, cwd string) Session {
 	g.t.Helper()
 	cmdJSON, _ := json.Marshal(command)
 	body := fmt.Sprintf(`{"command":%s,"cwd":%q}`, cmdJSON, cwd)
@@ -139,20 +139,22 @@ func (g *Gmuxd) Launch(command []string, cwd string) Session {
 }
 
 // Sessions returns all current sessions.
-func (g *Gmuxd) Sessions() []Session {
+func (g *Jumpd) Sessions() []Session {
 	g.t.Helper()
 	resp, err := g.client.Get("http://localhost/v1/sessions")
 	if err != nil {
 		g.t.Fatalf("list sessions: %v", err)
 	}
 	defer resp.Body.Close()
-	var env struct{ Data []Session `json:"data"` }
+	var env struct {
+		Data []Session `json:"data"`
+	}
 	json.NewDecoder(resp.Body).Decode(&env)
 	return env.Data
 }
 
 // GetSession returns a specific session by ID.
-func (g *Gmuxd) GetSession(id string) (Session, bool) {
+func (g *Jumpd) GetSession(id string) (Session, bool) {
 	for _, s := range g.Sessions() {
 		if s.ID == id {
 			return s, true
@@ -162,7 +164,7 @@ func (g *Gmuxd) GetSession(id string) (Session, bool) {
 }
 
 // WaitFor polls all sessions until pred matches one, or times out.
-func (g *Gmuxd) WaitFor(pred func(Session) bool, timeout time.Duration, desc string) Session {
+func (g *Jumpd) WaitFor(pred func(Session) bool, timeout time.Duration, desc string) Session {
 	g.t.Helper()
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
@@ -178,7 +180,7 @@ func (g *Gmuxd) WaitFor(pred func(Session) bool, timeout time.Duration, desc str
 }
 
 // WaitForSession polls until pred matches for a specific session ID.
-func (g *Gmuxd) WaitForSession(id string, pred func(Session) bool, timeout time.Duration, desc string) Session {
+func (g *Jumpd) WaitForSession(id string, pred func(Session) bool, timeout time.Duration, desc string) Session {
 	g.t.Helper()
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
@@ -193,7 +195,7 @@ func (g *Gmuxd) WaitForSession(id string, pred func(Session) bool, timeout time.
 
 // postSession sends an authenticated POST to a session action via the Unix
 // socket (bypassing the TCP listener's token auth).
-func (g *Gmuxd) postSession(action, id string) {
+func (g *Jumpd) postSession(action, id string) {
 	g.t.Helper()
 	resp, err := g.client.Post("http://localhost/v1/sessions/"+id+"/"+action, "", nil)
 	if err != nil {
@@ -207,15 +209,15 @@ func (g *Gmuxd) postSession(action, id string) {
 	}
 }
 
-func (g *Gmuxd) Kill(id string)    { g.postSession("kill", id) }
-func (g *Gmuxd) Dismiss(id string) { g.postSession("dismiss", id) }
-func (g *Gmuxd) Resume(id string)  { g.postSession("resume", id) }
-func (g *Gmuxd) Restart(id string) { g.postSession("restart", id) }
+func (g *Jumpd) Kill(id string)    { g.postSession("kill", id) }
+func (g *Jumpd) Dismiss(id string) { g.postSession("dismiss", id) }
+func (g *Jumpd) Resume(id string)  { g.postSession("resume", id) }
+func (g *Jumpd) Restart(id string) { g.postSession("restart", id) }
 
 // ConnectSession opens a persistent WebSocket directly to the session's runner
-// (via its Unix socket), bypassing gmuxd's WS proxy. This is more reliable for
+// (via its Unix socket), bypassing jumpd's WS proxy. This is more reliable for
 // tests — fewer moving parts. Returns a send function; cleanup is automatic.
-func (g *Gmuxd) ConnectSession(sessionID string) (send func(data string), close func()) {
+func (g *Jumpd) ConnectSession(sessionID string) (send func(data string), close func()) {
 	g.t.Helper()
 
 	sess, ok := g.GetSession(sessionID)
@@ -298,7 +300,9 @@ func findRepoRoot(t *testing.T) string {
 func freePort(t *testing.T) int {
 	t.Helper()
 	l, err := net.Listen("tcp", "localhost:0")
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	port := l.Addr().(*net.TCPAddr).Port
 	l.Close()
 	return port
@@ -324,7 +328,7 @@ func waitForSocket(t *testing.T, sockPath string, timeout time.Duration) {
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
-	t.Fatalf("timed out waiting for gmuxd on socket %s", sockPath)
+	t.Fatalf("timed out waiting for jumpd on socket %s", sockPath)
 }
 
 func unixClient(socketPath string) *http.Client {
@@ -360,7 +364,7 @@ func ReadScrollback(t *testing.T, socketPath string) string {
 }
 
 // WaitForScrollback polls scrollback until it contains the expected string.
-func (g *Gmuxd) WaitForScrollback(socketPath, substr string, timeout time.Duration) {
+func (g *Jumpd) WaitForScrollback(socketPath, substr string, timeout time.Duration) {
 	g.t.Helper()
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
@@ -376,7 +380,7 @@ func (g *Gmuxd) WaitForScrollback(socketPath, substr string, timeout time.Durati
 
 // WaitForOutput polls the session's scrollback until it contains non-trivial
 // content (indicating the TUI has rendered). Returns the scrollback text.
-func (g *Gmuxd) WaitForOutput(sessionID string, timeout time.Duration) string {
+func (g *Jumpd) WaitForOutput(sessionID string, timeout time.Duration) string {
 	g.t.Helper()
 	sess, ok := g.GetSession(sessionID)
 	if !ok {

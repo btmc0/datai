@@ -1,4 +1,4 @@
-# git-cliff configuration for gmux.
+# git-cliff configuration for jump.
 #
 # Generates the changelog from conventional commit messages between tags.
 # Output matches the format used in apps/website/src/content/docs/changelog.mdx
@@ -23,11 +23,11 @@ header = ""
 #   ## v1.2.0 - 2026-04-10
 #
 #   ### Features
-#   - **(peering)** prevent duplicate sessions ([#123](https://github.com/gmuxapp/gmux/pull/123))
-#   - foo ([#124](https://github.com/gmuxapp/gmux/pull/124))
+#   - **(peering)** prevent duplicate sessions ([#123](https://github.com/sting8k/jump/pull/123))
+#   - foo ([#124](https://github.com/sting8k/jump/pull/124))
 #
 #   ### Fixes
-#   - **(web)** overlap on narrow viewports ([#125](https://github.com/gmuxapp/gmux/pull/125))
+#   - **(web)** overlap on narrow viewports ([#125](https://github.com/sting8k/jump/pull/125))
 #
 #   ---
 body = """
@@ -64,7 +64,7 @@ commit_preprocessors = [
   # --context pass. For rebase merges (which lack the suffix), version.sh
   # resolves PR numbers via the GitHub API and injects full markdown
   # links into the context before rendering with --from-context.
-  { pattern = "(?m)\\s*\\(#([0-9]+)\\)$", replace = " ([#${1}](https://github.com/gmuxapp/gmux/pull/${1}))" },
+  { pattern = "(?m)\\s*\\(#([0-9]+)\\)$", replace = " ([#${1}](https://github.com/sting8k/jump/pull/${1}))" },
 ]
 
 # Assign commits to changelog groups. The `<!-- N -->` HTML comments
@@ -84,7 +84,7 @@ commit_parsers = [
 
   # `(release)`-scoped commits are internal release-flow plumbing
   # (workflow tweaks, notify-discord polish, cliff.toml itself).
-  # They don't change anything users of gmux see, so they're hidden
+  # They don't change anything users of jump see, so they're hidden
   # from the changelog and don't count toward the bump. Note: in
   # git-cliff, `scope = "x"` in a parser SETS the scope; matching on
   # the parsed scope requires the explicit `field`/`pattern` form.

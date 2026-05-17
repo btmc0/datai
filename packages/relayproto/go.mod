@@ -1,3 +1,3 @@
-module github.com/gmuxapp/gmux/packages/relayproto
+module github.com/sting8k/jump/packages/relayproto
 
 go 1.26.1

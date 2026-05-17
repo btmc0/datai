@@ -35,7 +35,13 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CHANGELOG="${CHANGELOG:-apps/website/src/content/docs/changelog.mdx}"
 
-trim_blanks() { sed -e '/./,$!d' -e :a -e '/^\n*$/{$d;N;ba}'; }
+trim_blanks() {
+  awk '
+    NF { started = 1; last = n + 1 }
+    started { lines[++n] = $0 }
+    END { for (i = 1; i <= last; i++) print lines[i] }
+  '
+}
 
 summary=$(bash "$SCRIPT_DIR/extract-release-notes.sh" "$CHANGELOG" | trim_blanks)
 
@@ -76,8 +82,8 @@ mentions="${mentions% }"
 # ── Send ──
 
 header="${mentions}
-## gmux ${VERSION}"
-footer="[See the changelog for details.](https://gmux.app/changelog)"
+## jump ${VERSION}"
+footer="[See the changelog for details.](https://github.com/sting8k/jump/blob/dev/CHANGELOG.md)"
 
 compose_message() {
   local body=$1

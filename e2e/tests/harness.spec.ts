@@ -13,9 +13,9 @@ import { test, expect } from '@playwright/test'
 test.describe('harness isolation', () => {
   // No openApp/login here — these checks talk to the daemon
   // directly. Auth is via the bearer token global-setup writes.
-  const port = () => process.env.GMUXD_TEST_PORT
-  const token = () => process.env.GMUX_TEST_TOKEN
-  const sessionId = () => process.env.GMUX_TEST_SESSION_ID
+  const port = () => process.env.JUMPD_TEST_PORT
+  const token = () => process.env.JUMP_TEST_TOKEN
+  const sessionId = () => process.env.JUMP_TEST_SESSION_ID
   const headers = () => ({ Authorization: `Bearer ${token()}` })
 
   test('daemon sees exactly one alive session and no peers', async () => {

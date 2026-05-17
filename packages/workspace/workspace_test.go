@@ -151,7 +151,7 @@ func TestDetectRootJJPreferredOverGit(t *testing.T) {
 }
 
 func TestDetectRootJJNestedWorkspace(t *testing.T) {
-	// Mimics the gmux repo layout:
+	// Mimics the jump repo layout:
 	// /repo/.jj/repo/ (directory, main workspace)
 	// /repo/.grove/teak/.jj/repo (file: "../../../.jj/repo")
 	dir := t.TempDir()

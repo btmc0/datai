@@ -1,6 +1,6 @@
-// Package e2e tests the full gmux pipeline:
+// Package e2e tests the full jump pipeline:
 //
-//	gmux-run → register → gmuxd /v1/sessions → PUT /status → shutdown
+//	jump-run → register → jumpd /v1/sessions → PUT /status → shutdown
 //
 // This builds both binaries, starts them as subprocesses, and verifies
 // the data flow via HTTP.
@@ -49,55 +49,55 @@ func TestEndToEnd(t *testing.T) {
 	}
 
 	repoRoot := findRepoRoot(t)
-	gmuxdBin := buildBinary(t, repoRoot, "services/gmuxd/cmd/gmuxd")
-	gmuxRunBin := buildBinary(t, repoRoot, "cli/gmux/cmd/gmux")
+	jumpdBin := buildBinary(t, repoRoot, "services/jumpd/cmd/jumpd")
+	jumpRunBin := buildBinary(t, repoRoot, "cli/jump/cmd/jump")
 
 	// Use a temp dir for sockets to avoid polluting /tmp
 	socketDir := t.TempDir()
-	t.Setenv("GMUX_SOCKET_DIR", socketDir)
+	t.Setenv("JUMP_SOCKET_DIR", socketDir)
 
 	// State dir for Unix socket and auth token
 	stateDir := t.TempDir()
-	gmuxdSock := filepath.Join(stateDir, "gmux", "gmuxd.sock")
+	jumpdSock := filepath.Join(stateDir, "jump", "jumpd.sock")
 
 	// Use a free port for the TCP listener
 	port := freePort(t)
 	configDir := t.TempDir()
-	cfgDir := filepath.Join(configDir, "gmux")
+	cfgDir := filepath.Join(configDir, "jump")
 	os.MkdirAll(cfgDir, 0o755)
 	os.WriteFile(filepath.Join(cfgDir, "host.toml"),
 		[]byte(fmt.Sprintf("port = %d\n", port)), 0o644)
 
-	// ── Start gmuxd ──
-	gmuxdCtx, gmuxdCancel := context.WithCancel(context.Background())
-	defer gmuxdCancel()
+	// ── Start jumpd ──
+	jumpdCtx, jumpdCancel := context.WithCancel(context.Background())
+	defer jumpdCancel()
 
-	gmuxdCmd := exec.CommandContext(gmuxdCtx, gmuxdBin)
-	gmuxdCmd.Env = append(os.Environ(),
+	jumpdCmd := exec.CommandContext(jumpdCtx, jumpdBin)
+	jumpdCmd.Env = append(os.Environ(),
 		fmt.Sprintf("XDG_CONFIG_HOME=%s", configDir),
 		fmt.Sprintf("XDG_STATE_HOME=%s", stateDir),
 	)
-	gmuxdCmd.Stdout = os.Stdout
-	gmuxdCmd.Stderr = os.Stderr
-	if err := gmuxdCmd.Start(); err != nil {
-		t.Fatalf("start gmuxd: %v", err)
+	jumpdCmd.Stdout = os.Stdout
+	jumpdCmd.Stderr = os.Stderr
+	if err := jumpdCmd.Start(); err != nil {
+		t.Fatalf("start jumpd: %v", err)
 	}
-	defer gmuxdCmd.Process.Kill()
+	defer jumpdCmd.Process.Kill()
 
-	// Wait for gmuxd to be ready via Unix socket
-	waitForSocket(t, gmuxdSock, 5*time.Second)
+	// Wait for jumpd to be ready via Unix socket
+	waitForSocket(t, jumpdSock, 5*time.Second)
 
 	// Verify empty sessions
-	sessions := listSessions(t, gmuxdSock)
+	sessions := listSessions(t, jumpdSock)
 	if len(sessions) != 0 {
 		t.Fatalf("expected 0 sessions, got %d", len(sessions))
 	}
 
-	// ── Start gmux-run ──
+	// ── Start jump-run ──
 	runCtx, runCancel := context.WithCancel(context.Background())
 	defer runCancel()
 
-	runCmd := exec.CommandContext(runCtx, gmuxRunBin, "bash", "-c", "echo hello-from-e2e; sleep 60")
+	runCmd := exec.CommandContext(runCtx, jumpRunBin, "bash", "-c", "echo hello-from-e2e; sleep 60")
 	runCmd.Dir = repoRoot
 	runCmd.Env = append(os.Environ(),
 		fmt.Sprintf("XDG_STATE_HOME=%s", stateDir),
@@ -111,19 +111,19 @@ func TestEndToEnd(t *testing.T) {
 	runCmd.Stderr = os.Stderr
 
 	if err := runCmd.Start(); err != nil {
-		t.Fatalf("start gmux-run: %v", err)
+		t.Fatalf("start jump-run: %v", err)
 	}
 	defer runCmd.Process.Kill()
 
-	// Parse gmux-run output for session ID and socket path
+	// Parse jump-run output for session ID and socket path
 	sessionID, socketPath := parseRunOutput(t, runStdout)
 	t.Logf("session: %s, socket: %s", sessionID, socketPath)
 
-	// ── Verify session appears in gmuxd ──
+	// ── Verify session appears in jumpd ──
 	var found *session
 	deadline := time.Now().Add(10 * time.Second)
 	for time.Now().Before(deadline) {
-		sessions = listSessions(t, gmuxdSock)
+		sessions = listSessions(t, jumpdSock)
 		for i := range sessions {
 			if sessions[i].ID == sessionID {
 				found = &sessions[i]
@@ -137,7 +137,7 @@ func TestEndToEnd(t *testing.T) {
 	}
 
 	if found == nil {
-		t.Fatal("session not found in gmuxd after 10s")
+		t.Fatal("session not found in jumpd after 10s")
 	}
 
 	t.Logf("session found: %+v", found)
@@ -155,8 +155,8 @@ func TestEndToEnd(t *testing.T) {
 	if found.SocketPath == "" {
 		t.Error("expected socket_path")
 	}
-	if !strings.Contains(found.Cwd, "gmux") {
-		t.Errorf("expected cwd containing 'gmux', got %q", found.Cwd)
+	if !strings.Contains(found.Cwd, "jump") {
+		t.Errorf("expected cwd containing 'jump', got %q", found.Cwd)
 	}
 
 	// ── Test PUT /status on runner socket ──
@@ -168,9 +168,9 @@ func TestEndToEnd(t *testing.T) {
 		t.Errorf("expected status {e2e-test, attention}, got %+v", meta.Status)
 	}
 
-	// Wait for gmuxd to pick up the status change (next scan)
+	// Wait for jumpd to pick up the status change (next scan)
 	time.Sleep(4 * time.Second)
-	sessions = listSessions(t, gmuxdSock)
+	sessions = listSessions(t, jumpdSock)
 	for i := range sessions {
 		if sessions[i].ID == sessionID {
 			found = &sessions[i]
@@ -178,7 +178,7 @@ func TestEndToEnd(t *testing.T) {
 		}
 	}
 	if found.Status == nil || found.Status.Label != "e2e-test" {
-		t.Errorf("gmuxd did not pick up status change: %+v", found.Status)
+		t.Errorf("jumpd did not pick up status change: %+v", found.Status)
 	}
 
 	// ── Test PATCH /meta ──
@@ -192,9 +192,9 @@ func TestEndToEnd(t *testing.T) {
 	runCmd.Process.Kill()
 	runCmd.Wait()
 
-	// Give gmuxd time to scan and detect stale socket
+	// Give jumpd time to scan and detect stale socket
 	time.Sleep(5 * time.Second)
-	sessions = listSessions(t, gmuxdSock)
+	sessions = listSessions(t, jumpdSock)
 	for _, s := range sessions {
 		if s.ID == sessionID {
 			t.Error("session should have been removed after runner exit")
@@ -270,7 +270,7 @@ func waitForSocket(t *testing.T, sockPath string, timeout time.Duration) {
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
-	t.Fatalf("timed out waiting for gmuxd on socket %s", sockPath)
+	t.Fatalf("timed out waiting for jumpd on socket %s", sockPath)
 }
 
 func parseRunOutput(t *testing.T, r io.Reader) (sessionID, socketPath string) {
@@ -299,7 +299,7 @@ func parseRunOutput(t *testing.T, r io.Reader) (sessionID, socketPath string) {
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
-	t.Fatalf("could not parse session ID and socket from gmux-run output. Got: %q", collected)
+	t.Fatalf("could not parse session ID and socket from jump-run output. Got: %q", collected)
 	return
 }
 

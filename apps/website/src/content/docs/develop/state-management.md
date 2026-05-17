@@ -3,11 +3,11 @@ title: State Management
 description: How session state flows between the daemon, runners, and the web UI.
 ---
 
-Session state flows one way: runners and file monitors produce it, `gmuxd` aggregates it in a store, and the frontend renders it. The frontend never modifies session state — it sends actions and waits for the backend to broadcast the result.
+Session state flows one way: runners and file monitors produce it, `jumpd` aggregates it in a store, and the frontend renders it. The frontend never modifies session state — it sends actions and waits for the backend to broadcast the result.
 
 ## The store
 
-`gmuxd` holds all sessions in an in-memory store. Every mutation goes through `store.Upsert(session)`, which:
+`jumpd` holds all sessions in an in-memory store. Every mutation goes through `store.Upsert(session)`, which:
 
 1. Derives computed fields (`title`, `resumable`)
 2. Writes the session under a lock
@@ -80,7 +80,7 @@ stateDiagram-v2
 
 - **alive → resumable:** Subscription receives exit event from the runner, or discovery finds the socket gone. All dead sessions with a command are immediately resumable. For adapters with native resume (pi, claude, codex), the exit handler replaces the command with the tool-specific resume command. For others, the original command is kept.
 - **resumable → alive:** User clicks the session. The resume handler launches a runner with the session's command but does **not** modify the store. When the runner registers, `Register()` merges it back to alive.
-- **resumable → dismissed:** Resumable sessions in the "Resume previous" drawer can be dismissed with ×. Dismissed resume keys are tracked in memory so the scanner doesn't re-add them. Restarting `gmuxd` clears this set.
+- **resumable → dismissed:** Resumable sessions in the "Resume previous" drawer can be dismissed with ×. Dismissed resume keys are tracked in memory so the scanner doesn't re-add them. Restarting `jumpd` clears this set.
 
 ## Derived fields
 
@@ -90,13 +90,13 @@ These are computed in `Upsert()` and `Update()`, never set manually:
 |---|---|
 | `title` | `adapter_title` > `shell_title` > `CommandTitler` > adapter kind |
 | `resumable` | `!alive && has command` |
-| `stale` | `binary_hash` differs from gmuxd's expected runner hash |
+| `stale` | `binary_hash` differs from jumpd's expected runner hash |
 
 All dead sessions with a command are resumable, regardless of adapter kind. Adapters with native resume (pi, claude, codex) provide tool-specific resume commands via the `Resumer` interface. Adapters without it (shell) keep the original launch command, so "resume" re-runs it in the same working directory.
 
 **Title priority:** `adapter_title` always wins over `shell_title`. An empty `adapter_title` from the runner never overwrites a non-empty one on the daemon, preserving titles across resume where the daemon knows the title from file attribution but the freshly-started runner doesn't yet. The next fallback is the adapter's `CommandTitler` interface (shell uses this to show `pytest -x`). The final fallback is the adapter kind name (e.g. "codex").
 
-**Internal vs API-visible fields.** Several fields are internal to gmuxd and excluded from the API response via `MarshalJSON`. Their derived outputs are exposed instead. See the [field map](/develop/session-schema#field-map) for the full breakdown.
+**Internal vs API-visible fields.** Several fields are internal to jumpd and excluded from the API response via `MarshalJSON`. Their derived outputs are exposed instead. See the [field map](/develop/session-schema#field-map) for the full breakdown.
 
 ## Frontend architecture
 

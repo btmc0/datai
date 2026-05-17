@@ -1,4 +1,4 @@
-// Package paths provides common file paths used by both gmux and gmuxd.
+// Package paths provides common file paths used by both jump and jumpd.
 package paths
 
 import (
@@ -7,23 +7,23 @@ import (
 	"strings"
 )
 
-// SocketPath returns the path to the gmuxd Unix socket for local IPC.
+// SocketPath returns the path to the jumpd Unix socket for local IPC.
 func SocketPath() string {
-	return filepath.Join(StateDir(), "gmuxd.sock")
+	return filepath.Join(StateDir(), "jumpd.sock")
 }
 
-// StateDir returns the gmux state directory (~/.local/state/gmux).
+// StateDir returns the jump state directory (~/.local/state/jump).
 func StateDir() string {
 	if dir := os.Getenv("XDG_STATE_HOME"); dir != "" {
-		return filepath.Join(dir, "gmux")
+		return filepath.Join(dir, "jump")
 	}
 	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".local", "state", "gmux")
+	return filepath.Join(home, ".local", "state", "jump")
 }
 
 // SessionsDir returns the directory under StateDir that holds
 // per-session subdirectories (meta.json, scrollback). Both the
-// runner (writing scrollback) and gmuxd (writing meta.json,
+// runner (writing scrollback) and jumpd (writing meta.json,
 // reading scrollback) derive their target paths from this so the
 // on-disk contract has a single source of truth.
 func SessionsDir() string {
@@ -31,7 +31,7 @@ func SessionsDir() string {
 }
 
 // SessionDir returns the per-session subdirectory for id under
-// SessionsDir. The directory holds meta.json (written by gmuxd's
+// SessionsDir. The directory holds meta.json (written by jumpd's
 // sessionmeta package) and scrollback / scrollback.0 (written by
 // the runner's scrollback package).
 func SessionDir(id string) string {

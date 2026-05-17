@@ -8,7 +8,7 @@ export default defineConfig({
   use: {
     // Port is written to env by global-setup. Tests run in a worker that
     // inherits the env, so this is evaluated after globalSetup sets the var.
-    baseURL: `http://127.0.0.1:${process.env.GMUXD_TEST_PORT || '18790'}`,
+    baseURL: `http://127.0.0.1:${process.env.JUMPD_TEST_PORT || '18790'}`,
     headless: true,
     viewport: { width: 1200, height: 800 },
   },

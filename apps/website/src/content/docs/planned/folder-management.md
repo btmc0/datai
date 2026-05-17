@@ -14,11 +14,11 @@ This document describes the replacement, delivered in three steps:
 
 ## Design principles
 
-**Projects, not folders.** The primary unit of organization is a project, not a filesystem path. A project is "gmux" or "my-api", not `/home/mg/dev/gmux`. Folders are an implementation detail of where code lives; the project is what the user thinks about.
+**Projects, not folders.** The primary unit of organization is a project, not a filesystem path. A project is "jump" or "my-api", not `/home/mg/dev/jump`. Folders are an implementation detail of where code lives; the project is what the user thinks about.
 
-**Nothing auto-added.** Sessions are never automatically added to the sidebar. Instead, gmuxd discovers active sessions and offers them as potential projects. The user explicitly adds projects they care about. This gives the user full control and avoids the "whack-a-mole hiding" problem.
+**Nothing auto-added.** Sessions are never automatically added to the sidebar. Instead, jumpd discovers active sessions and offers them as potential projects. The user explicitly adds projects they care about. This gives the user full control and avoids the "whack-a-mole hiding" problem.
 
-**Synced between clients.** Project state lives server-side, so phone, laptop, and tailscale remote all see the same sidebar. The state is owned by the gmuxd instance serving the web UI (the "home" instance in a multi-host setup).
+**Synced between clients.** Project state lives server-side, so phone, laptop, and tailscale remote all see the same sidebar. The state is owned by the jumpd instance serving the web UI (the "home" instance in a multi-host setup).
 
 ## Step 1: Server-side project state
 
@@ -26,7 +26,7 @@ This document describes the replacement, delivered in three steps:
 
 A project is a user-configured entry that matches sessions to a named group in the sidebar. Each project has:
 
-- A **slug** (URL-safe identifier, e.g. `gmux`)
+- A **slug** (URL-safe identifier, e.g. `jump`)
 - One or more **paths** (where the code lives on disk, used for launching sessions)
 - An optional **remote URL** (when set, matching uses the remote instead of paths)
 
@@ -34,7 +34,7 @@ A project is a user-configured entry that matches sessions to a named group in t
 
 Every project has filesystem paths. If a project also has a remote URL, matching uses the remote; otherwise matching uses the paths.
 
-**Remote-matched:** The project stores a normalized remote URL (e.g. `github.com/gmuxapp/gmux`). A session matches if any of its remotes equals this URL. This handles forks (origin vs upstream), multiple clones, cross-machine grouping, and worktrees automatically. The paths are still stored for context (launch directory, display) but are not used for matching.
+**Remote-matched:** The project stores a normalized remote URL (e.g. `github.com/sting8k/jump`). A session matches if any of its remotes equals this URL. This handles forks (origin vs upstream), multiple clones, cross-machine grouping, and worktrees automatically. The paths are still stored for context (launch directory, display) but are not used for matching.
 
 **Path-matched:** The project has no remote URL. A session matches if its cwd or workspace_root is under one of the project's paths (prefix match). This handles local-only repos, scratch directories, and intentional carve-outs from remote-matched projects.
 
@@ -42,7 +42,7 @@ Every project has filesystem paths. If a project also has a remote URL, matching
 
 When a session could match multiple projects, the most specific match wins:
 
-1. **Path-matched projects, longest prefix first.** A project claiming `/home/mg/dev/gmux/.grove/teak` beats one claiming `/home/mg/dev/gmux` for sessions in the teak directory.
+1. **Path-matched projects, longest prefix first.** A project claiming `/home/mg/dev/jump/.grove/teak` beats one claiming `/home/mg/dev/jump` for sessions in the teak directory.
 2. **Remote-matched projects.** Checked only if no path-matched project matched.
 3. **Unmatched sessions** are not shown in the sidebar. They appear in the "discovered" list as candidates for the user to add.
 
@@ -50,13 +50,13 @@ Two projects claiming the exact same normalized path is a validation error. Nest
 
 ### State file
 
-Stored at `~/.local/state/gmux/projects.json`:
+Stored at `~/.local/state/jump/projects.json`:
 
 ```json
 {
   "items": [
-    { "slug": "gmux", "remote": "github.com/gmuxapp/gmux", "paths": ["/home/mg/dev/gmux"] },
-    { "slug": "teak", "paths": ["/home/mg/dev/gmux/.grove/teak"] },
+    { "slug": "jump", "remote": "github.com/sting8k/jump", "paths": ["/home/mg/dev/jump"] },
+    { "slug": "teak", "paths": ["/home/mg/dev/jump/.grove/teak"] },
     { "slug": "scripts", "paths": ["/home/mg/scripts"] }
   ]
 }
@@ -68,14 +68,14 @@ New installations start with an empty list. The sidebar shows "no projects confi
 
 ### Discovery (offered projects)
 
-gmuxd always knows about active sessions via socket discovery. Sessions that don't match any configured project are grouped using the existing union-find logic (shared remotes, then shared workspace_root, then shared cwd) and presented as "discovered" projects.
+jumpd always knows about active sessions via socket discovery. Sessions that don't match any configured project are grouped using the existing union-find logic (shared remotes, then shared workspace_root, then shared cwd) and presented as "discovered" projects.
 
 The `GET /v1/projects` response includes both:
 
 ```json
 {
   "configured": [
-    { "slug": "gmux", "remote": "github.com/gmuxapp/gmux" }
+    { "slug": "jump", "remote": "github.com/sting8k/jump" }
   ],
   "discovered": [
     {
@@ -123,8 +123,8 @@ First-time users see:
 │                                              │
 │  We found active sessions in:                │
 │                                              │
-│  ┌ gmux ─────────────────────── [Add] ┐     │
-│  │ github.com/gmuxapp/gmux            │     │
+│  ┌ jump ─────────────────────── [Add] ┐     │
+│  │ github.com/sting8k/jump            │     │
 │  │ 3 active sessions                  │     │
 │  └─────────────────────────────────────┘     │
 │                                              │
@@ -146,10 +146,10 @@ First-time users see:
 ┌──────────────────────────────────────────────┐
 │  Manage projects                          X  │
 │                                              │
-│  ≡  gmux                                 ✕   │
-│     github.com/gmuxapp/gmux                  │
+│  ≡  jump                                 ✕   │
+│     github.com/sting8k/jump                  │
 │  ≡  teak                                 ✕   │
-│     ~/dev/gmux/.grove/teak                   │
+│     ~/dev/jump/.grove/teak                   │
 │                                              │
 │  ── Discovered ──────────────────────────    │
 │  other-project (2 sessions)        [Add]     │
@@ -201,8 +201,8 @@ Each session is addressable at:
 Examples:
 
 ```
-/gmux/pi/fix-auth-bug
-/gmux/shell/pytest-watch
+/jump/pi/fix-auth-bug
+/jump/shell/pytest-watch
 /scripts/shell/backup-3
 ```
 
@@ -214,15 +214,15 @@ Each segment is meaningful:
 
 ### Session slugs
 
-Adapters provide a `slug` field via the existing child protocol (`/meta` response or `GMUX_SOCKET` HTTP). The slug is:
+Adapters provide a `slug` field via the existing child protocol (`/meta` response or `JUMP_SOCKET` HTTP). The slug is:
 
 - Derived from something stable in the adapter's domain: pi uses its conversation ID or first-message summary, Claude uses the session file basename, shell uses a sanitized command name or counter.
-- Unique within the adapter's namespace for that project. If the adapter produces a duplicate, gmux appends a disambiguator (e.g. `-2`).
+- Unique within the adapter's namespace for that project. If the adapter produces a duplicate, jump appends a disambiguator (e.g. `-2`).
 - Falls back to a truncated session ID (e.g. `sess-abc12`) if the adapter doesn't provide one.
 
 The slug is stable across kill and resume. A resumed session keeps the same slug because the adapter's stable identifier (conversation ID, session file) doesn't change. The internal session ID and process may change, but the URL-facing slug stays the same.
 
-This makes URLs bookmarkable and shareable. A link to `/gmux/pi/fix-auth-bug` resolves to the same logical session regardless of how many times it has been resumed.
+This makes URLs bookmarkable and shareable. A link to `/jump/pi/fix-auth-bug` resolves to the same logical session regardless of how many times it has been resumed.
 
 See [Session Schema](/develop/session-schema) for the `slug` field definition.
 
@@ -247,15 +247,15 @@ Navigating to a session updates the URL bar. Clicking a session in the sidebar p
 With [peer aggregation](/multi-machine), a host prefix slots in before the project:
 
 ```
-/gmux/pi/fix-auth-bug          → local session
-/desktop/gmux/pi/fix-auth-bug  → session on the desktop spoke
+/jump/pi/fix-auth-bug          → local session
+/desktop/jump/pi/fix-auth-bug  → session on the desktop spoke
 ```
 
-Existing local URLs continue to work. The project state (which projects to show, ordering, visibility) is owned by the hub gmuxd; spokes just serve sessions.
+Existing local URLs continue to work. The project state (which projects to show, ordering, visibility) is owned by the hub jumpd; spokes just serve sessions.
 
 ### What this enables
 
 - **Deep linking**: notification actions link to the specific session that finished.
 - **Bookmarks**: pin a long-running session in your browser.
-- **External tools**: CI can open `https://gmux.tailnet.ts.net/myproject/shell/build` to show a build session.
+- **External tools**: CI can open `https://jump.tailnet.ts.net/myproject/shell/build` to show a build session.
 - **Aggregation-ready**: the URL structure extends naturally with a host prefix.

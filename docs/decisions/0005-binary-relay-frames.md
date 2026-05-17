@@ -8,8 +8,8 @@ Accepted
 
 ## Context
 
-The relay transport carries gmux HTTP and WebSocket traffic between `gmuxd` and
-`gmux-relayd` over one authenticated outbound WebSocket. The first implementation
+The relay transport carries jump HTTP and WebSocket traffic between `jumpd` and
+`jump-relayd` over one authenticated outbound WebSocket. The first implementation
 encoded every relay frame as JSON text. That made the protocol easy to inspect,
 but binary payload fields such as terminal WebSocket data were base64 encoded by
 JSON, increasing wire size and decode work.
@@ -21,8 +21,8 @@ WebSocket payloads are the relay path most likely to feel this overhead.
 
 ## Decision
 
-Use a gmux-specific binary relay frame for traffic between `gmuxd` and
-`gmux-relayd`.
+Use a jump-specific binary relay frame for traffic between `jumpd` and
+`jump-relayd`.
 
 The shared codec lives in `packages/relayproto` and preserves the existing frame
 model:
@@ -33,15 +33,15 @@ model:
 - HTTP headers encoded inside the binary frame as JSON header metadata because
   headers are small compared with body/data payloads.
 
-This is an intentional protocol break. `gmuxd` and `gmux-relayd` must be deployed
+This is an intentional protocol break. `jumpd` and `jump-relayd` must be deployed
 from compatible builds.
 
 ## Alternatives Considered
 
 1. Keep JSON/text frames. Rejected because binary payloads pay base64 wire and
    decode overhead on the hottest relay path.
-2. Use a generic tunnel protocol. Rejected because gmux only needs HTTP and
-   WebSocket semantics, and keeping the protocol gmux-specific preserves simpler
+2. Use a generic tunnel protocol. Rejected because jump only needs HTTP and
+   WebSocket semantics, and keeping the protocol jump-specific preserves simpler
    validation and routing.
 3. Add backwards-compatible JSON fallback. Rejected for now because relay mode is
    still pre-release/early and the user explicitly accepted deploying compatible
@@ -53,19 +53,19 @@ Positive:
 
 - Relay WebSocket data avoids JSON/base64 overhead.
 - The frame contract remains centralized in `packages/relayproto`.
-- `gmux-relayd` remains a transport component and does not gain session/domain
+- `jump-relayd` remains a transport component and does not gain session/domain
   awareness.
 
 Tradeoffs:
 
-- Existing deployed relayd binaries are not wire-compatible with new gmuxd
+- Existing deployed relayd binaries are not wire-compatible with new jumpd
   binaries.
 - Binary frames are less human-inspectable than JSON; debugging should use codec
   tests/logging rather than raw WebSocket text inspection.
 
 ## Follow-Up
 
-- Redeploy both `gmuxd` and `gmux-relayd` together when enabling relay mode with
+- Redeploy both `jumpd` and `jump-relayd` together when enabling relay mode with
   this protocol.
 - Consider streaming/chunked HTTP bodies later only if real relay usage shows
   large HTTP payloads are a bottleneck.

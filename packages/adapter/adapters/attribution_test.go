@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gmuxapp/gmux/packages/adapter"
+	"github.com/sting8k/jump/packages/adapter"
 )
 
 // --- similarityScore ---

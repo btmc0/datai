@@ -9,9 +9,9 @@ services:
     volumes:
       # Persistent workspace for repos
       - ./data/workspace:/workspace
-      # gmux config and Tailscale state (container-specific)
-      - ./data/gmux-config:/root/.config/gmux
-      - ./data/gmux-state:/root/.local/state/gmux
+      # jump config and Tailscale state (container-specific)
+      - ./data/jump-config:/root/.config/jump
+      - ./data/jump-state:/root/.local/state/jump
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:8790/ >/dev/null"]
       interval: 30s

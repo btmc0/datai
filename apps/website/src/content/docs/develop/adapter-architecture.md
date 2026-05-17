@@ -1,20 +1,20 @@
 ---
 title: Adapter Architecture
-description: How adapters, gmux, and gmuxd work together at runtime.
+description: How adapters, jump, and jumpd work together at runtime.
 ---
 
-This page describes the runtime architecture behind gmux adapters: which component does what, how sessions are discovered, how file-backed integrations work, and how children can report status back to gmux.
+This page describes the runtime architecture behind jump adapters: which component does what, how sessions are discovered, how file-backed integrations work, and how children can report status back to jump.
 
-Read this page if you are working on gmux internals, debugging adapter behavior, or trying to understand how a launched process becomes a live or resumable sidebar entry.
+Read this page if you are working on jump internals, debugging adapter behavior, or trying to understand how a launched process becomes a live or resumable sidebar entry.
 
 If you want the user-facing overview, see [Adapters](/adapters). If you want to add support for a new tool, see [Writing an Adapter](/develop/writing-adapters).
 
 ## Two processes, one adapter system
 
-Adapters are defined once in `packages/adapter` and used by both `gmux` and `gmuxd`.
+Adapters are defined once in `packages/adapter` and used by both `jump` and `jumpd`.
 
-- **`gmux`** is per-session. It launches the child, owns the PTY, injects environment variables, and interprets live output.
-- **`gmuxd`** is per-machine. It discovers running sessions, watches adapter-owned files, and surfaces resumable sessions.
+- **`jump`** is per-session. It launches the child, owns the PTY, injects environment variables, and interprets live output.
+- **`jumpd`** is per-machine. It discovers running sessions, watches adapter-owned files, and surfaces resumable sessions.
 
 That split is why the adapter system is a set of small interfaces instead of one giant one.
 
@@ -22,39 +22,39 @@ That split is why the adapter system is a set of small interfaces instead of one
 
 | Concern | Component | How |
 |---|---|---|
-| Adapter availability detection | `gmuxd` | `Adapter.Discover()` |
-| Command matching | `gmux` | `Adapter.Match()` |
-| Child env injection | `gmux` | `Adapter.Env()` |
-| PTY output monitoring | `gmux` | `Adapter.Monitor()` |
-| Child self-report API | `gmux` | Unix socket HTTP endpoints |
-| Launch menu discovery | `gmuxd` | `Launchable` + compiled adapter set |
-| Session file discovery | `gmuxd` | `SessionFiler` |
-| Session file attribution | `gmuxd` | file scanner + matching |
-| Live file monitoring | `gmuxd` | `FileMonitor.ParseNewLines()` |
-| Resumable session discovery | `gmuxd` | `SessionFiler` + `Resumer` |
-| Resume command generation | `gmuxd` | `Resumer.ResumeCommand()` |
+| Adapter availability detection | `jumpd` | `Adapter.Discover()` |
+| Command matching | `jump` | `Adapter.Match()` |
+| Child env injection | `jump` | `Adapter.Env()` |
+| PTY output monitoring | `jump` | `Adapter.Monitor()` |
+| Child self-report API | `jump` | Unix socket HTTP endpoints |
+| Launch menu discovery | `jumpd` | `Launchable` + compiled adapter set |
+| Session file discovery | `jumpd` | `SessionFiler` |
+| Session file attribution | `jumpd` | file scanner + matching |
+| Live file monitoring | `jumpd` | `FileMonitor.ParseNewLines()` |
+| Resumable session discovery | `jumpd` | `SessionFiler` + `Resumer` |
+| Resume command generation | `jumpd` | `Resumer.ResumeCommand()` |
 
 ## Launch lifecycle
 
-When you run a command through `gmux`:
+When you run a command through `jump`:
 
-1. `gmux` resolves the adapter
-   - `GMUX_ADAPTER=<name>` override, if set
+1. `jump` resolves the adapter
+   - `JUMP_ADAPTER=<name>` override, if set
    - otherwise first matching registered adapter wins
    - otherwise shell fallback
-2. `gmux` starts the child under a PTY
-3. `gmux` injects the standard `GMUX_*` environment variables
-4. `gmux` feeds PTY output into `Adapter.Monitor()`
-5. `gmux` serves the session on its Unix socket (`/meta`, `/events`, terminal attach, child callbacks)
-6. `gmuxd` discovers the runner socket, queries `/meta`, and subscribes to `/events`
+2. `jump` starts the child under a PTY
+3. `jump` injects the standard `JUMP_*` environment variables
+4. `jump` feeds PTY output into `Adapter.Monitor()`
+5. `jump` serves the session on its Unix socket (`/meta`, `/events`, terminal attach, child callbacks)
+6. `jumpd` discovers the runner socket, queries `/meta`, and subscribes to `/events`
 
 The command itself is never rewritten by the adapter. Adapters can add environment variables, but what the user launched is exactly what runs.
 
 ## Adapter resolution
 
-Adapter selection happens entirely in `gmux`:
+Adapter selection happens entirely in `jump`:
 
-1. **Explicit override**: `GMUX_ADAPTER=<name>`
+1. **Explicit override**: `JUMP_ADAPTER=<name>`
 2. **Registered adapters in order**: first `Match()` wins
 3. **Shell fallback**: always matches, always last
 
@@ -74,8 +74,8 @@ type Adapter interface {
 }
 ```
 
-`gmuxd` runs `Discover()` for every compiled adapter in parallel during startup.
-That tells gmux which adapters are actually usable on the current machine.
+`jumpd` runs `Discover()` for every compiled adapter in parallel during startup.
+That tells jump which adapters are actually usable on the current machine.
 
 For the built-in adapters:
 
@@ -94,14 +94,14 @@ type Launchable interface {
 }
 ```
 
-`gmuxd` aggregates launchers from the compiled adapter set by checking which adapters implement `Launchable`, then filters that list based on each adapter's `Discover()` result.
+`jumpd` aggregates launchers from the compiled adapter set by checking which adapters implement `Launchable`, then filters that list based on each adapter's `Discover()` result.
 
 A few important consequences:
 
 - launch menu support is optional, like other adapter capabilities
 - adapter availability is mandatory, because every adapter must implement `Discover()`
 - one adapter can expose zero, one, or many launch presets
-- `gmuxd` no longer shells out to `gmux adapters` to discover launchers
+- `jumpd` no longer shells out to `jump adapters` to discover launchers
 - the shell fallback also implements `Launchable`, so shell appears in the UI without a separate special-case launcher registry
 - unavailable launchers are omitted from the launch config entirely
 
@@ -112,7 +112,7 @@ The current built-in launcher ordering is simple:
 
 ## File-backed adapters
 
-Some tools write session or conversation files to disk. Those integrations use optional capabilities discovered by `gmuxd`.
+Some tools write session or conversation files to disk. Those integrations use optional capabilities discovered by `jumpd`.
 
 ### `SessionFiler`
 
@@ -124,7 +124,7 @@ type SessionFiler interface {
 }
 ```
 
-Use this when a tool stores session state on disk and gmux should be able to discover or inspect it.
+Use this when a tool stores session state on disk and jump should be able to discover or inspect it.
 
 - `SessionRootDir()` returns the root containing all per-project session directories
 - `SessionDir(cwd)` returns the directory for one working directory
@@ -138,7 +138,7 @@ type FileMonitor interface {
 }
 ```
 
-Use this when new file content should update the live sidebar. `gmuxd` tracks offsets and passes only appended lines. The `filePath` parameter gives adapters access to the full session file for context lookups (e.g. reading preceding events).
+Use this when new file content should update the live sidebar. `jumpd` tracks offsets and passes only appended lines. The `filePath` parameter gives adapters access to the full session file for context lookups (e.g. reading preceding events).
 
 Typical uses:
 - title changes
@@ -157,15 +157,15 @@ type Resumer interface {
 Use this when a finished session can be resumed later.
 
 - `CanResume(path)` filters out invalid or empty files
-- `ResumeCommand(info)` tells gmux how to resume the session when the user clicks it
+- `ResumeCommand(info)` tells jump how to resume the session when the user clicks it
 
 ## File attribution and live updates
 
-For adapters that implement `SessionFiler`, `gmuxd` does more than just scan files.
+For adapters that implement `SessionFiler`, `jumpd` does more than just scan files.
 
 ### Session file attribution
 
-When a tool starts writing files in a watched directory, `gmuxd` needs to figure out which running session owns which file. Adapters control this by implementing `FileAttributor`:
+When a tool starts writing files in a watched directory, `jumpd` needs to figure out which running session owns which file. Adapters control this by implementing `FileAttributor`:
 
 ```go
 type FileAttributor interface {
@@ -186,11 +186,11 @@ Typical flow:
 4. once attributed, keep the association sticky
 5. track the **active file** per session — when a different file is attributed (e.g. the user runs `/new` or `/resume` in the tool's TUI), `resume_key` updates to the new file's session ID
 
-This is what lets gmux connect a running session to a later-created conversation file.
+This is what lets jump connect a running session to a later-created conversation file.
 
 ### Live file monitoring
 
-After attribution, `gmuxd` can continue watching the file:
+After attribution, `jumpd` can continue watching the file:
 
 1. read newly appended lines
 2. if the session still has no adapter title (common when the tool creates the file before the first user message), re-derive the title from `ParseSessionFile()` on the full file
@@ -206,7 +206,7 @@ For adapters that implement `Resumer`, sessions transition seamlessly between al
 
 ### Live → resumable transition
 
-When a session exits, `gmuxd` checks whether its adapter implements `Resumer` and whether the session has an attributed file (identified by `resume_key`, set during file attribution). If so:
+When a session exits, `jumpd` checks whether its adapter implements `Resumer` and whether the session has an attributed file (identified by `resume_key`, set during file attribution). If so:
 
 1. the resume command is derived from the adapter's `ResumeCommand()`
 2. `command` is set to the resume command
@@ -215,7 +215,7 @@ When a session exits, `gmuxd` checks whether its adapter implements `Resumer` an
 
 ### File-discovered sessions
 
-For adapters that implement both `SessionFiler` and `Resumer`, `gmuxd` also discovers sessions from files on disk (e.g. from before the daemon started):
+For adapters that implement both `SessionFiler` and `Resumer`, `jumpd` also discovers sessions from files on disk (e.g. from before the daemon started):
 
 1. enumerate files under `SessionRootDir()` / known `SessionDir(cwd)` directories
 2. filter them with `CanResume(path)`
@@ -223,29 +223,29 @@ For adapters that implement both `SessionFiler` and `Resumer`, `gmuxd` also disc
 4. deduplicate them against live sessions by resume key
 5. publish them as resumable entries
 
-When the user resumes one, `gmuxd` uses `ResumeCommand()` to launch the new live session.
+When the user resumes one, `jumpd` uses `ResumeCommand()` to launch the new live session.
 
 For concrete examples, see [Claude Code](/integrations/claude-code), [Codex](/integrations/codex), or [pi](/integrations/pi).
 
 ## Child awareness protocol
 
-Every child launched by `gmux` gets a small protocol for detecting gmux and reporting back.
+Every child launched by `jump` gets a small protocol for detecting jump and reporting back.
 
 ### Environment variables
 
 | Variable | Purpose |
 |---|---|
-| `GMUX` | Simple detection flag (`1`) |
-| `GMUX_SOCKET` | Unix socket path for callbacks to the runner |
-| `GMUX_SESSION_ID` | Unique session identifier |
-| `GMUX_ADAPTER` | Name of the matched adapter |
-| `GMUX_RUNNER_VERSION` | Version of the gmux runner hosting the session |
+| `JUMP` | Simple detection flag (`1`) |
+| `JUMP_SOCKET` | Unix socket path for callbacks to the runner |
+| `JUMP_SESSION_ID` | Unique session identifier |
+| `JUMP_ADAPTER` | Name of the matched adapter |
+| `JUMP_RUNNER_VERSION` | Version of the jump runner hosting the session |
 
-Most tools ignore these. gmux-aware tools, wrappers, or hooks can use them to integrate directly.
+Most tools ignore these. jump-aware tools, wrappers, or hooks can use them to integrate directly.
 
 ### Child-to-runner endpoints
 
-Served by `gmux` on the session socket:
+Served by `jump` on the session socket:
 
 | Endpoint | Method | Purpose |
 |---|---|---|
@@ -257,23 +257,23 @@ Served by `gmux` on the session socket:
 Example:
 
 ```bash
-curl --unix-socket "$GMUX_SOCKET" http://localhost/status \
+curl --unix-socket "$JUMP_SOCKET" http://localhost/status \
   -X PUT -H 'Content-Type: application/json' \
   -d '{"label":"building","working":true}'
 ```
 
-This is the escape hatch for tools that want native gmux integration without needing a custom PTY parser.
+This is the escape hatch for tools that want native jump integration without needing a custom PTY parser.
 
 ## Status sources
 
 A session's displayed state can come from multiple places:
 
-- process lifecycle defaults from gmux itself
+- process lifecycle defaults from jump itself
 - adapter PTY monitoring via `Monitor()`
 - file-backed updates via `FileMonitor`
 - direct child callbacks via `/status` and `PATCH /meta`
 
-The important design point is that adapters do not own the whole session model. They contribute structured hints into a runner-owned session state that `gmuxd` then aggregates and serves.
+The important design point is that adapters do not own the whole session model. They contribute structured hints into a runner-owned session state that `jumpd` then aggregates and serves.
 
 ## Built-in examples
 

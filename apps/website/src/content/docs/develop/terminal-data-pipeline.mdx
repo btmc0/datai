@@ -1,9 +1,9 @@
 ---
 title: Terminal Data Pipeline
-description: How bytes travel from a child process to the screen, and how gmux captures scrollback along the way.
+description: How bytes travel from a child process to the screen, and how jump captures scrollback along the way.
 ---
 
-This page traces what happens between a TUI program printing bytes and those bytes appearing on screen. It covers the three ways a user can observe a gmux session, and explains the scrollback buffer that ties them together.
+This page traces what happens between a TUI program printing bytes and those bytes appearing on screen. It covers the three ways a user can observe a jump session, and explains the scrollback buffer that ties them together.
 
 ## The full path
 
@@ -29,7 +29,7 @@ flowchart TD
 
 ### 1. Child process writes to stdout/stderr
 
-The child (pi, claude, bash) writes raw bytes. These are terminal escape sequences, UTF-8 text, cursor movement commands, colors, and so on. The child has no knowledge of gmux.
+The child (pi, claude, bash) writes raw bytes. These are terminal escape sequences, UTF-8 text, cursor movement commands, colors, and so on. The child has no knowledge of jump.
 
 ### 2. Kernel PTY line discipline
 
@@ -54,7 +54,7 @@ The raw bytes are forwarded unmodified to WebSocket clients and the local TTY. O
 
 ### Local TTY (direct attach)
 
-When you run `gmux` in a terminal, the local terminal is attached as both input and output. PTY output bytes are copied directly to your terminal's stdout. Your terminal emulator (kitty, iTerm2, etc.) interprets the escape sequences and renders them.
+When you run `jump` in a terminal, the local terminal is attached as both input and output. PTY output bytes are copied directly to your terminal's stdout. Your terminal emulator (kitty, iTerm2, etc.) interprets the escape sequences and renders them.
 
 **Data flow:** PTY master → `readPTY()` → `localOut.Write(data)` → your terminal
 
@@ -62,7 +62,7 @@ No filtering or transformation. You see exactly what the child process produces 
 
 ### xterm.js (WebSocket viewer)
 
-When you open the gmux web UI or connect from another machine, the browser runs xterm.js. On connection:
+When you open the jump web UI or connect from another machine, the browser runs xterm.js. On connection:
 
 1. The server sends a **scrollback replay frame**: synchronized update begin, reset sequences (clear scroll region, cursor home, erase display, erase scrollback), the full TermWriter snapshot, then synchronized update end.
 2. After replay, live chunks are forwarded in real time via WebSocket binary messages.
@@ -107,7 +107,7 @@ The underlying storage is a fixed-size circular buffer (default 128KB). When ful
 
 ## Escape sequence handling in the web client
 
-xterm.js handles most escape sequences natively. The gmux web client registers additional handlers for sequences that need browser integration.
+xterm.js handles most escape sequences natively. The jump web client registers additional handlers for sequences that need browser integration.
 
 ### OSC 52: clipboard
 
@@ -119,7 +119,7 @@ xterm.js does not handle OSC 52 natively. The web client registers a parser hand
 
 | OSC | Purpose | Notes |
 |-----|---------|-------|
-| 0, 1, 2 | Window/icon title | Parsed but not surfaced in the gmux UI |
+| 0, 1, 2 | Window/icon title | Parsed but not surfaced in the jump UI |
 | 4, 104 | Color palette set/reset | |
 | 8 | Hyperlinks | Rendered clickable via WebLinksAddon |
 | 10-12, 110-112 | Foreground/background/cursor color | Used by theme-aware applications |
@@ -130,7 +130,7 @@ xterm.js does not handle OSC 52 natively. The web client registers a parser hand
 |-----|---------|-------------|
 | 133 | Shell integration (FinalTerm/iTerm2 command zones) | Informational markers only; no terminal-side action needed. Pi emits these (`133;A`, `133;B`, `133;C`) to mark prompt boundaries. |
 | 7 | Current working directory | Would need daemon-side integration to update session metadata; not a web client concern. |
-| 9, 99, 777 | Desktop notifications (ConEmu, iTerm2, rxvt) | gmux has its own notification system via the presence WebSocket. |
+| 9, 99, 777 | Desktop notifications (ConEmu, iTerm2, rxvt) | jump has its own notification system via the presence WebSocket. |
 
 ## Example: what happens when pi renders a response
 

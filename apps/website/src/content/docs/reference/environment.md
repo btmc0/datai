@@ -1,43 +1,43 @@
 ---
 title: Environment variables
-description: Environment variables used and set by gmux.
+description: Environment variables used and set by jump.
 tableOfContents:
   maxHeadingLevel: 3
 ---
 
-## gmuxd
+## jumpd
 
 Variables that affect the daemon.
 
 | Variable | Purpose | Default |
 |----------|---------|---------|
-| `GMUXD_LISTEN` | TCP bind address (IPv4 or IPv6). | `127.0.0.1` |
-| `GMUXD_TOKEN` | Seed the auth token file on first start. | *(none)* |
+| `JUMPD_LISTEN` | TCP bind address (IPv4 or IPv6). | `127.0.0.1` |
+| `JUMPD_TOKEN` | Seed the auth token file on first start. | *(none)* |
 | `XDG_CONFIG_HOME` | Base directory for config files. | `~/.config` |
 | `XDG_STATE_HOME` | Base directory for runtime state (socket, auth token). | `~/.local/state` |
-| `GMUXD_DEV_PROXY` | Proxy frontend requests to a Vite dev server (development only). | *(none)* |
+| `JUMPD_DEV_PROXY` | Proxy frontend requests to a Vite dev server (development only). | *(none)* |
 
 ### Bind address
 
-By default gmuxd binds to `127.0.0.1` (localhost only). All TCP connections require bearer token authentication.
+By default jumpd binds to `127.0.0.1` (localhost only). All TCP connections require bearer token authentication.
 
 To bind to all interfaces (containers, VPN setups):
 
 ```bash
-GMUXD_LISTEN=0.0.0.0 gmuxd run
+JUMPD_LISTEN=0.0.0.0 jumpd run
 ```
 
-The bind address is controlled exclusively by the `GMUXD_LISTEN` environment variable. It is not a config file option because it is a deployment concern, not a user preference.
+The bind address is controlled exclusively by the `JUMPD_LISTEN` environment variable. It is not a config file option because it is a deployment concern, not a user preference.
 
 ### Auth token
 
-`GMUXD_TOKEN` seeds the auth token file (`~/.local/state/gmux/auth-token`) on first start. This is a provisioning convenience for container deployments where mounting a pre-generated file is impractical.
+`JUMPD_TOKEN` seeds the auth token file (`~/.local/state/jump/auth-token`) on first start. This is a provisioning convenience for container deployments where mounting a pre-generated file is impractical.
 
 The value must be at least 64 hex characters (`openssl rand -hex 32` produces exactly this).
 
 **Behavior:**
 
-| Token file | `GMUXD_TOKEN` | Result |
+| Token file | `JUMPD_TOKEN` | Result |
 |------------|---------------|--------|
 | missing | not set | Generate a random token, write to file |
 | missing | set | Validate, write to file |
@@ -46,7 +46,7 @@ The value must be at least 64 hex characters (`openssl rand -hex 32` produces ex
 | present | differs | **Refuse to start** |
 | corrupted | any | **Refuse to start** |
 
-After reading, gmuxd **unsets** `GMUXD_TOKEN` from the process environment so child shells (your terminal sessions) don't inherit it. This reduces but does not eliminate exposure: the original value may still be visible via `/proc/*/environ` or `docker inspect`. The file at `~/.local/state/gmux/auth-token` (permissions `0600`) is the primary storage and the safer long-term secret location.
+After reading, jumpd **unsets** `JUMPD_TOKEN` from the process environment so child shells (your terminal sessions) don't inherit it. This reduces but does not eliminate exposure: the original value may still be visible via `/proc/*/environ` or `docker inspect`. The file at `~/.local/state/jump/auth-token` (permissions `0600`) is the primary storage and the safer long-term secret location.
 
 For a known token in Docker Compose:
 
@@ -56,31 +56,31 @@ openssl rand -hex 32   # copy the output
 
 ```yaml
 environment:
-  GMUXD_TOKEN: "paste-hex-here"
-  GMUXD_LISTEN: "0.0.0.0"
+  JUMPD_TOKEN: "paste-hex-here"
+  JUMPD_LISTEN: "0.0.0.0"
 ```
 
-On first start, gmuxd writes the token to disk. On subsequent starts, the file already exists and the env var is verified against it.
+On first start, jumpd writes the token to disk. On subsequent starts, the file already exists and the env var is verified against it.
 
-## gmux (CLI)
+## jump (CLI)
 
 Variables that affect the session runner.
 
 | Variable | Purpose | Default |
 |----------|---------|---------|
-| `GMUX_ADAPTER` | Force a specific adapter instead of auto-detection. | *(auto)* |
-| `GMUX_SOCKET_DIR` | Directory for per-session Unix sockets. | `/tmp/gmux-sessions` |
+| `JUMP_ADAPTER` | Force a specific adapter instead of auto-detection. | *(auto)* |
+| `JUMP_SOCKET_DIR` | Directory for per-session Unix sockets. | `/tmp/jump-sessions` |
 
-## Set by gmux in child processes
+## Set by jump in child processes
 
-These are available inside every session launched by `gmux`. Use them to detect that you are running inside gmux, or to communicate back to the session runner.
+These are available inside every session launched by `jump`. Use them to detect that you are running inside jump, or to communicate back to the session runner.
 
 | Variable | Purpose | Example |
 |----------|---------|---------|
-| `GMUX` | Always `1` inside a gmux session. Used for nested-session detection. | `1` |
-| `GMUX_SOCKET` | Unix socket path for callbacks to the session runner. | `/tmp/gmux-sessions/sess-abc123.sock` |
-| `GMUX_SESSION_ID` | Unique session identifier. | `sess-abc123` |
-| `GMUX_ADAPTER` | Name of the matched adapter. | `pi`, `shell` |
-| `GMUX_RUNNER_VERSION` | Version of the gmux runner hosting the session. | `0.4.0` |
+| `JUMP` | Always `1` inside a jump session. Used for nested-session detection. | `1` |
+| `JUMP_SOCKET` | Unix socket path for callbacks to the session runner. | `/tmp/jump-sessions/sess-abc123.sock` |
+| `JUMP_SESSION_ID` | Unique session identifier. | `sess-abc123` |
+| `JUMP_ADAPTER` | Name of the matched adapter. | `pi`, `shell` |
+| `JUMP_RUNNER_VERSION` | Version of the jump runner hosting the session. | `0.4.0` |
 
 See [Adapter Architecture](/develop/adapter-architecture) for how to use the child-to-runner API.

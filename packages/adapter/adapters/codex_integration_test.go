@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gmuxapp/gmux/packages/adapter/adapters/testutil"
+	"github.com/sting8k/jump/packages/adapter/adapters/testutil"
 )
 
 func requireCodexIntegration(t *testing.T) {
@@ -24,7 +24,7 @@ func requireCodexIntegration(t *testing.T) {
 var codexModel = []string{"codex", "--model", "gpt-4o-mini"}
 
 // codexSendAndWait sends a message to codex and waits for the response.
-func codexSendAndWait(t *testing.T, g *testutil.Gmuxd, send func(string), sessID string) {
+func codexSendAndWait(t *testing.T, g *testutil.Jumpd, send func(string), sessID string) {
 	t.Helper()
 	// Codex shows a trust prompt for new workspaces — dismiss it.
 	s, _ := g.GetSession(sessID)
@@ -51,7 +51,7 @@ func codexSendAndWait(t *testing.T, g *testutil.Gmuxd, send func(string), sessID
 func TestCodexTurnAndTitle(t *testing.T) {
 	requireCodexIntegration(t)
 
-	g := testutil.StartGmuxd(t)
+	g := testutil.StartJumpd(t)
 	cwd := t.TempDir()
 
 	sess := g.Launch(codexModel, cwd)
@@ -78,7 +78,7 @@ func TestCodexTurnAndTitle(t *testing.T) {
 func TestCodexSecondTurnKeepsTitle(t *testing.T) {
 	requireCodexIntegration(t)
 
-	g := testutil.StartGmuxd(t)
+	g := testutil.StartJumpd(t)
 	cwd := t.TempDir()
 
 	sess := g.Launch(codexModel, cwd)
@@ -108,7 +108,7 @@ func TestCodexSecondTurnKeepsTitle(t *testing.T) {
 func TestCodexResumability(t *testing.T) {
 	requireCodexIntegration(t)
 
-	g := testutil.StartGmuxd(t)
+	g := testutil.StartJumpd(t)
 	cwd := t.TempDir()
 
 	sess := g.Launch(codexModel, cwd)

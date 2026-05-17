@@ -2,7 +2,7 @@
 
 ## Goal
 
-Improve single-user session feel and steady-state cleanup without changing gmux architecture.
+Improve single-user session feel and steady-state cleanup without changing jump architecture.
 
 ## Scope
 
@@ -15,11 +15,11 @@ In scope:
 
 Out of scope:
 
-- Moving PTY ownership into `gmuxd`.
+- Moving PTY ownership into `jumpd`.
 - Relay protocol or remote-access changes.
 - Configurable retention TTL.
 - Browser UI changes for manual bulk dismiss.
-- Pruning peer-owned sessions from a hub gmuxd.
+- Pruning peer-owned sessions from a hub jumpd.
 
 ## Risk Classification
 

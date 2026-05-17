@@ -1,9 +1,9 @@
 ---
 title: Writing an Adapter
-description: How to add first-class gmux support for a new tool.
+description: How to add first-class jump support for a new tool.
 ---
 
-An adapter is a single Go file that teaches gmux how to work with a specific tool. It lives in `packages/adapter/adapters/` and is compiled into both `gmux` and `gmuxd`.
+An adapter is a single Go file that teaches jump how to work with a specific tool. It lives in `packages/adapter/adapters/` and is compiled into both `jump` and `jumpd`.
 
 Read this page if you are adding support for a new tool. If you want the system-level overview first, see [Adapter Architecture](/develop/adapter-architecture). This page stays focused on the implementation recipe.
 
@@ -17,7 +17,7 @@ package adapters
 import (
     "path/filepath"
 
-    "github.com/gmuxapp/gmux/packages/adapter"
+    "github.com/sting8k/jump/packages/adapter"
 )
 
 func init() {
@@ -73,7 +73,7 @@ func (m *MyApp) Launchers() []adapter.Launcher {
 }
 ```
 
-`gmuxd` derives the launch menu from the compiled adapter set by checking which adapters implement `Launchable`. It then filters that menu using the adapter's required `Discover()` method.
+`jumpd` derives the launch menu from the compiled adapter set by checking which adapters implement `Launchable`. It then filters that menu using the adapter's required `Discover()` method.
 
 Adapters may expose zero, one, or many launch presets. The built-in shell fallback also implements `Launchable`, so shell appears in the menu without a separate special registry.
 
@@ -93,11 +93,11 @@ type Adapter interface {
 
 **`Name()`** returns a short identifier like `"pi"` or `"myapp"`.
 
-**`Discover()`** reports whether the backing tool is available on the current machine. `gmuxd` runs this in parallel for all compiled adapters during startup and only includes launchers from adapters whose discovery succeeds. Keep it cheap and deterministic. For example, shell returns `true`, while pi runs `pi --version` and checks whether it succeeds.
+**`Discover()`** reports whether the backing tool is available on the current machine. `jumpd` runs this in parallel for all compiled adapters during startup and only includes launchers from adapters whose discovery succeeds. Keep it cheap and deterministic. For example, shell returns `true`, while pi runs `pi --version` and checks whether it succeeds.
 
 **`Match(cmd)`** receives the full command array and decides whether this adapter should handle it. Match on `filepath.Base(arg)` so full paths and wrappers work. Stop scanning at `"--"`.
 
-**`Env(ctx)`** returns extra environment variables for the child. The runner already sets `GMUX`, `GMUX_SOCKET`, `GMUX_SESSION_ID`, `GMUX_ADAPTER`, and `GMUX_RUNNER_VERSION`. Most adapters return `nil`.
+**`Env(ctx)`** returns extra environment variables for the child. The runner already sets `JUMP`, `JUMP_SOCKET`, `JUMP_SESSION_ID`, `JUMP_ADAPTER`, and `JUMP_RUNNER_VERSION`. Most adapters return `nil`.
 
 **`Monitor(output)`** receives raw PTY bytes on every read. Return a `*Status` when something meaningful happens, `nil` otherwise. This runs frequently, so keep it cheap.
 
@@ -121,9 +121,9 @@ type Status struct {
 
 ## Adapter resolution
 
-When `gmux` launches a command, adapters are tried in this order:
+When `jump` launches a command, adapters are tried in this order:
 
-1. **`GMUX_ADAPTER` env var** — explicit override
+1. **`JUMP_ADAPTER` env var** — explicit override
 2. **Registered adapters** — `Match()` in registration order; first match wins
 3. **Shell fallback** — always matches
 
@@ -131,7 +131,7 @@ A false negative is low cost because the shell adapter still handles the session
 
 ## Optional capabilities
 
-The base interface covers command matching, env injection, and PTY monitoring. Additional opt-in interfaces add richer integration. Implement them on the same struct; `gmux` or `gmuxd` discover them via type assertion.
+The base interface covers command matching, env injection, and PTY monitoring. Additional opt-in interfaces add richer integration. Implement them on the same struct; `jump` or `jumpd` discover them via type assertion.
 
 For the runtime behavior behind these interfaces, see [Adapter Architecture](/develop/adapter-architecture).
 
@@ -206,9 +206,9 @@ type Resumer interface {
 Implement this if your tool supports resuming previous sessions.
 
 - `CanResume()` filters out invalid or empty files
-- `ResumeCommand()` tells gmux how to resume a valid session
+- `ResumeCommand()` tells jump how to resume a valid session
 
-All dead sessions are resumable. When a session exits, gmuxd checks whether the adapter implements `Resumer` and has an attributed session file. If so, the session's command is replaced with the adapter's resume command (e.g. `["claude", "--resume", "abc"]`). If not, the original launch command is kept as-is, so "resume" simply re-runs the command in the same working directory.
+All dead sessions are resumable. When a session exits, jumpd checks whether the adapter implements `Resumer` and has an attributed session file. If so, the session's command is replaced with the adapter's resume command (e.g. `["claude", "--resume", "abc"]`). If not, the original launch command is kept as-is, so "resume" simply re-runs the command in the same working directory.
 
 This means adapters that don't implement `Resumer` still get resume for free: the user clicks resume, a new session starts with the same command and cwd. This is the right behavior for shell sessions and simple tools. Only implement `Resumer` when your tool has native resume support that you want to use instead.
 
@@ -245,7 +245,7 @@ If the adapter implements `Launchable`, test the returned launcher IDs, labels, 
 
 For adapters with `SessionFiler`, create temp files in your tool's format and verify `ParseSessionFile()` extracts the expected metadata.
 
-For the full end-to-end pipeline (launch → file attribution → title → resume), add integration tests that run real processes through gmuxd. See [Integration Tests](/develop/integration-tests) for the harness, patterns, and gotchas.
+For the full end-to-end pipeline (launch → file attribution → title → resume), add integration tests that run real processes through jumpd. See [Integration Tests](/develop/integration-tests) for the harness, patterns, and gotchas.
 
 ## Related docs
 

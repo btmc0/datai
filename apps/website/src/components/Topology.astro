@@ -1,7 +1,7 @@
 ---
 /**
- * Topology diagram: machines → gmux hub → devices.
- * Shows real agent sessions on the left, the gmux logo as the hub,
+ * Topology diagram: machines → jump hub → devices.
+ * Shows real agent sessions on the left, the jump logo as the hub,
  * and device silhouettes on the right. SVG connector paths with
  * animated dots that travel along them.
  */
@@ -93,7 +93,7 @@
   <!-- Center: hub -->
   <div class="topo-center">
     <div class="topo-hub">
-      <span class="topo-hub-logo">gmux</span>
+      <span class="topo-hub-logo">jump</span>
     </div>
   </div>
 
@@ -282,7 +282,7 @@
     padding: 3px 0;
   }
 
-  /* Session dots — copied from gmux-web .session-dot-indicator */
+  /* Session dots — copied from jump-web .session-dot-indicator */
   .topo-dot {
     flex-shrink: 0;
     box-sizing: border-box;

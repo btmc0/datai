@@ -12,25 +12,25 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gmuxapp/gmux/packages/adapter/adapters/testutil"
+	"github.com/sting8k/jump/packages/adapter/adapters/testutil"
 )
 
 // TestShellWSInput verifies that WebSocket input reaches the PTY and produces
 // output. This is the foundational test — if this fails, all adapter tests will too.
 func TestShellWSInput(t *testing.T) {
-	g := testutil.StartGmuxd(t)
+	g := testutil.StartJumpd(t)
 	cwd := t.TempDir()
 
 	sess := g.Launch([]string{"bash"}, cwd)
 	send, _ := g.ConnectSession(sess.ID)
 	g.WaitForOutput(sess.ID, 10*time.Second)
 
-	send("echo GMUX_TEST_MARKER_42\r")
+	send("echo JUMP_TEST_MARKER_42\r")
 
 	deadline := time.Now().Add(10 * time.Second)
 	for time.Now().Before(deadline) {
 		text := testutil.ReadScrollback(t, sess.SocketPath)
-		if strings.Contains(text, "GMUX_TEST_MARKER_42") {
+		if strings.Contains(text, "JUMP_TEST_MARKER_42") {
 			t.Log("WS input verified — marker found in scrollback")
 			return
 		}
@@ -44,7 +44,7 @@ func TestShellWSInput(t *testing.T) {
 // Regression test for the SIGTERM→SIGHUP change: interactive bash ignores
 // SIGTERM but exits on SIGHUP.
 func TestShellKill(t *testing.T) {
-	g := testutil.StartGmuxd(t)
+	g := testutil.StartJumpd(t)
 	cwd := t.TempDir()
 
 	sess := g.Launch([]string{"bash"}, cwd)
@@ -71,7 +71,7 @@ func TestShellKillFish(t *testing.T) {
 	if _, err := exec.LookPath("fish"); err != nil {
 		t.Skip("fish not installed")
 	}
-	g := testutil.StartGmuxd(t)
+	g := testutil.StartJumpd(t)
 	cwd := t.TempDir()
 
 	sess := g.Launch([]string{"fish"}, cwd)
@@ -88,7 +88,7 @@ func TestShellKillFish(t *testing.T) {
 // it kills the runner, waits for the exit lifecycle, then relaunches it,
 // keeping the same session ID so the frontend's selection remains sticky.
 func TestShellRestart(t *testing.T) {
-	g := testutil.StartGmuxd(t)
+	g := testutil.StartJumpd(t)
 	cwd := t.TempDir()
 
 	sess := g.Launch([]string{"bash"}, cwd)
@@ -112,11 +112,11 @@ func TestShellRestart(t *testing.T) {
 
 	// The new runner should accept input and produce output.
 	send, _ := g.ConnectSession(sess.ID)
-	send("echo GMUX_RESTART_MARKER\r")
+	send("echo JUMP_RESTART_MARKER\r")
 	deadline := time.Now().Add(10 * time.Second)
 	for time.Now().Before(deadline) {
 		text := testutil.ReadScrollback(t, after.SocketPath)
-		if strings.Contains(text, "GMUX_RESTART_MARKER") {
+		if strings.Contains(text, "JUMP_RESTART_MARKER") {
 			return
 		}
 		time.Sleep(300 * time.Millisecond)

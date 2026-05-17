@@ -1,3 +1,3 @@
-module github.com/gmuxapp/gmux/packages/workspace
+module github.com/sting8k/jump/packages/workspace
 
 go 1.26

@@ -20,7 +20,7 @@ Implement the core `Adapter` and `Launchable` interfaces.
 - **Monitor**: no-op. OpenCode uses a full-screen bubbletea TUI with animated spinners, making PTY byte parsing unreliable for status detection.
 - **Launcher**: `{ id: "opencode", label: "OpenCode", command: ["opencode"], description: "Coding Agent" }`
 
-This is enough for sessions to appear in gmux and be launchable from the UI. No working/idle status, no session discovery, no resume.
+This is enough for sessions to appear in jump and be launchable from the UI. No working/idle status, no session discovery, no resume.
 
 ### Phase 2: Session discovery via SQLite
 
@@ -56,7 +56,7 @@ Detect working/idle state by monitoring the SQLite database for changes.
 
 The approach: watch the `.opencode/opencode.db-wal` file via inotify. On change, query the messages table for the latest message in the active session. If the most recent message has `role = "user"` and no subsequent assistant message with `finished_at IS NOT NULL`, the session is working. Otherwise idle.
 
-An alternative is to propose that OpenCode write a lightweight status file (e.g. `.opencode/status.json`) upstream, which would let gmux use the existing `FileMonitor` infrastructure.
+An alternative is to propose that OpenCode write a lightweight status file (e.g. `.opencode/status.json`) upstream, which would let jump use the existing `FileMonitor` infrastructure.
 
 ### Phase 4: Session resume
 

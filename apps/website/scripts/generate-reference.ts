@@ -15,14 +15,14 @@ import {
   SettingsSchema,
   ThemeColorsSchema,
   DEFAULT_THEME_COLORS,
-} from '../../gmux-web/src/settings-schema.ts'
+} from '../../jump-web/src/settings-schema.ts'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const DOCS_DIR = resolve(__dirname, '../src/content/docs/reference')
-const GENERATED_COMMENT = '<!-- Generated from apps/gmux-web/src/settings-schema.ts — edit the schema, then run pnpm generate. -->\n'
+const GENERATED_COMMENT = '<!-- Generated from apps/jump-web/src/settings-schema.ts — edit the schema, then run pnpm generate. -->\n'
 const GENERATED_NOTE = [
   ':::note',
-  'This page is generated from the [validation schema](https://github.com/gmuxapp/gmux/blob/main/apps/gmux-web/src/settings-schema.ts).',
+  'This page is generated from the [validation schema](https://github.com/sting8k/jump/blob/main/apps/jump-web/src/settings-schema.ts).',
   ':::',
   '',
 ].join('\n')
@@ -223,7 +223,7 @@ const SETTINGS_EXAMPLE = `\
 const KEYBINDS_GUIDE = `\
 ## Keybinds guide
 
-gmux ships a complete default keymap. Every key combo that does something other than "send bytes to the terminal" is listed explicitly; nothing relies on implicit browser or xterm.js passthrough.
+jump ships a complete default keymap. Every key combo that does something other than "send bytes to the terminal" is listed explicitly; nothing relies on implicit browser or xterm.js passthrough.
 
 Your \`keybinds\` array layers on top: same-key entries override the defaults, and the \`none\` action disables a default. See [Keyboard shortcuts](/using-the-ui#keyboard-shortcuts) for the full default keymap.
 
@@ -245,7 +245,7 @@ Note: \`secondary\` works well for keys that do the same thing on both platforms
 
 ### macCommandIsCtrl
 
-On Mac, Command is the primary modifier, but terminals expect Ctrl. By default gmux maps a handful of Cmd shortcuts (copy, paste, select all, navigation). If you want *every* Cmd+character to send its Ctrl equivalent instead, set \`macCommandIsCtrl\`:
+On Mac, Command is the primary modifier, but terminals expect Ctrl. By default jump maps a handful of Cmd shortcuts (copy, paste, select all, navigation). If you want *every* Cmd+character to send its Ctrl equivalent instead, set \`macCommandIsCtrl\`:
 
 \`\`\`jsonc
 {
@@ -318,7 +318,7 @@ These are ready to paste into \`settings.jsonc\`.
 }
 \`\`\`
 
-**Disable all browser workarounds** -- if you run gmux as a PWA or \`--app\` window, the browser doesn't steal Ctrl+T/N/W, so the Ctrl+Alt workarounds are unnecessary:
+**Disable all browser workarounds** -- if you run jump as a PWA or \`--app\` window, the browser doesn't steal Ctrl+T/N/W, so the Ctrl+Alt workarounds are unnecessary:
 
 \`\`\`jsonc
 {
@@ -338,14 +338,14 @@ function generateSettingsPage(): string {
 
   lines.push(`---`)
   lines.push(`title: settings.jsonc`)
-  lines.push(`description: Reference for ~/.config/gmux/settings.jsonc — terminal options, keybinds, and UI preferences.`)
+  lines.push(`description: Reference for ~/.config/jump/settings.jsonc — terminal options, keybinds, and UI preferences.`)
   lines.push(`tableOfContents:`)
   lines.push(`  maxHeadingLevel: 4`)
   lines.push(`---`)
   lines.push('')
   lines.push(GENERATED_COMMENT)
   lines.push(GENERATED_NOTE)
-  lines.push('`~/.config/gmux/settings.jsonc` (or `$XDG_CONFIG_HOME/gmux/settings.jsonc`)')
+  lines.push('`~/.config/jump/settings.jsonc` (or `$XDG_CONFIG_HOME/jump/settings.jsonc`)')
   lines.push('')
   lines.push('Terminal options, keybinds, and frontend preferences. All fields are optional.')
   lines.push('Missing fields use the defaults shown below. Numeric values are clamped to')
@@ -368,14 +368,14 @@ function generateThemePage(): string {
 
   lines.push(`---`)
   lines.push(`title: theme.jsonc`)
-  lines.push(`description: Reference for ~/.config/gmux/theme.jsonc — terminal color palette.`)
+  lines.push(`description: Reference for ~/.config/jump/theme.jsonc — terminal color palette.`)
   lines.push(`tableOfContents:`)
   lines.push(`  maxHeadingLevel: 3`)
   lines.push(`---`)
   lines.push('')
   lines.push(GENERATED_COMMENT)
   lines.push(GENERATED_NOTE)
-  lines.push('`~/.config/gmux/theme.jsonc` (or `$XDG_CONFIG_HOME/gmux/theme.jsonc`)')
+  lines.push('`~/.config/jump/theme.jsonc` (or `$XDG_CONFIG_HOME/jump/theme.jsonc`)')
   lines.push('')
   lines.push('Terminal color palette. All fields are optional CSS color strings.')
   lines.push('Omitted colors use the built-in defaults shown below.')

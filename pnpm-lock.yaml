@@ -24,7 +24,7 @@ importers:
         specifier: ^5.8.2
         version: 5.9.3
 
-  apps/gmux-web:
+  apps/jump-web:
     dependencies:
       '@fontsource/fira-code':
         specifier: ^5.2.7
@@ -38,7 +38,7 @@ importers:
       '@fontsource/source-sans-3':
         specifier: ^5.2.9
         version: 5.2.9
-      '@gmux/protocol':
+      '@jump/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
       '@preact/signals':

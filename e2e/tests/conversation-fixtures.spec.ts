@@ -3,7 +3,7 @@ import { apiGet, pollUntil } from '../helpers'
 import { SMOKE_FIXTURES, slugify } from '../fixtures'
 
 /**
- * Smoke spec: pre-seeded fixtures (written by global-setup before gmuxd
+ * Smoke spec: pre-seeded fixtures (written by global-setup before jumpd
  * starts) must be reachable at /v1/conversations/{kind}/{slug} once the
  * bootstrap scan completes.
  *

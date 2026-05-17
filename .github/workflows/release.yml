@@ -110,7 +110,6 @@ jobs:
         env:
           GORELEASER_CURRENT_TAG: ${{ steps.version.outputs.version }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
           GOWORK: ${{ github.workspace }}/go.work
 
       - name: Notify Discord

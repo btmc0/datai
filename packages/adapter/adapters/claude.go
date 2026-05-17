@@ -9,17 +9,17 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gmuxapp/gmux/packages/adapter"
-	"github.com/gmuxapp/gmux/packages/paths"
+	"github.com/sting8k/jump/packages/adapter"
+	"github.com/sting8k/jump/packages/paths"
 )
 
 // Compile-time interface checks.
 var (
-	_ adapter.Launchable      = (*Claude)(nil)
-	_ adapter.SessionFiler    = (*Claude)(nil)
-	_ adapter.FileMonitor     = (*Claude)(nil)
-	_ adapter.FileAttributor  = (*Claude)(nil)
-	_ adapter.Resumer         = (*Claude)(nil)
+	_ adapter.Launchable     = (*Claude)(nil)
+	_ adapter.SessionFiler   = (*Claude)(nil)
+	_ adapter.FileMonitor    = (*Claude)(nil)
+	_ adapter.FileAttributor = (*Claude)(nil)
+	_ adapter.Resumer        = (*Claude)(nil)
 )
 
 func init() {
@@ -83,7 +83,7 @@ func (c *Claude) SessionRootDir() string {
 
 // encodeClaudeCwd encodes a working directory into Claude Code's directory
 // naming: replace / and . with -.
-// /home/mg/dev/gmux → -home-mg-dev-gmux
+// /home/mg/dev/jump → -home-mg-dev-jump
 // /home/mg/.local/share/chezmoi → -home-mg--local-share-chezmoi
 func encodeClaudeCwd(cwd string) string {
 	return claudeCwdReplacer.Replace(paths.NormalizePath(cwd))
@@ -229,11 +229,11 @@ func (c *Claude) ParseSessionFile(path string) (*adapter.SessionFileInfo, error)
 //   - custom-title → title update
 //   - type:"user" → working (assistant will respond)
 //   - type:"assistant" → status from stop_reason + content analysis:
-//       stop_reason=null + tool_use  → working (tool loop continues)
-//       stop_reason=null + text only → idle (final response, no stop_reason on streaming)
-//       stop_reason="end_turn"       → idle (normal completion)
-//       stop_reason="stop_sequence"  → idle (user pressed Esc)
-//       thinking-only                → intermediate, ignored
+//     stop_reason=null + tool_use  → working (tool loop continues)
+//     stop_reason=null + text only → idle (final response, no stop_reason on streaming)
+//     stop_reason="end_turn"       → idle (normal completion)
+//     stop_reason="stop_sequence"  → idle (user pressed Esc)
+//     thinking-only                → intermediate, ignored
 func (c *Claude) ParseNewLines(lines []string, _ string) []adapter.Event {
 	var events []adapter.Event
 	cwdEmitted := false
@@ -314,7 +314,7 @@ func (c *Claude) ParseNewLines(lines []string, _ string) []adapter.Event {
 					Status: &adapter.Status{},
 					Unread: adapter.BoolPtr(true),
 				})
-			// thinking-only = intermediate, no event.
+				// thinking-only = intermediate, no event.
 			}
 		}
 	}

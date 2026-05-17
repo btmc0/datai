@@ -1,17 +1,17 @@
 ---
 title: theme.jsonc
-description: Reference for ~/.config/gmux/theme.jsonc — terminal color palette.
+description: Reference for ~/.config/jump/theme.jsonc — terminal color palette.
 tableOfContents:
   maxHeadingLevel: 3
 ---
 
-<!-- Generated from apps/gmux-web/src/settings-schema.ts — edit the schema, then run pnpm generate. -->
+<!-- Generated from apps/jump-web/src/settings-schema.ts — edit the schema, then run pnpm generate. -->
 
 :::note
-This page is generated from the [validation schema](https://github.com/gmuxapp/gmux/blob/main/apps/gmux-web/src/settings-schema.ts).
+This page is generated from the [validation schema](https://github.com/sting8k/jump/blob/main/apps/jump-web/src/settings-schema.ts).
 :::
 
-`~/.config/gmux/theme.jsonc` (or `$XDG_CONFIG_HOME/gmux/theme.jsonc`)
+`~/.config/jump/theme.jsonc` (or `$XDG_CONFIG_HOME/jump/theme.jsonc`)
 
 Terminal color palette. All fields are optional CSS color strings.
 Omitted colors use the built-in defaults shown below.
@@ -44,31 +44,31 @@ This file is drop-in compatible with [Windows Terminal themes](https://github.co
 
 Default text color.
 
-- **Default:** `#d3d8de`
+- **Default:** `#cdd6f4`
 
 ### `background`
 
 Terminal background color.
 
-- **Default:** `#0f141a`
+- **Default:** `#11111b`
 
 ### `cursor`
 
 Cursor color.
 
-- **Default:** `#d3d8de`
+- **Default:** `#a6e3a1`
 
 ### `cursorAccent`
 
 Cursor accent color (text under block cursor).
 
-- **Default:** `#0f141a`
+- **Default:** `#11111b`
 
 ### `selectionBackground`
 
 Selection highlight color.
 
-- **Default:** `#3a506acc`
+- **Default:** `#313244cc`
 
 ### `selectionForeground`
 
@@ -84,97 +84,97 @@ Selection color when terminal is not focused.
 
 ANSI black.
 
-- **Default:** `#151b21`
+- **Default:** `#181825`
 
 ### `red`
 
 ANSI red.
 
-- **Default:** `#c25d66`
+- **Default:** `#f38ba8`
 
 ### `green`
 
 ANSI green.
 
-- **Default:** `#a3be8c`
+- **Default:** `#a6e3a1`
 
 ### `yellow`
 
 ANSI yellow.
 
-- **Default:** `#ebcb8b`
+- **Default:** `#f9e2af`
 
 ### `blue`
 
 ANSI blue.
 
-- **Default:** `#81a1c1`
+- **Default:** `#89b4fa`
 
 ### `magenta`
 
 ANSI magenta.
 
-- **Default:** `#b48ead`
+- **Default:** `#cba6f7`
 
 ### `cyan`
 
 ANSI cyan.
 
-- **Default:** `#49b8b8`
+- **Default:** `#94e2d5`
 
 ### `white`
 
 ANSI white.
 
-- **Default:** `#d3d8de`
+- **Default:** `#cdd6f4`
 
 ### `brightBlack`
 
 ANSI bright black.
 
-- **Default:** `#595e63`
+- **Default:** `#45475a`
 
 ### `brightRed`
 
 ANSI bright red.
 
-- **Default:** `#d06c75`
+- **Default:** `#eba0ac`
 
 ### `brightGreen`
 
 ANSI bright green.
 
-- **Default:** `#b4d19a`
+- **Default:** `#a6e3a1`
 
 ### `brightYellow`
 
 ANSI bright yellow.
 
-- **Default:** `#f0d9a0`
+- **Default:** `#f9e2af`
 
 ### `brightBlue`
 
 ANSI bright blue.
 
-- **Default:** `#93b3d1`
+- **Default:** `#89b4fa`
 
 ### `brightMagenta`
 
 ANSI bright magenta.
 
-- **Default:** `#c9a3c4`
+- **Default:** `#cba6f7`
 
 ### `brightCyan`
 
 ANSI bright cyan.
 
-- **Default:** `#5fcece`
+- **Default:** `#94e2d5`
 
 ### `brightWhite`
 
 ANSI bright white.
 
-- **Default:** `#eceff4`
+- **Default:** `#f5e0dc`
 
 ### `purple`
 

@@ -8,8 +8,8 @@ description: Features under consideration for future releases.
 Sessions could gain a `project_uri` field: a normalized identifier derived from the VCS remote URL.
 
 ```
-git@github.com:gmuxapp/gmux.git  -->  github.com/gmuxapp/gmux
-https://github.com/gmuxapp/gmux  -->  github.com/gmuxapp/gmux
+git@github.com:sting8k/jump.git  -->  github.com/sting8k/jump
+https://github.com/sting8k/jump  -->  github.com/sting8k/jump
 ```
 
 The runner would detect this at session startup (it already walks up from cwd to find `workspace_root`; reading `git remote get-url origin` or `jj git remote list` is one more step). The field would be included in the `/meta` response alongside `workspace_root`.

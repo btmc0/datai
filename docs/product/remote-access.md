@@ -2,18 +2,18 @@
 
 ## Status
 
-Accepted design contract for future gmux remote-access work.
+Accepted design contract for future jump remote-access work.
 
 ## Scope
 
-gmux has one implicit local runtime baseline and two optional remote-access
+jump has one implicit local runtime baseline and two optional remote-access
 modes: `tsnet` and `relay`. A missing `[remote]` block means local-only.
 Provisioning helpers, SSH tunnels, reverse-proxy snippets, and install scripts
 may automate setup, but they are not additional access modes.
 
 ```text
-gmux sessions
-  -> gmuxd core owns sessions, auth, web UI, API, SSE, and WebSocket handlers
+jump sessions
+  -> jumpd core owns sessions, auth, web UI, API, SSE, and WebSocket handlers
       -> local listener
       -> tsnet listener
       -> relay tunnel agent
@@ -23,8 +23,8 @@ gmux sessions
 
 | Term | Meaning |
 | --- | --- |
-| Runtime core | `gmux`, `gmuxd`, local PTY sessions, local state, and the shared web/API handler. |
-| Local baseline | The implicit browser path to the same-machine `gmuxd` handler. It is not configured as a remote mode. |
+| Runtime core | `jump`, `jumpd`, local PTY sessions, local state, and the shared web/API handler. |
+| Local baseline | The implicit browser path to the same-machine `jumpd` handler. It is not configured as a remote mode. |
 | Remote-access mode | An optional non-local transport selected by `[remote].mode`: `tsnet` or `relay`. |
 | Provisioning | Optional automation that installs binaries, creates services, configures DNS/TLS, or writes config. |
 
@@ -32,19 +32,19 @@ gmux sessions
 
 | Mode | Best for | Browser path | Operational tradeoff |
 | --- | --- | --- | --- |
-| `tsnet` | Private personal/team access when clients are in the tailnet | Browser connects through Tailscale/tsnet to `gmuxd` | Requires Tailscale identity, auth keys, and ACL hygiene. |
-| `relay` | Public URL access, NAT traversal, or phones/browsers outside the tailnet | Browser connects to public `gmux-relayd`; `gmuxd` connects outbound by WSS | Requires operating relay infrastructure, TLS, tokens, and relay availability. |
+| `tsnet` | Private personal/team access when clients are in the tailnet | Browser connects through Tailscale/tsnet to `jumpd` | Requires Tailscale identity, auth keys, and ACL hygiene. |
+| `relay` | Public URL access, NAT traversal, or phones/browsers outside the tailnet | Browser connects to public `jump-relayd`; `jumpd` connects outbound by WSS | Requires operating relay infrastructure, TLS, tokens, and relay availability. |
 
 ## Design Invariants
 
-- `gmuxd` owns session state, scrollback, project/workspace state, auth, and the
+- `jumpd` owns session state, scrollback, project/workspace state, auth, and the
   user-facing web/API behavior.
-- Remote-access modes only transport traffic to the same `gmuxd` handler.
-- `gmux-relayd` stays stateless about gmux product domains. It may authenticate,
+- Remote-access modes only transport traffic to the same `jumpd` handler.
+- `jump-relayd` stays stateless about jump product domains. It may authenticate,
   hold tunnels, multiplex HTTP/WebSocket frames, expose health, and report
   whether an agent is connected.
-- `gmux-relayd` must not persist sessions, cache terminal output, understand
-  workspace/session internals, or implement gmux business rules.
+- `jump-relayd` must not persist sessions, cache terminal output, understand
+  workspace/session internals, or implement jump business rules.
 - Remote mode selection should be explicit and mutually exclusive when remote
   access is enabled. Running more than one remote transport should require an
   explicit advanced/debug decision, not accidental overlapping config.
@@ -60,11 +60,11 @@ mode = "relay" # tsnet | relay
 public_url = ""
 
 [tailscale]
-hostname = "my-gmux"
+hostname = "my-jump"
 auth_key = ""
 
 [relay]
-url = "wss://relay.example.com/_gmux/agent"
+url = "wss://relay.example.com/_jump/agent"
 token = "replace-with-a-shared-secret"
 ```
 
@@ -85,18 +85,18 @@ Rules:
 
 ## Target Management Commands
 
-Remote management should use direct top-level commands because gmux only has two
+Remote management should use direct top-level commands because jump only has two
 remote transports:
 
 ```bash
-gmuxd tsnet
-gmuxd relay
-gmuxd status
-gmuxd doctor
+jumpd tsnet
+jumpd relay
+jumpd status
+jumpd doctor
 ```
 
-`gmuxd tsnet` should set up or report tsnet state. `gmuxd relay` should set
-up or report relay state. `gmuxd status` should include the selected remote
+`jumpd tsnet` should set up or report tsnet state. `jumpd relay` should set
+up or report relay state. `jumpd status` should include the selected remote
 mode, local URL, remote/public URL when known, connection state, and the last
 actionable error.
 
@@ -104,6 +104,6 @@ actionable error.
 
 - tsnet mode delegates network reachability to Tailscale identity and ACLs.
 - relay mode requires TLS at the public edge and a shared secret or stronger
-  agent authentication between `gmuxd` and `gmux-relayd`.
-- Browser authentication/authorization remains a `gmuxd` responsibility unless a
+  agent authentication between `jumpd` and `jump-relayd`.
+- Browser authentication/authorization remains a `jumpd` responsibility unless a
   future decision explicitly moves part of it to the relay edge.

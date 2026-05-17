@@ -195,7 +195,7 @@ EOF
 
   content=$(run_notify "$tmp" v1.5.4 | jq -r '.content')
   assert_contains "bullet text reaches Discord"  "stop leaking goroutines" "$content"
-  assert_contains "changelog link still present" "gmux.app/changelog"      "$content"
+  assert_contains "changelog link still present" "github.com/sting8k/jump/blob/dev/CHANGELOG.md"      "$content"
   assert_not_contains "no triple-newline gap"    $'\n\n\n'                 "$content"
 )
 
@@ -328,7 +328,7 @@ echo "Truncation:"
 
   content=$(run_notify "$tmp" v1.5.4 | jq -r '.content')
   assert_le "under Discord's 2000-char limit" 2000 "${#content}"
-  assert_contains "changelog link survives truncation" "gmux.app/changelog" "$content"
+  assert_contains "changelog link survives truncation" "github.com/sting8k/jump/blob/dev/CHANGELOG.md" "$content"
   assert_contains "first paragraph not chopped"        "Lorem ipsum dolor"  "$content"
 )
 

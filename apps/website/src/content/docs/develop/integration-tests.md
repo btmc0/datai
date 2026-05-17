@@ -1,9 +1,9 @@
 ---
 title: Integration Tests
-description: End-to-end tests that launch real tools through gmuxd.
+description: End-to-end tests that launch real tools through jumpd.
 ---
 
-Integration tests verify the full pipeline — from launching a real tool through gmuxd to observing session state transitions, file attribution, title derivation, and resume. They catch issues that unit tests can't: timing between inotify and file writes, TUI input handling, trust prompts, and adapter attribution against real session files.
+Integration tests verify the full pipeline — from launching a real tool through jumpd to observing session state transitions, file attribution, title derivation, and resume. They catch issues that unit tests can't: timing between inotify and file writes, TUI input handling, trust prompts, and adapter attribution against real session files.
 
 ## Running
 
@@ -44,18 +44,18 @@ Shell has a single `WSInput` smoke test that verifies the WebSocket → PTY inpu
 
 Tests use a shared harness in `packages/adapter/adapters/testutil/`. The key components:
 
-### `StartGmuxd(t)`
+### `StartJumpd(t)`
 
-Launches an isolated gmuxd instance:
+Launches an isolated jumpd instance:
 - Random port (no conflicts with dev or other tests)
 - Temp socket directory
 - Empty `XDG_CONFIG_HOME` (no tailscale, no user config)
-- `PATH` includes the built `bin/gmux` binary
+- `PATH` includes the built `bin/jump` binary
 - Cleaned up automatically when the test ends
 
 ### `ConnectSession(sessionID)`
 
-Opens a WebSocket directly to the runner's Unix socket (bypassing gmuxd's WS proxy). Sends an initial resize message so TUI apps render properly. Returns a `send` function for typing into the terminal.
+Opens a WebSocket directly to the runner's Unix socket (bypassing jumpd's WS proxy). Sends an initial resize message so TUI apps render properly. Returns a `send` function for typing into the terminal.
 
 ### Polling helpers
 
@@ -77,7 +77,7 @@ package adapters
 func TestMyAppTurnAndTitle(t *testing.T) {
     testutil.RequireBinary(t, "myapp")
 
-    g := testutil.StartGmuxd(t)
+    g := testutil.StartJumpd(t)
     cwd := t.TempDir()
 
     sess := g.Launch([]string{"myapp"}, cwd)

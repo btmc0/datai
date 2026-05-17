@@ -7,7 +7,7 @@ implemented
 ## Context
 
 Before this change, terminal font size was controlled by local settings used when
-`gmuxd` served the web UI. Changing it required editing local configuration and
+`jumpd` served the web UI. Changing it required editing local configuration and
 restarting/rebuilding the daemon path instead of adjusting the active browser UI.
 
 ## Scope
@@ -24,12 +24,12 @@ restarting/rebuilding the daemon path instead of adjusting the active browser UI
 | --- | --- |
 | Unit | Font-size preference helper clamps, loads, saves, and adjusts values. |
 | Frontend | Web app TypeScript lint and production build pass. |
-| Backend | `gmuxd` command package builds/tests with current embedded web output. |
+| Backend | `jumpd` command package builds/tests with current embedded web output. |
 
 ## Evidence
 
-- `pnpm --filter @gmux/web test -- terminal-font-size page-resume` passed on
+- `pnpm --filter @jump/web test -- terminal-font-size page-resume` passed on
   2026-05-16.
-- `pnpm --filter @gmux/web lint` passed on 2026-05-16.
-- `pnpm --filter @gmux/web build` passed on 2026-05-16.
-- `go test ./services/gmuxd/cmd/gmuxd` passed on 2026-05-16.
+- `pnpm --filter @jump/web lint` passed on 2026-05-16.
+- `pnpm --filter @jump/web build` passed on 2026-05-16.
+- `go test ./services/jumpd/cmd/jumpd` passed on 2026-05-16.

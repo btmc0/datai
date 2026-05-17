@@ -32,4 +32,4 @@ Local dead sessions with parseable `exited_at` older than 7 days are automatical
 - No architecture change to per-session runners or Unix sockets.
 - No relay protocol change.
 - No user-configurable TTL in this slice.
-- No pruning of peer-owned sessions by a hub gmuxd.
+- No pruning of peer-owned sessions by a hub jumpd.

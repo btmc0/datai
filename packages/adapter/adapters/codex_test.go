@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/gmuxapp/gmux/packages/adapter"
+	"github.com/sting8k/jump/packages/adapter"
 )
 
 // --- Matching ---
@@ -207,13 +207,13 @@ func TestCodexParseSessionFileNotSessionMeta(t *testing.T) {
 
 func TestCodexParseNewLinesCwd(t *testing.T) {
 	events := NewCodex().ParseNewLines([]string{
-		`{"type":"session_meta","payload":{"id":"abc","timestamp":"2026-03-19T10:00:00Z","cwd":"/home/user/dev/gmux"}}`,
+		`{"type":"session_meta","payload":{"id":"abc","timestamp":"2026-03-19T10:00:00Z","cwd":"/home/user/dev/jump"}}`,
 	}, "")
 	if len(events) != 1 {
 		t.Fatalf("expected 1 event, got %d: %v", len(events), events)
 	}
-	if events[0].Cwd != "/home/user/dev/gmux" {
-		t.Errorf("expected cwd '/home/user/dev/gmux', got %q", events[0].Cwd)
+	if events[0].Cwd != "/home/user/dev/jump" {
+		t.Errorf("expected cwd '/home/user/dev/jump', got %q", events[0].Cwd)
 	}
 }
 

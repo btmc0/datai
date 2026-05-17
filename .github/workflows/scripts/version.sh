@@ -201,7 +201,7 @@ enrich_context() {
     return
   fi
 
-  local query='query { repository(owner: "gmuxapp", name: "gmux") {'
+  local query='query { repository(owner: "sting8k", name: "jump") {'
   while IFS= read -r sha; do
     [[ -z "$sha" ]] && continue
     query+=" c_${sha}: object(oid: \"${sha}\") { ... on Commit { associatedPullRequests(first: 1) { nodes { number url } } } }"

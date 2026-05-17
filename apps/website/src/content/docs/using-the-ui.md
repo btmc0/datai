@@ -1,9 +1,9 @@
 ---
 title: Using the UI
-description: What you see in gmux and how to work with it.
+description: What you see in jump and how to work with it.
 ---
 
-Running `gmux` with no arguments opens the dashboard in a dedicated browser window. You can also navigate to **[localhost:8790](http://localhost:8790)** directly; the first time you'll need to authenticate by visiting the login URL from `gmuxd auth`.
+Running `jump` with no arguments opens the dashboard in a dedicated browser window. You can also navigate to **[localhost:8790](http://localhost:8790)** directly; the first time you'll need to authenticate by visiting the login URL from `jumpd auth`.
 
 ## The sidebar
 
@@ -11,7 +11,7 @@ The left panel lists your sessions grouped into projects.
 
 ### Logo
 
-Click the **gmux** logo at the top of the sidebar to return to the home screen.
+Click the **jump** logo at the top of the sidebar to return to the home screen.
 
 ## Home screen
 
@@ -26,19 +26,19 @@ Each machine (local and remote) gets a card with a status indicator, session cou
 | **Green dot** | Connected, sessions visible |
 | **Pulsing dot** | Connecting to peer |
 | **Red ✗** | Peer disconnected (shows error reason) |
-| **Dimmed card** | Offline: a tailnet device that looks like a gmux instance but is currently unreachable |
+| **Dimmed card** | Offline: a tailnet device that looks like a jump instance but is currently unreachable |
 
-Offline cards appear for tailnet devices whose hostname matches the configured tsnet prefix (e.g. `gmux-dev`). They're informational only: no launch buttons, no session count. Once the device comes online and is confirmed as gmux, it becomes a full peer and persists across restarts.
+Offline cards appear for tailnet devices whose hostname matches the configured tsnet prefix (e.g. `jump-dev`). They're informational only: no launch buttons, no session count. Once the device comes online and is confirmed as jump, it becomes a full peer and persists across restarts.
 
 Connected peers show launch buttons for each configured adapter, just like the local host.
 
 ### Projects
 
-Sessions don't appear in the sidebar until you add a project. The first time you open the dashboard, click the **+** button to launch a session. gmux creates a default "home" project that catches sessions started from your home directory. As you work in more repositories, use **Manage projects** to organize sessions by repo.
+Sessions don't appear in the sidebar until you add a project. The first time you open the dashboard, click the **+** button to launch a session. jump creates a default "home" project that catches sessions started from your home directory. As you work in more repositories, use **Manage projects** to organize sessions by repo.
 
 Click a **project name** to open the [project hub](#project-hub), an overview of all sessions in that project grouped by host and working directory. The active project is highlighted in the sidebar.
 
-Each project has **match rules** that determine which sessions belong to it. Rules can match by filesystem path (`~/dev/gmux` and its subdirectories) or by git remote URL (grouping clones across machines). See [`projects.json`](/reference/projects-json/) for the full reference on rules, precedence, and advanced options like exact matching and host scoping.
+Each project has **match rules** that determine which sessions belong to it. Rules can match by filesystem path (`~/dev/jump` and its subdirectories) or by git remote URL (grouping clones across machines). See [`projects.json`](/reference/projects-json/) for the full reference on rules, precedence, and advanced options like exact matching and host scoping.
 
 You can manage projects at any time via the **Manage projects** button at the bottom of the sidebar. A badge shows when there are running sessions that don't match any project yet. The modal has two sections:
 
@@ -96,8 +96,8 @@ Click a session to attach. You get a full interactive terminal powered by [xterm
 ### From the command line
 
 ```bash
-gmux pi              # coding agent
-gmux pytest --watch  # any command
+jump pi              # coding agent
+jump pytest --watch  # any command
 ```
 
 ### From the UI
@@ -121,11 +121,11 @@ Every view has a stable URL:
 | `/:project` | Project hub overview |
 | `/:project/:adapter/:slug` | A specific session's terminal |
 
-For example, `/gmux/pi/fix-auth-bug` links directly to a pi session in the gmux project. URLs update as you navigate, work with browser back/forward, and are bookmarkable. Session slugs remain stable across kill and resume.
+For example, `/jump/pi/fix-auth-bug` links directly to a pi session in the jump project. URLs update as you navigate, work with browser back/forward, and are bookmarkable. Session slugs remain stable across kill and resume.
 
 ## Keyboard shortcuts
 
-gmux ships a complete default keymap. Keys not listed here go straight to the terminal.
+jump ships a complete default keymap. Keys not listed here go straight to the terminal.
 
 ### All platforms
 
@@ -164,7 +164,7 @@ If you prefer every Cmd+character to send its Ctrl equivalent (Cmd+A = beginning
 :::
 
 :::tip[App mode]
-`gmux` tries to open in Chrome/Chromium `--app` mode for a standalone window with full keyboard access. If it falls back to a regular browser tab, shortcuts like Ctrl+T, Ctrl+N, and Ctrl+W are intercepted by the browser. The Ctrl+Alt workarounds in the table above cover this case. You can also install gmux as a PWA from the browser menu (⋮ → Install gmux).
+`jump` tries to open in Chrome/Chromium `--app` mode for a standalone window with full keyboard access. If it falls back to a regular browser tab, shortcuts like Ctrl+T, Ctrl+N, and Ctrl+W are intercepted by the browser. The Ctrl+Alt workarounds in the table above cover this case. You can also install jump as a PWA from the browser menu (⋮ → Install jump).
 :::
 
 ## Mobile

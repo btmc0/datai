@@ -65,11 +65,11 @@ async function injectLines(page: Page, lines: string[]): Promise<{ startRow: num
   return page.evaluate(({ ls }) => {
     return new Promise<{ startRow: number, endRow: number }>(resolve => {
       const term = (window as unknown as {
-        __gmuxTerm: {
+        __jumpTerm: {
           write: (s: string, cb: () => void) => void
           buffer: { active: { baseY: number, cursorY: number } }
         }
-      }).__gmuxTerm
+      }).__jumpTerm
       term.write(ls.join('\r\n'), () => {
         const buf = term.buffer.active
         const endRow = buf.baseY + buf.cursorY
@@ -93,11 +93,11 @@ async function injectLines(page: Page, lines: string[]): Promise<{ startRow: num
 async function selectRows(page: Page, startRow: number, endRow: number): Promise<void> {
   await page.evaluate(({ s, e }) => {
     const term = (window as unknown as {
-      __gmuxTerm: {
+      __jumpTerm: {
         cols: number
         select: (col: number, row: number, length: number) => void
       }
-    }).__gmuxTerm
+    }).__jumpTerm
     term.select(0, s, term.cols * (e - s + 1))
   }, { s: startRow, e: endRow })
 }
@@ -105,7 +105,7 @@ async function selectRows(page: Page, startRow: number, endRow: number): Promise
 /** Focus the terminal so keyboard events route through xterm. */
 async function focusTerm(page: Page): Promise<void> {
   await page.evaluate(() => {
-    (window as unknown as { __gmuxTerm: { focus: () => void } }).__gmuxTerm.focus()
+    (window as unknown as { __jumpTerm: { focus: () => void } }).__jumpTerm.focus()
   })
 }
 
