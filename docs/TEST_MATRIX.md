@@ -23,6 +23,7 @@ implemented until tests or validation evidence exist.
 | `docs/stories/mobile-resume-reconnect.md` | Mobile browser resume should reconnect stale UI transports without manual refresh | yes | no | no | no | implemented | `pnpm --filter @gmux/web test`; `pnpm --filter @gmux/web lint`; `pnpm --filter @gmux/web build`; `go test ./services/gmuxd/cmd/gmuxd` |
 | `docs/stories/web-terminal-font-size.md` | Web UI should let users adjust terminal font size without daemon config/restart | yes | no | no | no | implemented | `pnpm --filter @gmux/web test -- terminal-font-size page-resume`; `pnpm --filter @gmux/web lint`; `pnpm --filter @gmux/web build`; `go test ./services/gmuxd/cmd/gmuxd` |
 | `docs/stories/webui-terminal-pasture-skin.md` | Runtime Web UI keeps existing flows while using a dark mono terminal-pasture skin plus add-workspace suggestion focus retention | yes | yes | no | yes | implemented | `pnpm --filter @gmux/web test`; `pnpm --filter @gmux/web lint`; `pnpm --filter @gmux/web build`; `go test ./services/gmuxd/cmd/gmuxd`; local `gmuxd status` smoke |
+| `docs/stories/session-latency-retention/` | Small PTY output flushes faster while local dead sessions are automatically pruned after 7 days | yes | yes | no | yes | implemented | `TMPDIR=/tmp go test ./cli/gmux/internal/ptyserver ./services/gmuxd/internal/sessionfiles ./services/gmuxd/cmd/gmuxd`; `TMPDIR=/tmp go build -o /tmp/gmux-verify/gmux ./cli/gmux/cmd/gmux`; `TMPDIR=/tmp go build -o /tmp/gmux-verify/gmuxd ./services/gmuxd/cmd/gmuxd`; local rebuilt-runner latency probe |
 
 ## Evidence Rules
 

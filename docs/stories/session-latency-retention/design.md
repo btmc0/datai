@@ -1,0 +1,51 @@
+# Design
+
+## Domain Model
+
+- A session is alive until its runner reports exit or becomes unreachable.
+- A dead local session may be persisted for replay/resume using session metadata and scrollback in the gmux state directory.
+- `exited_at` is the retention timestamp. Sessions with missing or invalid `exited_at` are skipped rather than guessed.
+- Peer-owned sessions are outside the local daemon's retention authority.
+
+## Application Flow
+
+- `ptyserver.readPTY` accumulates PTY bytes before flushing to local output, scrollback, and WebSocket clients.
+- Accumulated output up to 1024 bytes uses a 2 ms coalescing interval.
+- Larger accumulated output uses the existing 8 ms burst interval.
+- `sessionfiles.Scanner` keeps the existing 10 minute cleanup for unattributed ephemeral dead sessions.
+- The same scanner additionally prunes local dead sessions older than 7 days.
+- Scanner-driven removals call an `OnRemove` hook before store removal so `gmuxd` can remove project membership keys while the full session record is still known.
+
+## Interface Contract
+
+No new public API, CLI command, config key, or browser protocol is added.
+
+User-visible behavior changes:
+
+- Old local dead sessions disappear automatically after 7 days.
+- Existing session-remove and projects-update events notify connected clients.
+
+## Data Model
+
+The retention behavior deletes per-session persisted state through existing cleanup paths:
+
+- `store.Remove` emits `session-remove`.
+- `sessionmeta.WatchRemovals` removes the session directory, including metadata/scrollback.
+- `projects.Manager.DismissSession` removes the session key from project arrays.
+
+## UI / Platform Impact
+
+The browser UI receives existing SSE events and needs no new UI code.
+
+The behavior depends on local Unix PTY/session code and is validated with Go package tests. macOS Unix-socket path length can require `TMPDIR=/tmp` for full PTY tests.
+
+## Observability
+
+`sessionfiles` logs when it purges stale ephemeral sessions or prunes 7-day expired dead sessions.
+
+## Alternatives Considered
+
+1. Keep only manual dismiss. Rejected because dead history accumulates for single-user usage.
+2. Add a UI button for dismiss-all-dead. Deferred because the selected direction was automatic TTL pruning.
+3. Add configurable TTL. Deferred to avoid extra config surface until a real need appears.
+4. Move PTYs into `gmuxd`. Rejected because measured local proxy overhead was insignificant and isolation is valuable.

@@ -99,6 +99,9 @@ mode combinations should fail fast.
   `~/.config/gmux/`.
 - `gmux` creates/attaches to sessions but should not become a second state owner
   for daemon-managed session/workspace truth.
+- `gmuxd` prunes local dead session metadata/scrollback after the accepted
+  7-day retention window; peer-owned sessions remain the owning gmuxd's
+  lifecycle responsibility.
 - `gmux-relayd` may hold transient connection state for routing, not durable
   product state.
 - Browser state should be UI state only; durable session/workspace state comes

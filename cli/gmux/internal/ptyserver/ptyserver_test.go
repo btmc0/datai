@@ -33,6 +33,26 @@ func mustBindSocket(t *testing.T, sockPath string) net.Listener {
 	return ln
 }
 
+func TestCoalesceDelayAdaptsToAccumulatedOutput(t *testing.T) {
+	cases := []struct {
+		name  string
+		bytes int
+		want  time.Duration
+	}{
+		{name: "empty", bytes: 0, want: coalesceInteractiveInterval},
+		{name: "small interactive", bytes: coalesceInteractiveMaxBytes, want: coalesceInteractiveInterval},
+		{name: "burst", bytes: coalesceInteractiveMaxBytes + 1, want: coalesceBurstInterval},
+	}
+
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := coalesceDelay(tt.bytes); got != tt.want {
+				t.Fatalf("coalesceDelay(%d) = %v, want %v", tt.bytes, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestPTYServerBasicOutput(t *testing.T) {
 	sockPath := filepath.Join(t.TempDir(), "test.sock")
 

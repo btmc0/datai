@@ -571,6 +571,12 @@ func serve(stderr io.Writer) int {
 	}
 	projectMgr.SeedIfEmpty()
 
+	// Keep project membership arrays in sync with scanner-driven removals
+	// such as stale ephemeral cleanup and 7-day dead-session TTL pruning.
+	scanner.OnRemove = func(sess store.Session) {
+		projectMgr.DismissSession(sess.ID, sess.Slug)
+	}
+
 	// Populate the store with project-tracked sessions that don't have
 	// a sessionmeta record. The sessionmeta sweep above is the SOT for
 	// runtime fields; this only fills in the pre-S2 fallback path. See

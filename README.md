@@ -75,7 +75,7 @@ In relay mode, `gmuxd` connects out to `gmux-relayd`; the relay does not need in
 
 - Launch any command with `gmux <command>`.
 - Attach through the browser terminal or local CLI.
-- Keep bounded scrollback for reconnects and dead-session replay.
+- Keep bounded scrollback for reconnects and dead-session replay for up to 7 days.
 - Track alive/dead status, exit codes, unread activity, and adapter state.
 - Send input to existing sessions from the CLI or web terminal.
 

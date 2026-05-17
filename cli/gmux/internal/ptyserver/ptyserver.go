@@ -917,18 +917,28 @@ const activityGrace = 500 * time.Millisecond
 // even if the coalesce timer hasn't fired yet. Keeps latency bounded.
 const coalesceMaxBytes = 32 * 1024
 
-// coalesceInterval is how long readPTY waits for more data before flushing.
-// Chosen to be below one 60 fps frame (~16 ms) so the browser can still
-// render at full frame rate while dramatically reducing WS message count
-// during bursts (e.g. TUI redraws after SIGWINCH).
-const coalesceInterval = 8 * time.Millisecond
+// Small interactive writes should not wait for the burst coalescing window:
+// local echo is latency-sensitive and usually arrives as tiny PTY chunks.
+const coalesceInteractiveMaxBytes = 1024
+const coalesceInteractiveInterval = 2 * time.Millisecond
+
+// coalesceBurstInterval keeps redraw-heavy TUIs batched below one 60 fps frame
+// (~16 ms), reducing WS message count during bursts such as SIGWINCH redraws.
+const coalesceBurstInterval = 8 * time.Millisecond
+
+func coalesceDelay(bytes int) time.Duration {
+	if bytes <= coalesceInteractiveMaxBytes {
+		return coalesceInteractiveInterval
+	}
+	return coalesceBurstInterval
+}
 
 func (s *Server) readPTY() {
 	defer close(s.ptyDone)
 
 	buf := make([]byte, 32*1024)
 	var accum []byte
-	timer := time.NewTimer(coalesceInterval)
+	timer := time.NewTimer(coalesceBurstInterval)
 	timer.Stop()
 
 	flush := func() {
@@ -1022,7 +1032,7 @@ func (s *Server) readPTY() {
 			} else {
 				// Reset the coalesce timer. On the first chunk this
 				// starts the window; on subsequent chunks it extends it.
-				timer.Reset(coalesceInterval)
+				timer.Reset(coalesceDelay(len(accum)))
 			}
 
 		case <-timer.C:
