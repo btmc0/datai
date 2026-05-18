@@ -20,6 +20,7 @@ import { IconActivity, IconAlert, IconDots, IconHelp, IconMoon, IconRestart, Ico
 import { installCopySession } from './mock-data/export-session'
 import { isCoarsePointerDevice } from './input-device'
 import { fetchHostActions, requestDisplaySleep, type DisplaySleepCapability } from './host-actions'
+import { releaseUpdateBadge } from './release-updates'
 import {
   TERMINAL_FONT_SIZE_MAX,
   TERMINAL_FONT_SIZE_MIN,
@@ -192,6 +193,8 @@ function SessionMenu({ session, terminalFontSize, onTerminalFontSizeChange, onRe
     ? (peerVersion ? { version: peerVersion } : null)
     : healthVal
   const staleKind = sessionStaleness(session, compareTarget)
+  const updateBadge = releaseUpdateBadge(healthVal?.update_available)
+  const triggerHasBadge = !!staleKind || !!updateBadge
 
   // Close on outside click or Escape.
   useEffect(() => {
@@ -252,13 +255,13 @@ function SessionMenu({ session, terminalFontSize, onTerminalFontSizeChange, onRe
   return (
     <div class="session-menu" ref={menuRef}>
       <button
-        class={`session-menu-trigger${staleKind ? ' stale' : ''}`}
+        class={`session-menu-trigger${triggerHasBadge ? ' stale' : ''}`}
         onClick={() => setOpen(!open)}
-        title="Session actions"
+        title={updateBadge ? `${updateBadge.label} — Session actions` : 'Session actions'}
         aria-expanded={open}
       >
         <IconDots class="session-menu-icon" />
-        {staleKind && <span class="session-menu-badge" />}
+        {triggerHasBadge && <span class="session-menu-badge" />}
       </button>
       {open && (
         <div class="session-menu-dropdown">
@@ -272,6 +275,27 @@ function SessionMenu({ session, terminalFontSize, onTerminalFontSizeChange, onRe
                 <span>Restart session</span>
                 {staleKind && <span class="session-menu-action-tag">outdated</span>}
               </button>
+              <div class="session-menu-divider" />
+            </>
+          )}
+          {updateBadge && (
+            <>
+              <div class="session-menu-section-title">Jump</div>
+              <a
+                class="session-menu-action release-update"
+                href={updateBadge.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={updateBadge.title}
+                aria-label={updateBadge.title}
+                onClick={() => setOpen(false)}
+              >
+                <span class="session-menu-action-label">
+                  <IconAlert class="session-menu-action-icon" />
+                  <span>Update available</span>
+                </span>
+                <span class="session-menu-action-tag">{updateBadge.tag}</span>
+              </a>
               <div class="session-menu-divider" />
             </>
           )}

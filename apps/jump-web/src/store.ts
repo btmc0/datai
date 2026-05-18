@@ -53,6 +53,9 @@ export interface HealthData {
 }
 export const health = signal<HealthData | null>(null)
 
+export const HEALTH_REFRESH_SETTLE_MS = 2_500
+export const HEALTH_REFRESH_MS = 60_000
+
 // ── Peer appearance: unique prefix + deterministic color ─────────────────────
 
 /** 6-color palette: [foreground, background] pairs for dark backgrounds.
@@ -424,6 +427,15 @@ async function fetchHealth(): Promise<void> {
   }
 }
 
+export function startHealthRefresh(): () => void {
+  const settle = setTimeout(() => { void fetchHealth() }, HEALTH_REFRESH_SETTLE_MS)
+  const tick = setInterval(() => { void fetchHealth() }, HEALTH_REFRESH_MS)
+  return () => {
+    clearTimeout(settle)
+    clearInterval(tick)
+  }
+}
+
 // ── Project mutations (used by manage-projects) ─────────────────────────────
 
 async function putProjects(items: ProjectItem[]): Promise<void> {
@@ -655,6 +667,7 @@ export function initStore(): () => void {
     connState.value = 'error'
   })
   fetchHealth()
+  cleanups.push(startHealthRefresh())
   fetchFrontendConfig().then(fc => {
     const macCtrl = fc.settings?.macCommandIsCtrl === true
     batch(() => {

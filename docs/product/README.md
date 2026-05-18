@@ -14,6 +14,7 @@ structure is healthier than fake product truth.
 
 - `remote-access.md` defines the accepted local, tsnet, and relay access model for jump.
 - `session-lifecycle.md` defines session ownership, dead-session replay, and retention behavior.
+- `release-updates.md` defines informational latest-release update notices.
 
 ## Update Rule
 

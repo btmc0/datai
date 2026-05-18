@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
-import { sessions, sessionsLoaded, projects, upsertSession, removeSession, markSessionRead, handleActivity, isSessionActive, isSessionFading, activityMap, sessionStaleness, peers, peerAppearance, urlPath, selectedId, navigateToSession, setNavigate, launchSession, removeProject } from './store'
+import { sessions, sessionsLoaded, projects, upsertSession, removeSession, markSessionRead, handleActivity, isSessionActive, isSessionFading, activityMap, sessionStaleness, peers, peerAppearance, urlPath, selectedId, navigateToSession, setNavigate, launchSession, removeProject, health, startHealthRefresh, HEALTH_REFRESH_MS, HEALTH_REFRESH_SETTLE_MS } from './store'
 import type { Session } from './types'
 import type { ProjectItem } from './types'
 
@@ -31,6 +31,7 @@ beforeEach(() => {
   projects.value = []
   sessionsLoaded.value = false
   urlPath.value = '/'
+  health.value = null
 })
 
 describe('upsertSession', () => {
@@ -149,6 +150,39 @@ describe('project mutations', () => {
 
     expect(fetch).toHaveBeenCalledWith('/v1/projects', expect.objectContaining({ method: 'PUT' }))
     expect(projects.value.map(p => p.slug)).toEqual(['fxproj'])
+  })
+})
+
+describe('health refresh', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      json: async () => ({ data: { version: '1.0.0', update_available: 'v1.1.0' } }),
+    }))
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.restoreAllMocks()
+  })
+
+  it('refreshes health after the daemon update checker has time to settle, then on interval', async () => {
+    const cleanup = startHealthRefresh()
+
+    expect(fetch).not.toHaveBeenCalled()
+
+    await vi.advanceTimersByTimeAsync(HEALTH_REFRESH_SETTLE_MS)
+    expect(fetch).toHaveBeenCalledWith('/v1/health')
+    expect(health.value?.update_available).toBe('v1.1.0')
+
+    vi.mocked(fetch).mockClear()
+    await vi.advanceTimersByTimeAsync(HEALTH_REFRESH_MS)
+    expect(fetch).toHaveBeenCalledWith('/v1/health')
+
+    vi.mocked(fetch).mockClear()
+    cleanup()
+    await vi.advanceTimersByTimeAsync(HEALTH_REFRESH_MS)
+    expect(fetch).not.toHaveBeenCalled()
   })
 })
 
