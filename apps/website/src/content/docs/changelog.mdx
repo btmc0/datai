@@ -18,7 +18,25 @@ Full commit-level changelogs are on each [GitHub Release](https://github.com/sti
 
 ## Install / Update
 
-This fork does not currently publish Homebrew or install-script releases. Build from source or use artifacts from [GitHub Releases](https://github.com/sting8k/jump/releases) once release automation is restored.
+This fork does not currently publish Homebrew or install-script releases. Build from source or use artifacts from [GitHub Releases](https://github.com/sting8k/jump/releases).
+
+---
+
+## v1.7.0 - 2026-05-19
+
+This release completes the move to **jump**, tightens remote-access and relay flows, and polishes the Web UI for mobile and full-screen terminal workloads.
+
+### Breaking
+- Rename the product, binaries, paths, docs, and runtime defaults from `gmux` to `jump` with no old-path fallback.
+
+### Features
+- **(remote)** add documented local, tsnet, and relay access modes with flattened commands and relay setup support.
+- **(daemon)** add doctor diagnostics, binary relay frames, real host telemetry, session cleanup, and guarded display sleep action support.
+- **(web)** add terminal font-size controls, session memory/PTY telemetry, release update notices, sharper pasture UI chrome, and mobile-friendly controls.
+
+### Fixes
+- **(daemon)** reduce session watcher memory, clean orphan runners, preserve remote health reporting, and restore build/e2e setup stability.
+- **(web)** reconnect transports on mobile resume, keep Shift+Tab working on mobile, clamp menus to the viewport, stabilize Vietnamese IME input, and keep Vim/full-screen TUIs responsive without refresh.
 
 ---
 
