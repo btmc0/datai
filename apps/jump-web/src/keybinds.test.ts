@@ -69,6 +69,10 @@ describe('keyComboToSequence', () => {
     expect(keyComboToSequence('tab')).toBe('\t')
   })
 
+  it('converts shift+tab to terminal backtab', () => {
+    expect(keyComboToSequence('shift+tab')).toBe('\x1b[Z')
+  })
+
   it('converts backspace', () => {
     expect(keyComboToSequence('backspace')).toBe('\x7f')
   })
