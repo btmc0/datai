@@ -19,6 +19,7 @@ code {
   --bg-hover: #262637;
   --bg-selected: #242438;
   --terminal-bg: #11111b;
+  --bg-void: #11111b;
 
   /* Text */
   --text: #cdd6f4;
@@ -48,9 +49,10 @@ code {
 
   /* Type + radii */
   --font-mono: 'Roboto Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  --radius: 6px;
-  --radius-sm: 4px;
-  --radius-lg: 8px;
+  --font-tech: 'Fira Code', 'Roboto Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --radius: 4px;
+  --radius-sm: 3px;
+  --radius-lg: 6px;
   --radius-dot: 999px;
 
   /* Sizing */
@@ -399,8 +401,8 @@ body {
 /* Status dot — left of title, vertically centered on first line */
 .session-dot-indicator {
   flex-shrink: 0;
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   border-radius: var(--radius-dot);
 
 }
@@ -2746,17 +2748,16 @@ a.home-host-link:hover {
 .jump-to-bottom:hover { background: oklch(28% 0.015 250); }
 .jump-to-bottom:active { transform: translateY(1px); }
 
-/* ── Brutalist Terminal override ───────────────────────────────────────────
-   Design invariant: jump is a control terminal, not a dashboard. The shell
-   uses hard monochrome planes, phosphor state color, ASCII-style hierarchy,
-   square hit targets, and zero decorative depth. */
+/* ── Terminal skin override ──────────────────────────────────────────────
+   Design invariant: jump remains a control terminal, not a dashboard. The
+   shell keeps the compact console layout while using the Pasture color scheme. */
 
 body {
   font-family: var(--font-mono);
-  background: var(--bg);
+  background: var(--bg-void);
   color: var(--text);
   font-size: 11.5px;
-  letter-spacing: -0.012em;
+  letter-spacing: -0.008em;
 }
 
 
@@ -2776,7 +2777,10 @@ code {
 }
 
 .app-layout {
-  background: var(--bg);
+  background:
+    radial-gradient(circle at 80% -10%, color-mix(in oklch, var(--accent-blue) 10%, transparent), transparent 34%),
+    radial-gradient(circle at 8% 105%, color-mix(in oklch, var(--accent) 9%, transparent), transparent 30%),
+    var(--bg);
 }
 
 .sidebar,
@@ -2797,36 +2801,52 @@ code {
   border-bottom: 1px solid var(--border-strong);
 }
 
-.sidebar-header::before {
-  content: '┌';
-  color: var(--border-strong);
-}
-
+.sidebar-header::before,
 .sidebar-header::after {
-  content: '┐';
-  margin-left: auto;
-  color: var(--border-strong);
+  content: none;
 }
 
 .sidebar-logo {
-  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 7px;
   margin: 0;
-  color: var(--accent);
+  color: var(--text);
+  font-family: var(--font-tech);
   font-size: 10.5px;
-  font-weight: 500;
-  letter-spacing: 0.18em;
+  font-weight: 700;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
+  border: 1px solid color-mix(in oklch, var(--accent) 24%, var(--border));
+  border-radius: var(--radius);
+  background: color-mix(in oklch, black 68%, var(--bg-surface));
+  box-shadow: inset 0 1px 0 oklch(100% 0 0 / 0.035);
 }
 
 .sidebar-logo::before {
-  content: '> ';
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: var(--radius-dot);
+  background: var(--accent);
+  box-shadow: 0 0 8px color-mix(in oklch, var(--accent) 72%, transparent);
+}
+
+.sidebar-logo::after {
+  content: '// PTY';
+  margin-left: 1px;
+  padding-left: 6px;
+  border-left: 1px solid var(--border);
   color: var(--text-muted);
+  font-weight: 600;
   letter-spacing: 0.08em;
 }
 
 .sidebar-logo:hover {
-  background: transparent;
-  color: #fff;
+  color: var(--accent);
+  background: color-mix(in oklch, var(--accent) 8%, black);
+  border-color: color-mix(in oklch, var(--accent) 45%, var(--border));
 }
 
 .sidebar-scroll {
@@ -2888,9 +2908,9 @@ code {
   border-radius: var(--radius);
   box-shadow: none;
   text-transform: uppercase;
-  font-size: 10.5px;
-  padding: 4px 7px;
-  min-height: 26px;
+  font-size: 10px;
+  padding: 3px 6px;
+  min-height: 24px;
 }
 
 .launch-btn:hover,
@@ -2946,10 +2966,10 @@ code {
 }
 
 .session-item {
-  min-height: 30px;
-  padding: 4px 5px 4px 16px;
+  min-height: 28px;
+  padding: 3px 5px 3px 14px;
   border-bottom: 1px solid var(--border);
-  gap: 6px;
+  gap: 5px;
 }
 
 .session-item:hover {
@@ -3016,7 +3036,7 @@ code {
 
 .session-meta {
   color: var(--text-muted);
-  font-size: 10.5px;
+  font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.035em;
 }
@@ -3066,7 +3086,7 @@ code {
 .sidebar-metrics {
   background: var(--bg-surface);
   border: 1px solid var(--border-strong);
-  padding: 8px;
+  padding: 7px;
 }
 
 .sidebar-metrics.tui::before {
@@ -3127,11 +3147,11 @@ code {
 
 .terminal-shell,
 .terminal-container {
-  background: var(--bg);
+  background: var(--terminal-bg);
 }
 
 .terminal-container .xterm {
-  padding: 8px;
+  padding: 4px 8px 8px;
 }
 
 .terminal-resize-overlay,
@@ -3469,9 +3489,9 @@ code {
   }
 }
 
-/* ── Terminal pasture polish pass ── */
+/* ── Pasture console polish pass ── */
 
-/* Sidebar: keep dense scanning, but reduce the hard black/green contrast. */
+/* Sidebar: keep dense scanning, but soften contrast around the Pasture accent. */
 .folder-header:has(.folder-name.current) {
   background: color-mix(in oklch, var(--bg-selected) 96%, var(--accent) 4%);
   color: var(--text);
@@ -3524,7 +3544,7 @@ code {
 }
 
 .session-title {
-  font-size: 12px;
+  font-size: 11.5px;
 }
 
 .session-meta {
@@ -3573,15 +3593,24 @@ code {
 }
 
 .main-header::before {
-  content: 'session';
-  color: var(--text-faint);
-  letter-spacing: 0.16em;
+  content: none;
+}
+
+.main-header-left .main-header-title::before {
+  content: 'BUFFER:';
+  color: var(--text-muted);
+  font-family: var(--font-tech);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
 }
 
 .main-header-title {
+  font-family: var(--font-tech);
   text-transform: none;
-  font-size: 12px;
-  letter-spacing: 0.025em;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.055em;
 }
 
 .main-header-status.working {
@@ -3606,8 +3635,9 @@ code {
 
 /* Home: keep the terminal grid idea, but give cards breathing room. */
 .home::before {
-  content: 'jump control plane';
+  content: 'JUMP // CONTROL PLANE';
   color: var(--text-faint);
+  font-family: var(--font-tech);
 }
 
 .home-section-title::before {
@@ -3620,7 +3650,7 @@ code {
 
 .home-host-grid,
 .home-project-grid {
-  gap: 9px;
+  gap: 8px;
   border: 0;
 }
 
@@ -3629,7 +3659,7 @@ code {
 .home-workspace-add {
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 14px;
+  padding: 12px;
 }
 
 .home-project-card {
@@ -3665,16 +3695,160 @@ code {
   color: var(--text);
 }
 
-/* Mobile: active states stay visible without turning the toolbar into a green slab. */
+/* Mobile: active states stay visible without turning the toolbar into a solid slab. */
 .mobile-bottom-action:active,
 .mobile-bottom-action.armed,
 .mobile-bottom-action.keyboard-btn.active {
   background: color-mix(in oklch, var(--accent) 16%, var(--bg-hover));
   border-color: color-mix(in oklch, var(--accent) 62%, var(--border));
-  color: var(--text);
+  color: var(--accent);
 }
 
 .mobile-bottom-action.send-btn:active,
 .mobile-bottom-action.keyboard-btn.active {
   color: var(--accent);
+}
+
+/* CodeUI micro-polish, sharp edition: crisp borders, labels, and press states only. */
+:root {
+  --edge-hi: oklch(100% 0 0 / 0.035);
+  --edge-shadow: color-mix(in oklch, black 42%, var(--bg));
+}
+
+.sidebar-header,
+.main-header,
+.sidebar-footer,
+.launch-inline-menu,
+.session-menu-dropdown,
+.modal-panel,
+.home-host-card,
+.home-project-card,
+.home-workspace-add,
+.sidebar-metrics {
+  box-shadow: inset 0 1px 0 var(--edge-hi);
+}
+
+.launch-inline-menu,
+.session-menu-dropdown,
+.modal-panel {
+  box-shadow:
+    inset 0 1px 0 var(--edge-hi),
+    3px 3px 0 var(--edge-shadow);
+}
+
+.launch-btn,
+.session-menu-trigger,
+.manage-projects-btn,
+.home-launch-btn,
+.home-workspace-add-btn,
+.mobile-bottom-action,
+.session-menu-action,
+.launch-inline-item,
+.modal-button,
+.mp-project-action,
+.mp-add-btn,
+.mp-done-btn {
+  letter-spacing: 0.06em;
+  box-shadow: inset 0 1px 0 var(--edge-hi);
+}
+
+.launch-btn:active,
+.session-menu-trigger:active,
+.manage-projects-btn:active,
+.home-launch-btn:active,
+.home-workspace-add-btn:active,
+.mobile-bottom-action:active,
+.session-menu-action:active,
+.launch-inline-item:active,
+.modal-button:active,
+.mp-project-action:active,
+.mp-add-btn:active,
+.mp-done-btn:active {
+  transform: translate(1px, 1px);
+  box-shadow: none;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+.session-item:focus-visible,
+.folder-header:focus-visible,
+.launch-inline-item:focus-visible,
+.session-menu-action:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.session-peer-label,
+.manage-projects-badge,
+.session-menu-action-tag,
+.launch-target-line,
+.session-menu-section-title,
+.mp-section-label,
+.modal-label,
+.home-section-title,
+.sidebar-metrics.tui::before {
+  font-family: var(--font-tech);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.launch-target-line::before,
+.session-menu-section-title::before,
+.mp-section-label::before,
+.modal-label::before {
+  content: '[';
+  color: var(--text-faint);
+}
+
+.launch-target-line::after,
+.session-menu-section-title::after,
+.mp-section-label::after,
+.modal-label::after {
+  content: ']';
+  color: var(--text-faint);
+}
+
+.session-item,
+.home-host-card,
+.home-project-card,
+.home-workspace-suggestion,
+.mp-project-row,
+.mp-discovered-row {
+  box-shadow: inset 0 1px 0 transparent;
+}
+
+.session-item:hover,
+.home-host-card:hover,
+.home-project-card:hover,
+.home-workspace-suggestion:hover,
+.mp-project-row:hover,
+.mp-discovered-row:hover {
+  box-shadow: inset 0 1px 0 var(--edge-hi);
+}
+
+.session-item.selected {
+  box-shadow:
+    inset 2px 0 0 var(--accent),
+    inset 0 1px 0 var(--edge-hi);
+}
+
+.session-dot-indicator,
+.session-dot,
+.home-host-status {
+  border: 1px solid color-mix(in oklch, var(--border-strong) 82%, black);
+}
+
+.session-dot-indicator.unread,
+.session-dot.unread,
+.home-host-status.connected,
+.home-host-status.local {
+  border-color: var(--accent);
+}
+
+.terminal-shell,
+.terminal-container {
+  background: var(--terminal-bg);
 }

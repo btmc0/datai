@@ -10,7 +10,7 @@ normal
 
 ## Product Contract
 
-The runtime Web UI keeps the existing workspace/session/terminal flows while using a dark mono, thin-border visual skin inspired by herdr.dev. The change is presentation-focused, with one small workspace-add UX refinement: choosing a filesystem suggestion returns focus to the input. There are no API, session, remote-access, or terminal input protocol changes.
+The runtime Web UI keeps the existing workspace/session/terminal flows while using the Terminal Pasture palette: dark mono surfaces, thin borders, soft green primary accents, muted blue telemetry accents, and clear flat terminal surfaces. There are no API, session, remote-access, or terminal input protocol changes.
 
 ## Relevant Product Docs
 
@@ -18,10 +18,14 @@ The runtime Web UI keeps the existing workspace/session/terminal flows while usi
 
 ## Acceptance Criteria
 
-- Web UI uses a cohesive terminal-pasture palette: dark base/mantle/surface, thin borders, Roboto Mono defaults, and green/yellow/blue/red state accents.
+- Web UI uses the Pasture palette: `#11111b` terminal base, `#1e1e2e` surfaces, `#a6e3a1` primary accent, `#89b4fa` secondary telemetry, and muted status colors.
 - Existing sidebar, workspace, session, modal, terminal, and mobile toolbar interactions remain structurally unchanged.
-- Embedded `jumpd` web assets are rebuilt from the updated frontend.
-- Selecting an add-workspace filesystem suggestion keeps the user in the input field for quick editing/submission.
+- Default xterm theme colors match the Pasture UI palette.
+- Terminal surfaces do not use scanline, vignette, or CRT overlay pseudo-elements.
+- Embedded `jumpd` web assets can be rebuilt from the updated frontend.
+- Existing add-workspace suggestion focus retention remains unchanged.
+- CSS cleanup avoids late one-off CodeUI surface/density override blocks; remaining density changes are folded into the normal skin selectors.
+- CodeUI-inspired micro-polish is limited to sharp labels, button press states, focus rings, borders, and inset/offset edges; it does not add fake controls/data or terminal overlays.
 
 ## Design Notes
 
@@ -30,16 +34,17 @@ The runtime Web UI keeps the existing workspace/session/terminal flows while usi
 - API: no browser/daemon protocol change.
 - Tables: no data model change.
 - Domain rules: unchanged.
-- UI surfaces: `apps/jump-web` CSS tokens, default terminal theme/font, mock/diagnostics terminal defaults, and add-workspace suggestion focus handling.
+- UI surfaces: `apps/jump-web` CSS tokens/final skin override and default terminal theme colors.
+- Validation-only test adjustment: default keybind assertions are platform-aware because Node 20 on macOS exposes `navigator.platform`, making defaults correctly resolve to macOS bindings.
 
 ## Validation
 
 | Layer | Expected proof |
 | --- | --- |
-| Unit | Existing web unit suite, including settings-schema default assertions. |
-| Integration | `jumpd` command package tests after embedding rebuilt web assets. |
-| E2E | Not required for skin-only change; attempted screenshot smoke if local browser runtime is available. |
-| Platform | Local `jumpd` rebuild/restart smoke. |
+| Unit | Existing web unit suite. |
+| Integration | `jumpd` command package tests after rebuilding web assets. |
+| E2E | Not required for skin-only change. |
+| Platform | Web build smoke and local daemon deploy smoke when requested. |
 | Release | Not required. |
 
 ## Harness Delta
@@ -51,10 +56,10 @@ None.
 - `pnpm --filter @jump/web test` passed (17 files, 328 tests).
 - `pnpm --filter @jump/web lint` passed.
 - `pnpm --filter @jump/web build` passed.
-- Rebuilt embedded `jumpd` web assets from `apps/jump-web/dist`.
-- `go test ./services/jumpd/cmd/jumpd` passed.
-- `go build -o /tmp/jump-deploy/jumpd ./services/jumpd/cmd/jumpd` passed.
-- Installed `/tmp/jump-deploy/jumpd` to `~/.local/bin/jumpd`, restarted local daemon, and `jumpd status` reported ready.
-- Screenshot smoke was attempted but skipped because the local Playwright browser binary is not installed.
-- Follow-up polish pass validated with `pnpm --filter @jump/web test`, `pnpm --filter @jump/web lint`, `pnpm --filter @jump/web build`, `go test ./services/jumpd/cmd/jumpd`, and `go build -o /tmp/jump-deploy/jumpd ./services/jumpd/cmd/jumpd`.
-- Follow-up font pass switched the primary mono face from JetBrains Mono to Roboto Mono and was validated with the same web/jumpd test/build set.
+- `TMPDIR=/tmp GOWORK=$PWD/go.work go test ./services/jumpd/cmd/jumpd` passed.
+- Synced `apps/jump-web/dist` into `services/jumpd/cmd/jumpd/web`, rebuilt `/tmp/jump-deploy/jumpd`, installed it to `~/.local/bin/jumpd`, restarted local `jumpd`, and `jumpd status` reported ready on `127.0.0.1:8790`.
+- Installed `jumpd` embeds `index-BxF54br2.js` and `index-rzhxTBUW.css`; the prior compact CodeUI assets are absent.
+- Embedded CSS includes Pasture tokens (`#a6e3a1`, `#11111b`) and no amber `#ffb000` token.
+- Clear terminal redeploy installed `jumpd` with `index-C2lqVOUB.js` and `index-DqRkTl-G.css`; embedded CSS has no `terminal-shell::before`, `terminal-shell::after`, or terminal radial glow overlay.
+- Sharp micro-polish redeploy installed `jumpd` with `index-B_G_VPiU.js` and `index-C7AV0KMX.css`; embedded CSS has no terminal pseudo overlay, terminal radial glow, blur filter, or amber token.
+- `git diff --check` passed.
