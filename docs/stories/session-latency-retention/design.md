@@ -4,7 +4,7 @@
 
 - A session is alive until its runner reports exit or becomes unreachable.
 - A dead local session may be persisted for replay/resume using session metadata and scrollback in the jump state directory.
-- `exited_at` is the retention timestamp. Sessions with missing or invalid `exited_at` are skipped rather than guessed.
+- `exited_at` is the retention timestamp. Local dead sessions with missing or invalid `exited_at` are pruned instead of kept indefinitely.
 - Peer-owned sessions are outside the local daemon's retention authority.
 
 ## Application Flow
@@ -13,7 +13,8 @@
 - Accumulated output up to 1024 bytes uses a 2 ms coalescing interval.
 - Larger accumulated output uses the existing 8 ms burst interval.
 - `sessionfiles.Scanner` keeps the existing 10 minute cleanup for unattributed ephemeral dead sessions.
-- The same scanner additionally prunes local dead sessions older than 7 days.
+- The same scanner additionally prunes local dead sessions older than 24 hours.
+- On startup, scanner pruning waits for discovery's initial socket scan so sessionmeta-restored records can be re-registered alive before TTL deletion runs.
 - Scanner-driven removals call an `OnRemove` hook before store removal so `jumpd` can remove project membership keys while the full session record is still known.
 
 ## Interface Contract
@@ -22,7 +23,7 @@ No new public API, CLI command, config key, or browser protocol is added.
 
 User-visible behavior changes:
 
-- Old local dead sessions disappear automatically after 7 days.
+- Local dead sessions disappear automatically after 24 hours, or sooner if their `exited_at` timestamp is missing/invalid.
 - Existing session-remove and projects-update events notify connected clients.
 
 ## Data Model
@@ -41,7 +42,7 @@ The behavior depends on local Unix PTY/session code and is validated with Go pac
 
 ## Observability
 
-`sessionfiles` logs when it purges stale ephemeral sessions or prunes 7-day expired dead sessions.
+`sessionfiles` logs when it purges stale ephemeral sessions, prunes 24-hour expired dead sessions, or removes dead sessions with invalid timestamps.
 
 ## Alternatives Considered
 

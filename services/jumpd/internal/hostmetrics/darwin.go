@@ -13,6 +13,7 @@ import (
 )
 
 var topIdleRe = regexp.MustCompile(`([0-9]+(?:\.[0-9]+)?)% idle`)
+var pmsetBatteryRe = regexp.MustCompile(`(?m)([0-9]+(?:\.[0-9]+)?)%;\s*([^;]+);`)
 
 func cpuPercent(ctx context.Context) (float64, error) {
 	out, err := run(ctx, "top", "-l", "1", "-n", "0", "-s", "0")
@@ -60,6 +61,30 @@ func memoryUsage(ctx context.Context) (MemoryUsage, error) {
 		used = total - free
 	}
 	return MemoryUsage{UsedBytes: used, TotalBytes: total}, nil
+}
+
+func batteryStatus(ctx context.Context) (*BatteryStatus, error) {
+	out, err := run(ctx, "pmset", "-g", "batt")
+	if err != nil {
+		return nil, err
+	}
+	return parsePMSetBattery(string(out))
+}
+
+func parsePMSetBattery(out string) (*BatteryStatus, error) {
+	lower := strings.ToLower(out)
+	if strings.Contains(lower, "no batteries") || strings.Contains(lower, "present: false") {
+		return nil, nil
+	}
+	m := pmsetBatteryRe.FindStringSubmatch(out)
+	if len(m) != 3 {
+		return nil, nil
+	}
+	percent, err := strconv.ParseFloat(m[1], 64)
+	if err != nil {
+		return nil, err
+	}
+	return &BatteryStatus{Percent: percent, State: m[2]}, nil
 }
 
 func run(ctx context.Context, name string, args ...string) ([]byte, error) {

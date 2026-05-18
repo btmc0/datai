@@ -16,8 +16,8 @@ import {
   type DotState,
 } from './store'
 import { PeerLabel } from './peer-label'
-import { IconCpu, IconFolder, IconMemory, IconSettings } from './icons'
-import { formatBytes, formatPercent, useHostMetrics } from './host-metrics'
+import { IconBattery, IconCpu, IconFolder, IconMemory, IconSettings } from './icons'
+import { formatBytes, formatPercent, useHostMetrics, type HostBattery } from './host-metrics'
 import type { Session, Folder, ProjectItem } from './types'
 
 // ── Types ──
@@ -45,6 +45,26 @@ function formatSessionMemory(bytes?: number): string | null {
   if (mib < 1024) return `${mib.toFixed(mib >= 100 ? 0 : 1)}M`
   const gib = mib / 1024
   return `${gib.toFixed(gib >= 10 ? 0 : 1)}G`
+}
+
+function formatBatteryState(state?: string): string {
+  switch (state) {
+    case 'charging': return 'chg'
+    case 'discharging': return 'dis'
+    case 'charged':
+    case 'full': return 'full'
+    case 'not charging': return 'hold'
+    default: return state ? state.slice(0, 4) : ''
+  }
+}
+
+function formatBatteryStatus(battery: HostBattery): string {
+  const state = formatBatteryState(battery.state)
+  return state ? `${formatPercent(battery.percent)} ${state}` : formatPercent(battery.percent)
+}
+
+function metricWidth(value: number): string {
+  return formatPercent(Math.max(0, Math.min(value, 100)))
 }
 
 
@@ -76,17 +96,24 @@ function SidebarHostMetrics() {
   }
 
   return (
-    <div class="sidebar-metrics tui" title="Host jumpd CPU and RAM usage">
+    <div class="sidebar-metrics tui" title="Host jumpd CPU, RAM, and battery telemetry">
       <div class="sidebar-metrics-row">
         <span class="sidebar-metrics-label"><IconCpu class="metric-icon" />cpu</span>
         <strong>{formatPercent(metrics.cpu_percent)}</strong>
       </div>
-      <div class="sidebar-metrics-bar"><i style={{ width: formatPercent(Math.max(0, Math.min(metrics.cpu_percent, 100))) }} /></div>
+      <div class="sidebar-metrics-bar"><i style={{ width: metricWidth(metrics.cpu_percent) }} /></div>
       <div class="sidebar-metrics-row">
         <span class="sidebar-metrics-label"><IconMemory class="metric-icon" />ram</span>
         <strong>{formatBytes(metrics.memory.used_bytes)} / {formatBytes(metrics.memory.total_bytes)}</strong>
       </div>
-      <div class="sidebar-metrics-bar"><i style={{ width: formatPercent(Math.max(0, Math.min(metrics.memory.percent, 100))) }} /></div>
+      <div class="sidebar-metrics-bar"><i style={{ width: metricWidth(metrics.memory.percent) }} /></div>
+      {metrics.battery && <>
+        <div class="sidebar-metrics-row">
+          <span class="sidebar-metrics-label"><IconBattery class="metric-icon" />bat</span>
+          <strong>{formatBatteryStatus(metrics.battery)}</strong>
+        </div>
+        <div class="sidebar-metrics-bar battery"><i style={{ width: metricWidth(metrics.battery.percent) }} /></div>
+      </>}
     </div>
   )
 }

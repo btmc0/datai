@@ -15,7 +15,7 @@ import (
 
 const (
 	staleEphemeralMaxAge = 10 * time.Minute
-	deadSessionTTL       = 7 * 24 * time.Hour
+	deadSessionTTL       = 24 * time.Hour
 )
 
 // Scanner provides periodic store maintenance.
@@ -83,6 +83,8 @@ func (sc *Scanner) PurgeStaleSessions(maxAge time.Duration) {
 
 // PurgeExpiredDeadSessions removes local dead sessions older than maxAge.
 // Peer-owned sessions are skipped because their owning jumpd is the state owner.
+// Local dead sessions with missing or invalid exited_at are removed too; without
+// a trustworthy timestamp they would otherwise become immortal sidebar noise.
 func (sc *Scanner) PurgeExpiredDeadSessions(maxAge time.Duration) {
 	now := sc.currentTime()
 	for _, s := range sc.store.List() {
@@ -91,6 +93,8 @@ func (sc *Scanner) PurgeExpiredDeadSessions(maxAge time.Duration) {
 		}
 		exited, err := time.Parse(time.RFC3339, s.ExitedAt)
 		if err != nil {
+			log.Printf("sessionfiles: pruning dead session %s (invalid exited_at %q)", s.ID, s.ExitedAt)
+			sc.removeSession(s)
 			continue
 		}
 		age := now.Sub(exited)

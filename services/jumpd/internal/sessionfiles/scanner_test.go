@@ -76,7 +76,16 @@ func TestPurgeExpiredDeadSessions(t *testing.T) {
 	s.Upsert(store.Session{
 		ID:       "unknown-exit-time",
 		Alive:    false,
+		Command:  []string{"bash"},
+		Slug:     "unknown-key",
 		ExitedAt: "",
+	})
+	s.Upsert(store.Session{
+		ID:       "invalid-exit-time",
+		Alive:    false,
+		Command:  []string{"bash"},
+		Slug:     "invalid-key",
+		ExitedAt: "not-a-time",
 	})
 
 	var removed []store.Session
@@ -91,13 +100,28 @@ func TestPurgeExpiredDeadSessions(t *testing.T) {
 	if ids["old-dead-resumable"] {
 		t.Error("old dead resumable session should have been pruned")
 	}
-	for _, id := range []string{"fresh-dead", "alive-old", "peer-old-dead", "unknown-exit-time"} {
+	for _, id := range []string{"fresh-dead", "alive-old", "peer-old-dead"} {
 		if !ids[id] {
 			t.Errorf("%s should still be present", id)
 		}
 	}
-	if len(removed) != 1 || removed[0].ID != "old-dead-resumable" || removed[0].Slug != "old-key" {
-		t.Fatalf("OnRemove sessions = %#v, want old-dead-resumable with slug", removed)
+	for _, id := range []string{"unknown-exit-time", "invalid-exit-time"} {
+		if ids[id] {
+			t.Errorf("%s should have been pruned", id)
+		}
+	}
+	wantRemoved := map[string]string{
+		"old-dead-resumable": "old-key",
+		"unknown-exit-time":  "unknown-key",
+		"invalid-exit-time":  "invalid-key",
+	}
+	if len(removed) != len(wantRemoved) {
+		t.Fatalf("OnRemove sessions = %#v, want %d removals", removed, len(wantRemoved))
+	}
+	for _, sess := range removed {
+		if wantRemoved[sess.ID] != sess.Slug {
+			t.Fatalf("OnRemove session = %#v, want slug %q", sess, wantRemoved[sess.ID])
+		}
 	}
 }
 

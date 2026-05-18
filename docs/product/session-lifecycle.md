@@ -6,7 +6,7 @@
 - `jumpd` owns the session/workspace store and proxies browser attach traffic to the owning runner.
 - Live sessions remain attachable through the local Web UI, CLI, tsnet, or relay transports that reach the same `jumpd` handler.
 - Dead sessions may remain visible for replay/resume, backed by persisted session metadata and scrollback under the jump state directory.
-- Local dead sessions with a parseable `exited_at` older than 7 days are automatically pruned, including their persisted metadata/scrollback and project membership references.
+- Local dead sessions with a parseable `exited_at` older than 24 hours are automatically pruned, including their persisted metadata/scrollback and project membership references. Local dead sessions with missing or invalid `exited_at` are also pruned so they do not persist forever.
 - Peer-owned dead sessions are not pruned by the hub; the owning jumpd remains responsible for its own lifecycle state.
 
 See `docs/decisions/0006-dead-session-retention.md` for the retention decision.

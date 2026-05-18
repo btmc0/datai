@@ -9,7 +9,7 @@ Improve single-user session feel and steady-state cleanup without changing jump 
 In scope:
 
 - Adaptive PTY output coalescing for small interactive output versus burst redraw output.
-- Automatic pruning of local dead sessions older than 7 days.
+- Automatic pruning of local dead sessions older than 24 hours, plus local dead sessions with missing/invalid exit timestamps.
 - Cleanup of project session references when the scanner removes a session.
 - Focused tests and harness evidence updates.
 
@@ -31,11 +31,11 @@ Risk flags:
 
 Hard gates:
 
-- Data loss/deletion: dead session metadata and scrollback older than 7 days are deleted by policy.
+- Data loss/deletion: dead session metadata and scrollback older than 24 hours, or without valid exit timestamps, are deleted by policy.
 
 Human confirmation:
 
-- The user selected `Auto TTL prune` and then selected `7d all dead` before implementation.
+- The user initially selected `Auto TTL prune` with `7d all dead`; after trying the UI, the default changed to 24h plus invalid-timestamp cleanup to reduce noise.
 
 ## Work Phases
 
@@ -50,7 +50,7 @@ Human confirmation:
 
 Pause for human confirmation if:
 
-- Retention scope changes from 7 days all local dead sessions.
-- Prune would need to delete live sessions, peer-owned sessions, or sessions without parseable `exited_at`.
+- Retention scope changes from 24 hours for timestamped local dead sessions, with invalid-timestamp local dead sessions removed on scan.
+- Prune would need to delete live sessions, peer-owned sessions, or local dead sessions outside the accepted 24h / invalid-timestamp policy.
 - Validation requirements need to be weakened.
 - Architecture direction changes.

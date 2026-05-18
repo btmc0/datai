@@ -32,6 +32,14 @@ export function IconMemory({ class: className }: IconProps) {
   return <svg class={className} viewBox="0 0 14 14" aria-hidden="true" {...S}><path d="M3 4h8v6H3z" /><path d="M4.5 4V2.5M7 4V2.5M9.5 4V2.5M4.5 11.5V10M7 11.5V10M9.5 11.5V10" /></svg>
 }
 
+export function IconBattery({ class: className }: IconProps) {
+  return <svg class={className} viewBox="0 0 14 14" aria-hidden="true" {...S}><path d="M2 5h8v4H2z" /><path d="M10 6.2h1.5v1.6H10" /><path d="M3.5 6.4v1.2" /></svg>
+}
+
+export function IconActivity({ class: className }: IconProps) {
+  return <svg class={className} viewBox="0 0 14 14" aria-hidden="true" {...S}><path d="M2 8h2l1.2-3 2 6 1.4-4H12" /></svg>
+}
+
 export function IconRestart({ class: className }: IconProps) {
   return <svg class={className} viewBox="0 0 14 14" aria-hidden="true" {...S}><path d="M11 6a4 4 0 1 1-1.2-2.9" /><path d="M11 2.5V6H7.5" /></svg>
 }

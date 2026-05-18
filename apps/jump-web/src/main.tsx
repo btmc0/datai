@@ -16,7 +16,7 @@ import { ManageProjectsModal } from './manage-projects'
 import { ProjectHub } from './project-hub'
 import { Home } from './home'
 import { LaunchButton } from './launcher'
-import { IconDots, IconRestart } from './icons'
+import { IconActivity, IconDots, IconRestart } from './icons'
 import { installCopySession } from './mock-data/export-session'
 import { isCoarsePointerDevice } from './input-device'
 import {
@@ -53,6 +53,16 @@ installCopySession()
 
 // ── Components ──
 
+function countPtySessions(items: readonly Session[]): { alive: number; dead: number } {
+  let alive = 0
+  let dead = 0
+  for (const item of items) {
+    if (item.alive) alive++
+    else dead++
+  }
+  return { alive, dead }
+}
+
 function MainHeader({ session, terminalFontSize, onTerminalFontSizeChange, onRestart }: {
   session: Session | null
   terminalFontSize: number
@@ -70,6 +80,7 @@ function MainHeader({ session, terminalFontSize, onTerminalFontSizeChange, onRes
   }
 
   const shortCwd = session.cwd.replace(/^\/home\/[^/]+/, '~')
+  const ptyCounts = countPtySessions(sessions.value)
 
   return (
     <div class="main-header">
@@ -91,6 +102,17 @@ function MainHeader({ session, terminalFontSize, onTerminalFontSizeChange, onRes
             {session.status.label}
           </div>
         )}
+        <div
+          class="main-header-pty-count"
+          title={`PTY sessions: ${ptyCounts.alive} alive, ${ptyCounts.dead} dead`}
+          aria-label={`PTY sessions: ${ptyCounts.alive} alive, ${ptyCounts.dead} dead`}
+        >
+          <IconActivity class="main-header-pty-icon" />
+          <span class="main-header-pty-label">Active PTYs</span>
+          <strong class="main-header-pty-live">{ptyCounts.alive}</strong>
+          <span class="main-header-pty-dot" />
+          <span class="main-header-pty-dead"><strong>{ptyCounts.dead}</strong><span class="main-header-pty-dead-label"> dead</span></span>
+        </div>
         <SessionMenu
           session={session}
           onRestart={onRestart}

@@ -498,8 +498,12 @@ func serve(stderr io.Writer) int {
 
 	// Start socket-based discovery (scans /tmp/jump-sessions/*.sock)
 	// Discovery also subscribes to each runner's /events SSE for live updates.
+	discoveryFirstScan := make(chan struct{})
 	stopDiscovery := make(chan struct{})
-	go discovery.Watch(sessions, subs, fileMon, persistDead, fileMon.ApplyPersistedAttributions, 3*time.Second, stopDiscovery)
+	go discovery.Watch(sessions, subs, fileMon, persistDead, func() {
+		fileMon.ApplyPersistedAttributions()
+		close(discoveryFirstScan)
+	}, 3*time.Second, stopDiscovery)
 	defer close(stopDiscovery)
 
 	// Session file scanner — discovers resumable sessions from adapter
@@ -572,7 +576,7 @@ func serve(stderr io.Writer) int {
 	projectMgr.SeedIfEmpty()
 
 	// Keep project membership arrays in sync with scanner-driven removals
-	// such as stale ephemeral cleanup and 7-day dead-session TTL pruning.
+	// such as stale ephemeral cleanup, 24-hour dead-session TTL pruning, and invalid timestamp cleanup.
 	scanner.OnRemove = func(sess store.Session) {
 		projectMgr.DismissSession(sess.ID, sess.Slug)
 	}
@@ -602,7 +606,11 @@ func serve(stderr io.Writer) int {
 		}
 		projectMgr.CleanupSessions(known)
 	}
-	go scanner.Run(30*time.Second, stopScanner)
+	// Delay the retention scanner until discovery's initial scan has had a chance
+	// to re-register still-live runners restored from sessionmeta as Alive=false.
+	go runAfterDiscoveryFirstScan(discoveryFirstScan, stopScanner, func() {
+		scanner.Run(30*time.Second, stopScanner)
+	})
 
 	// Conversations index updates are watcher-driven via filemon
 	// (see SetConvIndex + WatchRoots above). No periodic rescan: a

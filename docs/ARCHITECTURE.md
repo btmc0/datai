@@ -100,7 +100,7 @@ mode combinations should fail fast.
 - `jump` creates/attaches to sessions but should not become a second state owner
   for daemon-managed session/workspace truth.
 - `jumpd` prunes local dead session metadata/scrollback after the accepted
-  7-day retention window; peer-owned sessions remain the owning jumpd's
+  24-hour retention window; local dead sessions with missing/invalid exit timestamps are also pruned; peer-owned sessions remain the owning jumpd's
   lifecycle responsibility.
 - `jump-relayd` may hold transient connection state for routing, not durable
   product state.

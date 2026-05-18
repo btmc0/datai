@@ -9,7 +9,7 @@ Use focused unit tests for deterministic policy decisions and package-level test
 | Layer | Cases |
 | --- | --- |
 | Unit | `coalesceDelay` selects 2 ms for small output and 8 ms for burst output. |
-| Unit | `sessionfiles.Scanner` keeps the existing stale ephemeral cleanup and prunes local dead sessions older than 7 days. |
+| Unit | `sessionfiles.Scanner` keeps the existing stale ephemeral cleanup, prunes local dead sessions older than 24 hours, and removes local dead sessions with missing/invalid exit timestamps. |
 | Integration | `jumpd` command package tests cover daemon wiring, session APIs, and project/session interactions. |
 | E2E | Not required for this slice; no public browser/API contract changes. |
 | Platform | Optional local smoke after deploy can confirm old dead sessions prune and terminal echo remains attachable. |
@@ -18,8 +18,8 @@ Use focused unit tests for deterministic policy decisions and package-level test
 
 ## Fixtures
 
-- Fixed UTC timestamps around the 7-day TTL boundary.
-- Store sessions covering alive, fresh-dead, old-dead, peer-owned dead, and invalid exit time cases.
+- Fixed UTC timestamps around the 24-hour TTL boundary plus missing/invalid timestamp cases.
+- Store sessions covering alive, fresh-dead, old-dead, peer-owned dead, missing exit time, and invalid exit time cases.
 
 ## Commands
 
@@ -33,6 +33,8 @@ go test ./services/jumpd/cmd/jumpd
 
 - `TMPDIR=/tmp go test -v ./cli/jump/internal/ptyserver -run 'TestCoalesceDelay|TestPTYServerLiveDataNotDelayed|TestPTYDoneClosesAfterFinalFlush'` passed on 2026-05-17.
 - `go test -v ./services/jumpd/internal/sessionfiles` passed on 2026-05-17.
+- `TMPDIR=/tmp GOWORK=$PWD/go.work go test ./services/jumpd/internal/sessionfiles ./services/jumpd/cmd/jumpd` passed on 2026-05-18 after changing retention to 24h and pruning missing/invalid `exited_at` dead sessions.
+- `TMPDIR=/tmp GOWORK=$PWD/go.work go test ./services/jumpd/cmd/jumpd ./services/jumpd/internal/sessionfiles ./services/jumpd/internal/hostmetrics` passed on 2026-05-18 after gating scanner startup behind discovery's initial scan.
 - `TMPDIR=/tmp go test ./cli/jump/internal/ptyserver ./services/jumpd/internal/sessionfiles ./services/jumpd/cmd/jumpd` passed on 2026-05-17.
 - `TMPDIR=/tmp go build -o /tmp/jump-verify/jump ./cli/jump/cmd/jump` passed on 2026-05-17.
 - `TMPDIR=/tmp go build -o /tmp/jump-verify/jumpd ./services/jumpd/cmd/jumpd` passed on 2026-05-17.

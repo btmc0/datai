@@ -7,10 +7,13 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 )
+
+var powerSupplyRoot = "/sys/class/power_supply"
 
 type cpuTimes struct {
 	total uint64
@@ -67,6 +70,54 @@ func readCPUTimes() (cpuTimes, error) {
 		}
 	}
 	return cpuTimes{total: total, idle: idle}, nil
+}
+
+func batteryStatus(context.Context) (*BatteryStatus, error) {
+	return readBatteryStatus(powerSupplyRoot)
+}
+
+func readBatteryStatus(root string) (*BatteryStatus, error) {
+	entries, err := os.ReadDir(root)
+	if os.IsNotExist(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		dir := filepath.Join(root, entry.Name())
+		typeText, _ := readTrimmedFile(filepath.Join(dir, "type"))
+		if typeText != "" && !strings.EqualFold(typeText, "Battery") {
+			continue
+		}
+		if typeText == "" && !strings.HasPrefix(strings.ToUpper(entry.Name()), "BAT") {
+			continue
+		}
+
+		capacityText, err := readTrimmedFile(filepath.Join(dir, "capacity"))
+		if err != nil {
+			continue
+		}
+		percent, err := strconv.ParseFloat(capacityText, 64)
+		if err != nil {
+			continue
+		}
+		state, _ := readTrimmedFile(filepath.Join(dir, "status"))
+		return &BatteryStatus{Percent: percent, State: state}, nil
+	}
+	return nil, nil
+}
+
+func readTrimmedFile(path string) (string, error) {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(b)), nil
 }
 
 func memoryUsage(context.Context) (MemoryUsage, error) {

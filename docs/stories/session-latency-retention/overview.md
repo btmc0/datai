@@ -10,7 +10,7 @@ Session maintenance already removed short-lived unattributed dead sessions after
 
 Small interactive PTY output flushes faster, while bursty redraw output keeps the existing 8 ms batching window.
 
-Local dead sessions with parseable `exited_at` older than 7 days are automatically pruned from the store. The prune also removes persisted metadata/scrollback through the existing session-remove cleanup path and removes project membership references.
+Local dead sessions older than 24 hours are automatically pruned from the store. Local dead sessions with missing or invalid `exited_at` are pruned too so they do not become immortal sidebar noise. The prune also removes persisted metadata/scrollback through the existing session-remove cleanup path and removes project membership references.
 
 ## Affected Users
 

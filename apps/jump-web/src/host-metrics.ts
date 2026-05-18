@@ -1,5 +1,10 @@
 import { useEffect, useState } from 'preact/hooks'
 
+export interface HostBattery {
+  percent: number
+  state?: string
+}
+
 export interface HostMetrics {
   cpu_percent: number
   memory: {
@@ -7,13 +12,14 @@ export interface HostMetrics {
     total_bytes: number
     percent: number
   }
+  battery?: HostBattery
 }
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value)
 }
 
-function parseHostMetrics(value: unknown): HostMetrics | null {
+export function parseHostMetrics(value: unknown): HostMetrics | null {
   if (!value || typeof value !== 'object') return null
   const metrics = value as Partial<HostMetrics>
   const memory = metrics.memory
@@ -26,6 +32,7 @@ function parseHostMetrics(value: unknown): HostMetrics | null {
     return null
   }
 
+  const battery = parseHostBattery(metrics.battery)
   return {
     cpu_percent: metrics.cpu_percent,
     memory: {
@@ -33,7 +40,16 @@ function parseHostMetrics(value: unknown): HostMetrics | null {
       total_bytes: memory.total_bytes,
       percent: memory.percent,
     },
+    ...(battery ? { battery } : {}),
   }
+}
+
+function parseHostBattery(value: unknown): HostBattery | null {
+  if (!value || typeof value !== 'object') return null
+  const battery = value as Partial<HostBattery>
+  if (!isFiniteNumber(battery.percent)) return null
+  const state = typeof battery.state === 'string' ? battery.state : undefined
+  return state ? { percent: battery.percent, state } : { percent: battery.percent }
 }
 
 export function formatPercent(value: number): string {

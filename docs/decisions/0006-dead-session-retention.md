@@ -14,13 +14,13 @@ This is a retention/deletion behavior: after the window passes, dead session his
 
 ## Decision
 
-Prune local dead sessions whose parseable `exited_at` is older than 7 days.
+Prune local dead sessions whose parseable `exited_at` is older than 24 hours. Also prune local dead sessions with missing or invalid `exited_at`; without a trustworthy timestamp they cannot age out predictably and otherwise become immortal sidebar noise.
 
 The prune removes the session from the in-memory store and relies on existing cleanup paths to remove persisted metadata/scrollback and project membership references. Peer-owned sessions are skipped because their owning jumpd remains responsible for lifecycle state.
 
 ## Consequences
 
 - The sidebar stays cleaner without manual bulk cleanup.
-- Dead-session replay/resume is intentionally bounded to the retention window.
-- Sessions with missing or invalid `exited_at` are not guessed or pruned by this policy.
+- Dead-session replay/resume is intentionally bounded to the shorter retention window.
+- Sessions with missing or invalid `exited_at` are removed on scan rather than guessed or kept forever.
 - Users who need longer history will need a future configurable retention setting.
