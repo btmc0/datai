@@ -456,6 +456,11 @@ export function TerminalView({
     const fitAddon = new FitAddon()
     term.loadAddon(fitAddon)
     term.loadAddon(new ImageAddon())
+    // Vim may issue XTGETTCAP as DCS + q <hex> ST. The image addon also
+    // handles DCS final "q" for SIXEL; without this more specific handler,
+    // XTGETTCAP can be treated as image data and leave xterm's write callback
+    // stuck, keeping the Web UI on Vim's alternate screen until refresh.
+    const xtGetTcapDisposable = term.parser.registerDcsHandler({ intermediates: '+', final: 'q' }, () => true)
     // Detect plain-text URLs in terminal output and make them clickable.
     term.loadAddon(new WebLinksAddon())
     term.open(containerRef.current)
@@ -812,6 +817,7 @@ export function TerminalView({
       shell?.removeEventListener('touchcancel', clearTouchPan, true)
       disposePasteHandler()
       disposeMobileHandler()
+      xtGetTcapDisposable.dispose()
       osc52Disposable.dispose()
       dataDisposable.dispose()
       scrollDisposable.dispose()

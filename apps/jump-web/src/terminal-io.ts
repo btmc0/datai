@@ -1,4 +1,6 @@
-import { BSU, CSI_3J, ESU, containsSequence, startsWith } from './replay'
+import { BSU, CSI_3J, ESU, containsSequence } from './replay'
+
+const WRITE_CALLBACK_WATCHDOG_MS = 2500
 
 export interface TerminalWriter {
   write(data: string | Uint8Array, callback?: () => void): void
@@ -40,6 +42,171 @@ interface QueueItem {
   epoch: number
   data: Uint8Array
   onWritten?: () => void
+}
+
+const XTGETTCAP_PREFIX = new Uint8Array([0x1b, 0x50, 0x2b, 0x71]) // ESC P + q
+const DECRQM_PREFIX = new Uint8Array([0x1b, 0x5b, 0x3f]) // ESC [ ?
+
+function startsWithAt(data: Uint8Array, pos: number, prefix: Uint8Array): boolean {
+  if (pos + prefix.length > data.length) return false
+  for (let i = 0; i < prefix.length; i++) {
+    if (data[pos + i] !== prefix[i]) return false
+  }
+  return true
+}
+
+function isPartialPrefix(data: Uint8Array, pos: number, prefix: Uint8Array): boolean {
+  const remaining = data.length - pos
+  if (remaining <= 0 || remaining >= prefix.length) return false
+  for (let i = 0; i < remaining; i++) {
+    if (data[pos + i] !== prefix[i]) return false
+  }
+  return true
+}
+
+function findStringTerminator(data: Uint8Array, pos: number): number {
+  for (let i = pos; i < data.length; i++) {
+    if (data[i] === 0x9c) return i + 1
+    if (data[i] === 0x1b && data[i + 1] === 0x5c) return i + 2
+  }
+  return -1
+}
+
+function findCsiEnd(data: Uint8Array, pos: number): number {
+  for (let i = pos; i < data.length; i++) {
+    if (data[i] >= 0x40 && data[i] <= 0x7e) return i + 1
+  }
+  return -1
+}
+
+function isDecrqm(seq: Uint8Array): boolean {
+  if (seq.length < 5 || seq[seq.length - 1] !== 0x70) return false // final p
+  for (let i = 0; i < seq.length; i++) {
+    if (seq[i] === 0x24) return true // intermediate $
+  }
+  return false
+}
+
+function createDecrqmStripper() {
+  let pending = new Uint8Array(0)
+
+  return {
+    reset() {
+      pending = new Uint8Array(0)
+    },
+
+    push(data: Uint8Array): Uint8Array {
+      if (data.length === 0) return data
+      const combined = new Uint8Array(pending.length + data.length)
+      combined.set(pending, 0)
+      combined.set(data, pending.length)
+      pending = new Uint8Array(0)
+
+      const out: number[] = []
+      let i = 0
+      while (i < combined.length) {
+        if (startsWithAt(combined, i, DECRQM_PREFIX)) {
+          const end = findCsiEnd(combined, i + DECRQM_PREFIX.length)
+          if (end < 0) {
+            pending = combined.slice(i)
+            break
+          }
+          const seq = combined.slice(i, end)
+          if (isDecrqm(seq)) {
+            i = end
+            continue
+          }
+          for (const b of seq) out.push(b)
+          i = end
+          continue
+        }
+
+        if (isPartialPrefix(combined, i, DECRQM_PREFIX)) {
+          pending = combined.slice(i)
+          break
+        }
+
+        out.push(combined[i])
+        i++
+      }
+
+      return new Uint8Array(out)
+    },
+  }
+}
+
+function createXtGetTcapStripper() {
+  let pending = new Uint8Array(0)
+  let skipping = false
+
+  return {
+    reset() {
+      pending = new Uint8Array(0)
+      skipping = false
+    },
+
+    push(data: Uint8Array): Uint8Array {
+      if (data.length === 0) return data
+      const combined = new Uint8Array(pending.length + data.length)
+      combined.set(pending, 0)
+      combined.set(data, pending.length)
+      pending = new Uint8Array(0)
+
+      const out: number[] = []
+      let i = 0
+
+      if (skipping) {
+        const end = findStringTerminator(combined, i)
+        if (end < 0) return new Uint8Array(0)
+        skipping = false
+        i = end
+      }
+
+      while (i < combined.length) {
+        if (startsWithAt(combined, i, XTGETTCAP_PREFIX)) {
+          const end = findStringTerminator(combined, i + XTGETTCAP_PREFIX.length)
+          if (end < 0) {
+            skipping = true
+            return new Uint8Array(out)
+          }
+          i = end
+          continue
+        }
+
+        if (isPartialPrefix(combined, i, XTGETTCAP_PREFIX)) {
+          pending = combined.slice(i)
+          break
+        }
+
+        out.push(combined[i])
+        i++
+      }
+
+      return new Uint8Array(out)
+    },
+  }
+}
+
+function createSequenceDetector(seq: Uint8Array) {
+  let tail = new Uint8Array(0)
+
+  return {
+    reset() {
+      tail = new Uint8Array(0)
+    },
+
+    push(data: Uint8Array): boolean {
+      if (data.length === 0) return false
+      const combined = new Uint8Array(tail.length + data.length)
+      combined.set(tail, 0)
+      combined.set(data, tail.length)
+
+      const found = containsSequence(combined, seq)
+      const keep = Math.min(seq.length - 1, combined.length)
+      tail = keep > 0 ? combined.slice(combined.length - keep) : new Uint8Array(0)
+      return found
+    },
+  }
 }
 
 export interface TerminalIO {
@@ -114,6 +281,20 @@ export function createTerminalIO(term: TerminalWriter, scroll?: ScrollAccessor):
   // instead of trying to preserve scroll position. Set during replay so the
   // initial snapshot always lands at the bottom.
   let forceScrollToBottom = false
+  let activeWriteToken = 0
+  let writeWatchdog: ReturnType<typeof setTimeout> | null = null
+
+  const bsuDetector = createSequenceDetector(BSU)
+  const esuDetector = createSequenceDetector(ESU)
+  const clearScrollbackDetector = createSequenceDetector(CSI_3J)
+  const xtGetTcapStripper = createXtGetTcapStripper()
+  const decrqmStripper = createDecrqmStripper()
+
+  const resetSequenceDetectors = () => {
+    bsuDetector.reset()
+    esuDetector.reset()
+    clearScrollbackDetector.reset()
+  }
 
   const dropStaleFront = () => {
     while (queue.length && queue[0].epoch !== currentEpoch) {
@@ -124,31 +305,34 @@ export function createTerminalIO(term: TerminalWriter, scroll?: ScrollAccessor):
     }
   }
 
-  /** Save scroll state if this chunk starts or contains BSU. */
+  /** Save scroll state if this chunk completes a BSU sequence. */
   const maybeSaveScroll = (data: Uint8Array): void => {
     if (!scroll || savedScroll) return // already saved, or no accessor
-    if (startsWith(data, BSU) || containsSequence(data, BSU)) {
-      const { viewportY, baseY } = scroll.getState()
-      const distance = Math.max(0, baseY - viewportY)
-      if (forceScrollToBottom) {
-        savedScroll = {
-          wasAtBottom: true,
-          prevDistanceFromBottom: 0,
-          prevAnchorLine: null,
-        }
-        forceScrollToBottom = false
-      } else {
-        // Strict equality: only consider the user "at bottom" if the
-        // viewport is exactly at the end. A loose threshold (e.g. <= 3)
-        // would fight the user's scroll intent during rapid TUI redraws.
-        const wasAtBottom = viewportY >= baseY
-        savedScroll = {
-          wasAtBottom,
-          prevDistanceFromBottom: distance,
-          // Only capture the anchor when scrolled up: at-bottom always
-          // wants scrollToBottom and never reaches the search.
-          prevAnchorLine: wasAtBottom ? null : scroll.getLine(viewportY),
-        }
+    if (!bsuDetector.push(data)) return
+
+    esuDetector.reset()
+    clearScrollbackDetector.reset()
+
+    const { viewportY, baseY } = scroll.getState()
+    const distance = Math.max(0, baseY - viewportY)
+    if (forceScrollToBottom) {
+      savedScroll = {
+        wasAtBottom: true,
+        prevDistanceFromBottom: 0,
+        prevAnchorLine: null,
+      }
+      forceScrollToBottom = false
+    } else {
+      // Strict equality: only consider the user "at bottom" if the
+      // viewport is exactly at the end. A loose threshold (e.g. <= 3)
+      // would fight the user's scroll intent during rapid TUI redraws.
+      const wasAtBottom = viewportY >= baseY
+      savedScroll = {
+        wasAtBottom,
+        prevDistanceFromBottom: distance,
+        // Only capture the anchor when scrolled up: at-bottom always
+        // wants scrollToBottom and never reaches the search.
+        prevAnchorLine: wasAtBottom ? null : scroll.getLine(viewportY),
       }
     }
   }
@@ -162,7 +346,7 @@ export function createTerminalIO(term: TerminalWriter, scroll?: ScrollAccessor):
    */
   const maybeMarkBufferReset = (data: Uint8Array): void => {
     if (!savedScroll || bufferReset) return
-    if (containsSequence(data, CSI_3J)) bufferReset = true
+    if (clearScrollbackDetector.push(data)) bufferReset = true
   }
 
   /**
@@ -179,12 +363,13 @@ export function createTerminalIO(term: TerminalWriter, scroll?: ScrollAccessor):
    */
   const maybeRestoreScroll = (data: Uint8Array): void => {
     if (!scroll || !savedScroll) return
-    if (!containsSequence(data, ESU)) return
+    if (!esuDetector.push(data)) return
 
     const snap = savedScroll
     const wasBufferReset = bufferReset
     savedScroll = null
     bufferReset = false
+    resetSequenceDetectors()
 
     // Capture the adjusted viewportY now, after xterm has processed the
     // data (including any scrollback evictions) but before the deferred
@@ -233,21 +418,43 @@ export function createTerminalIO(term: TerminalWriter, scroll?: ScrollAccessor):
     })
   }
 
+  const clearWriteWatchdog = () => {
+    if (writeWatchdog === null) return
+    clearTimeout(writeWatchdog)
+    writeWatchdog = null
+  }
+
   const pump = () => {
     if (writeInFlight) return
     dropStaleFront()
 
     const next = queue.shift()
     if (next) {
+      let data = xtGetTcapStripper.push(next.data)
+      data = decrqmStripper.push(data)
+      if (data.length === 0) {
+        if (next.epoch === currentEpoch) next.onWritten?.()
+        pump()
+        return
+      }
+
       writeInFlight = true
-      maybeSaveScroll(next.data)
-      maybeMarkBufferReset(next.data)
-      term.write(next.data, () => {
-        maybeRestoreScroll(next.data)
+      const token = ++activeWriteToken
+      maybeSaveScroll(data)
+      maybeMarkBufferReset(data)
+
+      const finishWrite = (timedOut = false) => {
+        if (token !== activeWriteToken || !writeInFlight) return
+        clearWriteWatchdog()
+        if (timedOut) console.warn('[jump] terminal write callback timed out; releasing output queue')
+        maybeRestoreScroll(data)
         writeInFlight = false
         if (next.epoch === currentEpoch) next.onWritten?.()
         pump()
-      })
+      }
+
+      writeWatchdog = setTimeout(() => finishWrite(true), WRITE_CALLBACK_WATCHDOG_MS)
+      term.write(data, () => finishWrite(false))
       return
     }
 
@@ -272,10 +479,15 @@ export function createTerminalIO(term: TerminalWriter, scroll?: ScrollAccessor):
       currentEpoch = epoch
       queue = []
       writeInFlight = false
+      activeWriteToken++
+      clearWriteWatchdog()
       pendingResize = null
       savedScroll = null
       bufferReset = false
       forceScrollToBottom = false
+      resetSequenceDetectors()
+      xtGetTcapStripper.reset()
+      decrqmStripper.reset()
       if (restoreRAF !== null) {
         cancelAnimationFrame(restoreRAF)
         restoreRAF = null

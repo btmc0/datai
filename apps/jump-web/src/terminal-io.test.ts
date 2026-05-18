@@ -286,6 +286,100 @@ describe('createTerminalIO', () => {
     expect(h.resizes).toEqual([])
   })
 
+  it('releases the queue when terminal write callback never returns', () => {
+    vi.useFakeTimers()
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      const h = makeHarness()
+      const done = vi.fn()
+      h.io.reset(1)
+
+      h.io.enqueue(enc('hung'), 1, done)
+      h.io.requestResize({ cols: 120, rows: 40 }, 1)
+
+      expect(h.resizes).toEqual([])
+      vi.advanceTimersByTime(2499)
+      expect(h.resizes).toEqual([])
+      vi.advanceTimersByTime(1)
+
+      expect(h.resizes).toEqual([{ cols: 120, rows: 40 }])
+      expect(done).toHaveBeenCalledTimes(1)
+      expect(warn).toHaveBeenCalledTimes(1)
+
+      h.flushOne() // late xterm callback should be ignored
+      expect(done).toHaveBeenCalledTimes(1)
+      expect(h.resizes).toEqual([{ cols: 120, rows: 40 }])
+    } finally {
+      warn.mockRestore()
+      vi.useRealTimers()
+    }
+  })
+
+  it('strips Vim XTGETTCAP DCS queries before writing to xterm', () => {
+    const h = makeHarness()
+    h.io.reset(1)
+
+    h.io.enqueue(enc('a\x1bP+q436f\x1b\\b'), 1)
+    h.flushOne()
+
+    expect(h.writes).toEqual(['ab'])
+  })
+
+  it('strips XTGETTCAP DCS queries split across chunks', () => {
+    const h = makeHarness()
+    h.io.reset(1)
+
+    h.io.enqueue(enc('a\x1bP+'), 1)
+    h.flushOne()
+    h.io.enqueue(enc('q436f\x1b\\b'), 1)
+    h.flushOne()
+
+    expect(h.writes).toEqual(['a', 'b'])
+  })
+
+  it('completes all-DCS XTGETTCAP chunks without writing to xterm', () => {
+    const h = makeHarness()
+    const done = vi.fn()
+    h.io.reset(1)
+
+    h.io.enqueue(enc('\x1bP+q436f\x1b\\'), 1, done)
+
+    expect(h.writes).toEqual([])
+    expect(done).toHaveBeenCalledTimes(1)
+  })
+
+  it('strips DECRQM mode queries before writing to xterm', () => {
+    const h = makeHarness()
+    h.io.reset(1)
+
+    h.io.enqueue(enc('a\x1b[?12$pb'), 1)
+    h.flushOne()
+
+    expect(h.writes).toEqual(['ab'])
+  })
+
+  it('strips DECRQM mode queries split across chunks', () => {
+    const h = makeHarness()
+    h.io.reset(1)
+
+    h.io.enqueue(enc('a\x1b[?12$'), 1)
+    h.flushOne()
+    h.io.enqueue(enc('pb'), 1)
+    h.flushOne()
+
+    expect(h.writes).toEqual(['a', 'b'])
+  })
+
+  it('keeps regular CSI sequences', () => {
+    const h = makeHarness()
+    h.io.reset(1)
+
+    h.io.enqueue(enc('a\x1b[31mb'), 1)
+    h.flushOne()
+
+    expect(h.writes).toEqual(['a\x1b[31mb'])
+  })
+
   it('runs completion callback after the final chunk in enqueueMany', () => {
     const h = makeHarness()
     const done = vi.fn()
@@ -414,6 +508,29 @@ describe('scroll preservation across BSU/ESU', () => {
     h.flushRAF()
 
     expect(h.viewportY).toBe(44)
+    h.cleanup()
+  })
+
+  it('handles ESU bytes split across chunks', () => {
+    const h = makeScrollHarness({ scrollbackLimit: 100, rows: 25 })
+    h.io.reset(1)
+    h.addLines(100)
+    h.userScrollTo(50)
+
+    const first = new Uint8Array([...BSU, ...enc('partial'), ...ESU.slice(0, 4)])
+    const second = new Uint8Array([...ESU.slice(4)])
+
+    h.io.enqueue(first, 1)
+    h.flushOne(3)
+
+    h.io.requestResize({ cols: 80, rows: 20 }, 1)
+    expect(h.resizeCalls).toEqual([])
+
+    h.io.enqueue(second, 1)
+    h.flushOne(0)
+    h.flushRAF()
+
+    expect(h.resizeCalls).toEqual([{ cols: 80, rows: 20 }])
     h.cleanup()
   })
 

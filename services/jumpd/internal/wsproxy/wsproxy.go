@@ -16,6 +16,7 @@ import (
 	"net"
 	"net/http"
 	"sync"
+	"time"
 
 	"nhooyr.io/websocket"
 )
@@ -25,6 +26,8 @@ type SessionStore interface {
 	SetTerminalSize(sessionID string, cols, rows uint16) bool
 	GetTerminalSize(sessionID string) (cols, rows uint16, ok bool)
 }
+
+const wsWriteTimeout = 3 * time.Second
 
 // Proxy manages WebSocket proxying between browsers and runners.
 type Proxy struct {
@@ -150,7 +153,7 @@ func (p *Proxy) proxyClientToBackend(ctx context.Context, client, backend *webso
 			}
 		}
 
-		if err := backend.Write(ctx, typ, data); err != nil {
+		if err := writeWebSocket(ctx, backend, typ, data); err != nil {
 			return
 		}
 	}
@@ -178,10 +181,16 @@ func (p *Proxy) proxyBackendToClient(ctx context.Context, sessionID string, src,
 			}
 		}
 
-		if err := dst.Write(ctx, typ, data); err != nil {
+		if err := writeWebSocket(ctx, dst, typ, data); err != nil {
 			return
 		}
 	}
+}
+
+func writeWebSocket(ctx context.Context, conn *websocket.Conn, typ websocket.MessageType, data []byte) error {
+	writeCtx, cancel := context.WithTimeout(ctx, wsWriteTimeout)
+	defer cancel()
+	return conn.Write(writeCtx, typ, data)
 }
 
 func (p *Proxy) addConn(sessionID string, ws *websocket.Conn) {

@@ -13,6 +13,6 @@ See `docs/decisions/0006-dead-session-retention.md` for the retention decision.
 
 ## Performance Policy
 
-- PTY output may be coalesced before being sent to clients.
+- PTY output may be coalesced before being sent to clients. Full-screen TUI output, including DEC synchronized output sequences split across WebSocket frames, must keep the Web UI render/input path recoverable without manual refresh. Slow WebSocket clients should be disconnected rather than allowed to block PTY output indefinitely.
 - Small interactive output should flush faster than bursty redraw output to keep local echo responsive.
 - Large/redraw-heavy output should remain batched enough to avoid excessive WebSocket frames.

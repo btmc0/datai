@@ -36,6 +36,8 @@ import (
 // of styled terminal cells after long agent output.
 const maxScrollback = 500
 
+const wsWriteTimeout = 3 * time.Second
+
 // ErrSocketInUse is returned by BindSocket when the requested socket
 // path is already owned by a live listener (a probe at that path got
 // a response). Callers that received this error from New should pick
@@ -188,7 +190,9 @@ type wsClient struct {
 func (c *wsClient) write(typ websocket.MessageType, data []byte) error {
 	c.writeMu.Lock()
 	defer c.writeMu.Unlock()
-	return c.conn.Write(c.ctx, typ, data)
+	ctx, cancel := context.WithTimeout(c.ctx, wsWriteTimeout)
+	defer cancel()
+	return c.conn.Write(ctx, typ, data)
 }
 
 // Config for creating a new PTY server.
