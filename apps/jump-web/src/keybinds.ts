@@ -211,7 +211,8 @@ export function keyComboToSequence(combo: string): string {
   } else if (baseKey === 'escape' || baseKey === 'esc') {
     seq = '\x1b'
   } else if (baseKey === 'tab') {
-    seq = '\t'
+    // Shift+Tab is terminal BackTab, not a modified literal Tab.
+    seq = shift ? '\x1b[Z' : '\t'
   } else if (baseKey === 'backspace') {
     // Ctrl+Backspace: \x08 (BS), matching gnome-terminal/xterm/alacritty.
     // Plain backspace: \x7f (DEL).

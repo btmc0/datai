@@ -294,6 +294,7 @@ function MobileTerminalBar({
   const holdTimer2   = useRef<ReturnType<typeof setTimeout>  | null>(null)
   const holdInterval = useRef<ReturnType<typeof setInterval> | null>(null)
   const holdGen      = useRef(0)
+  const tabHoldSent = useRef(false)
 
   const clearHold = () => {
     holdGen.current++
@@ -304,6 +305,22 @@ function MobileTerminalBar({
   }
 
   useEffect(() => () => clearHold(), [])
+
+  const startTabHold = () => {
+    const gen = holdGen.current
+    tabHoldSent.current = false
+    holdTimer1.current = setTimeout(() => {
+      if (holdGen.current !== gen) return
+      tabHoldSent.current = true
+      tap('\x1b[Z')
+    }, 360)
+  }
+
+  const finishTabHold = () => {
+    const sent = tabHoldSent.current
+    clearHold()
+    if (!sent) tap('\t')
+  }
 
   const startArrowHold = (arrowSeq: string, wordSeq: string) => {
     const gen = holdGen.current
@@ -340,7 +357,15 @@ function MobileTerminalBar({
         }
         {(ctrlArmed || altArmed)
           ? <button class="mobile-bottom-action" disabled={!canSend} onClick={() => tap('\x1b[B')} title="Down arrow"><IconDown /></button>
-          : <button class="mobile-bottom-action" disabled={!canSend} onClick={() => tap('\t')} title="Tab">tab</button>
+          : <button
+              class="mobile-bottom-action"
+              disabled={!canSend}
+              onPointerDown={e => { e.currentTarget.setPointerCapture(e.pointerId); e.preventDefault(); startTabHold() }}
+              onPointerUp={finishTabHold}
+              onPointerCancel={clearHold}
+              onContextMenu={e => e.preventDefault()}
+              title="Tab (hold for Shift+Tab)"
+            >tab</button>
         }
         <button
           class={`mobile-bottom-action ${showCtrl ? 'armed' : ''}`}
