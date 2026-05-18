@@ -7,6 +7,7 @@
 import { useState, useRef, useEffect, useMemo } from 'preact/hooks'
 import type { Session, LauncherDef, PeerInfo } from './types'
 import { launchers as launchersSignal, defaultLauncher as defaultLauncherSignal, peers as peersSignal, launchSession } from './store'
+import { IconPlay, IconPlus } from './icons'
 
 /** Resolved launch target: where the session will be created. */
 export interface LaunchTarget {
@@ -232,7 +233,7 @@ export function LaunchButton({ className, onLaunch, beforeLaunch, cwd, peer, ses
             <circle cx="8" cy="8" r="6" fill="none" stroke="currentColor"
               stroke-width="2" stroke-dasharray="28" stroke-dashoffset="8" stroke-linecap="round" />
           </svg>
-        ) : '+'}
+        ) : <IconPlus class="launch-icon" />}
       </button>
       {isOpen && menuPos && (
         <div
@@ -250,7 +251,8 @@ export function LaunchButton({ className, onLaunch, beforeLaunch, cwd, peer, ses
               class="launch-inline-item launch-inline-default"
               onClick={(e) => { e.stopPropagation(); handleLaunch(defLauncher!.id) }}
             >
-              {defLauncher.label}
+              <IconPlay class="launch-item-icon" />
+              <span>{defLauncher.label}</span>
             </button>
           )}
           {others.map((l, i) => (
@@ -260,7 +262,8 @@ export function LaunchButton({ className, onLaunch, beforeLaunch, cwd, peer, ses
               style={{ animationDelay: `${(i + 1) * 50}ms` }}
               onClick={(e) => { e.stopPropagation(); handleLaunch(l.id) }}
             >
-              {l.label}
+              <IconPlay class="launch-item-icon" />
+              <span>{l.label}</span>
             </button>
           ))}
         </div>

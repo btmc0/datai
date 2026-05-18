@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { projects, discovered, sessions, removeProject, addProject, updateProjects } from './store'
 import type { ProjectItem, DiscoveredProject, MatchRule, Session } from './types'
+import { IconFolder, IconPlus, IconTrash } from './icons'
 
 // ── Rule description ──
 
@@ -364,7 +365,8 @@ export function ManageProjectsModal({
                   onClick={handleManualAdd}
                   title={duplicatePath ? 'Workspace already exists' : `Add ${inputPath}`}
                 >
-                  Add
+                  <IconPlus class="btn-icon" />
+                  <span>Add</span>
                 </button>
               )}
             </div>
@@ -443,7 +445,7 @@ function ProjectRow({
     >
       <span class="mp-drag-handle" title="Drag to reorder">&#x283F;</span>
       <div class="mp-project-info">
-        <span class="mp-project-name">{project.slug}</span>
+        <span class="mp-project-name"><IconFolder class="mp-row-icon" />{project.slug}</span>
         <div class="mp-project-rules">
           {rules.map((rule, i) => {
             const { prefix, label, qualifier } = describeRule(rule)
@@ -462,8 +464,9 @@ function ProjectRow({
         class="mp-remove-btn"
         onClick={() => onRemove(project.slug)}
         title="Remove project"
+        aria-label={`Remove project ${project.slug}`}
       >
-        &times;
+        <IconTrash class="btn-icon" />
       </button>
     </div>
   )
@@ -482,6 +485,7 @@ function SuggestionRow({
     <div class="mp-discovered-row" onClick={() => onUse(suggestion)}>
       <div class="mp-project-info">
         <span class="mp-project-name">
+          <IconFolder class="mp-row-icon" />
           {suggestion.name}
           {suggestion.activeCount > 0 && (
             <span class="mp-active-badge">{suggestion.activeCount}</span>
@@ -490,7 +494,7 @@ function SuggestionRow({
         </span>
         <span class="mp-project-detail" title={suggestion.detail}>{shortenPath(suggestion.detail)}</span>
       </div>
-      <span class="mp-add-label">Use</span>
+      <span class="mp-add-label"><IconPlus class="mp-add-icon" />Use</span>
     </div>
   )
 }

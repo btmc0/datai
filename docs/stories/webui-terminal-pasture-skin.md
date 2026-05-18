@@ -26,6 +26,7 @@ The runtime Web UI keeps the existing workspace/session/terminal flows while usi
 - Existing add-workspace suggestion focus retention remains unchanged.
 - CSS cleanup avoids late one-off CodeUI surface/density override blocks; remaining density changes are folded into the normal skin selectors.
 - CodeUI-inspired micro-polish is limited to sharp labels, button press states, focus rings, borders, and inset/offset edges; it does not add fake controls/data or terminal overlays.
+- Icon/framing polish uses small inline SVG icons only on existing real actions/status surfaces, with sharp 1px boundaries and no new runtime dependency.
 
 ## Design Notes
 
@@ -62,4 +63,5 @@ None.
 - Embedded CSS includes Pasture tokens (`#a6e3a1`, `#11111b`) and no amber `#ffb000` token.
 - Clear terminal redeploy installed `jumpd` with `index-C2lqVOUB.js` and `index-DqRkTl-G.css`; embedded CSS has no `terminal-shell::before`, `terminal-shell::after`, or terminal radial glow overlay.
 - Sharp micro-polish redeploy installed `jumpd` with `index-B_G_VPiU.js` and `index-C7AV0KMX.css`; embedded CSS has no terminal pseudo overlay, terminal radial glow, blur filter, or amber token.
+- Icon/framing redeploy installed `jumpd` with `index-DMFaX6M7.js` and `index-ELXbn786.css`; embedded CSS has no terminal pseudo overlay, terminal radial glow, blur filter, or amber token.
 - `git diff --check` passed.

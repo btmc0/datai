@@ -16,6 +16,7 @@ import {
   type DotState,
 } from './store'
 import { PeerLabel } from './peer-label'
+import { IconCpu, IconFolder, IconMemory, IconSettings } from './icons'
 import { formatBytes, formatPercent, useHostMetrics } from './host-metrics'
 import type { Session, Folder, ProjectItem } from './types'
 
@@ -68,8 +69,8 @@ function SidebarHostMetrics() {
   if (!metrics) {
     return (
       <div class="sidebar-metrics tui" title="Host jumpd metrics loading">
-        <div class="sidebar-metrics-row"><span>cpu</span><strong>--.-%</strong></div>
-        <div class="sidebar-metrics-row"><span>ram</span><strong>--.-%</strong></div>
+        <div class="sidebar-metrics-row"><span class="sidebar-metrics-label"><IconCpu class="metric-icon" />cpu</span><strong>--.-%</strong></div>
+        <div class="sidebar-metrics-row"><span class="sidebar-metrics-label"><IconMemory class="metric-icon" />ram</span><strong>--.-%</strong></div>
       </div>
     )
   }
@@ -77,12 +78,12 @@ function SidebarHostMetrics() {
   return (
     <div class="sidebar-metrics tui" title="Host jumpd CPU and RAM usage">
       <div class="sidebar-metrics-row">
-        <span>cpu</span>
+        <span class="sidebar-metrics-label"><IconCpu class="metric-icon" />cpu</span>
         <strong>{formatPercent(metrics.cpu_percent)}</strong>
       </div>
       <div class="sidebar-metrics-bar"><i style={{ width: formatPercent(Math.max(0, Math.min(metrics.cpu_percent, 100))) }} /></div>
       <div class="sidebar-metrics-row">
-        <span>ram</span>
+        <span class="sidebar-metrics-label"><IconMemory class="metric-icon" />ram</span>
         <strong>{formatBytes(metrics.memory.used_bytes)} / {formatBytes(metrics.memory.total_bytes)}</strong>
       </div>
       <div class="sidebar-metrics-bar"><i style={{ width: formatPercent(Math.max(0, Math.min(metrics.memory.percent, 100))) }} /></div>
@@ -242,7 +243,8 @@ function FolderGroup({
           title={`Open ${folder.name} hub`}
           onClick={onClick}
         >
-          {folder.name}
+          <IconFolder class="folder-icon" />
+          <span>{folder.name}</span>
         </a>
         <LaunchButton
           sessions={folder.sessions}
@@ -364,7 +366,8 @@ export function Sidebar({
         </div>
         <div class="sidebar-footer">
           <button class="manage-projects-btn" onClick={onManageProjects}>
-            Manage projects
+            <IconSettings class="btn-icon" />
+            <span>Manage projects</span>
             {unmatchedCount > 0 && (
               <span class="manage-projects-badge">{unmatchedCount}</span>
             )}

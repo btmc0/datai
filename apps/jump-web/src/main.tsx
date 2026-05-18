@@ -16,6 +16,7 @@ import { ManageProjectsModal } from './manage-projects'
 import { ProjectHub } from './project-hub'
 import { Home } from './home'
 import { LaunchButton } from './launcher'
+import { IconDots, IconRestart } from './icons'
 import { installCopySession } from './mock-data/export-session'
 import { isCoarsePointerDevice } from './input-device'
 import {
@@ -153,7 +154,7 @@ function SessionMenu({ session, terminalFontSize, onTerminalFontSizeChange, onRe
         title="Session actions"
         aria-expanded={open}
       >
-        <span class="session-menu-icon">⋮</span>
+        <IconDots class="session-menu-icon" />
         {staleKind && <span class="session-menu-badge" />}
       </button>
       {open && (
@@ -164,7 +165,8 @@ function SessionMenu({ session, terminalFontSize, onTerminalFontSizeChange, onRe
                 class={`session-menu-action${staleKind ? ' stale' : ''}`}
                 onClick={() => { setOpen(false); onRestart!() }}
               >
-                Restart session
+                <IconRestart class="session-menu-action-icon" />
+                <span>Restart session</span>
                 {staleKind && <span class="session-menu-action-tag">outdated</span>}
               </button>
               <div class="session-menu-divider" />

@@ -4,6 +4,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { addProject, removeProject, health, peers, folders, sessions, launchers as launchersSignal, defaultLauncher as defaultLauncherSignal, launchSession } from './store'
 import { PeerLabel } from './peer-label'
+import { IconFolder, IconPlay, IconTrash } from './icons'
 import type { Folder, LauncherDef } from './types'
 import { launchersForPeer } from './launcher'
 
@@ -235,7 +236,7 @@ function ProjectCard({ folder: f }: { folder: Folder }) {
   return (
     <div class="home-project-card">
       <a class="home-project-link" href={`/${f.path}`}>
-        <div class="home-project-name">{f.name}</div>
+        <div class="home-project-name"><IconFolder class="home-card-icon" />{f.name}</div>
         <div class="home-project-count">
           {alive > 0 && <span class="home-project-alive">{alive} alive</span>}
           {alive > 0 && resumable > 0 && <span class="home-project-rest"> · </span>}
@@ -244,7 +245,7 @@ function ProjectCard({ folder: f }: { folder: Folder }) {
         </div>
       </a>
       <button class="home-project-remove" onClick={handleRemove} title="Remove workspace" aria-label={`Remove workspace ${f.name}`}>
-        ×
+        <IconTrash class="btn-icon" />
       </button>
     </div>
   )
@@ -294,7 +295,8 @@ function HostCard({
               onClick={() => handleLaunch(l.id)}
               disabled={launching !== null || !l.available}
             >
-              {l.label}
+              <IconPlay class="home-launch-icon" />
+              <span>{l.label}</span>
             </button>
           ))}
         </div>

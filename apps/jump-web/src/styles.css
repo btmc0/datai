@@ -3852,3 +3852,162 @@ select:focus-visible,
 .terminal-container {
   background: var(--terminal-bg);
 }
+
+/* Icon + framing pass: real action icons, crisp component boundaries. */
+.btn-icon,
+.launch-icon,
+.launch-item-icon,
+.folder-icon,
+.metric-icon,
+.home-card-icon,
+.home-launch-icon,
+.session-menu-action-icon,
+.session-menu-icon,
+.mp-row-icon,
+.mp-add-icon {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 auto;
+  color: currentColor;
+}
+
+.session-menu-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.metric-icon,
+.folder-icon,
+.mp-row-icon,
+.home-card-icon {
+  color: var(--text-muted);
+}
+
+.launch-btn,
+.manage-projects-btn,
+.home-launch-btn,
+.home-workspace-add-btn,
+.mp-manual-btn,
+.session-menu-action,
+.launch-inline-item,
+.mp-add-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.folder-name,
+.home-project-name,
+.mp-project-name,
+.sidebar-metrics-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.sidebar-metrics-label {
+  color: var(--text-muted);
+  font-family: var(--font-tech);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.session-menu-action {
+  justify-content: flex-start;
+}
+
+.launch-inline-item {
+  justify-content: flex-start;
+}
+
+.session-menu-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar-metrics,
+.home-workspace-add,
+.home-host-card,
+.home-project-card,
+.modal-panel,
+.launch-inline-menu,
+.session-menu-dropdown,
+.mp-section,
+.mp-project-row,
+.mp-discovered-row {
+  position: relative;
+}
+
+.sidebar-metrics::after,
+.home-workspace-add::after,
+.home-host-card::after,
+.home-project-card::after,
+.modal-panel::after,
+.launch-inline-menu::after,
+.session-menu-dropdown::after,
+.mp-section::after,
+.mp-project-row::after,
+.mp-discovered-row::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border: 1px solid transparent;
+  border-top-color: color-mix(in oklch, var(--text) 8%, transparent);
+  border-left-color: color-mix(in oklch, var(--text) 5%, transparent);
+  border-radius: inherit;
+}
+
+.sidebar-metrics::before,
+.home-host-card::before,
+.home-project-card::before,
+.home-workspace-add::before,
+.mp-section::before {
+  color: var(--text-muted);
+}
+
+.home-project-name::before {
+  content: none;
+}
+
+.home-host-card:hover .home-card-icon,
+.home-project-card:hover .home-card-icon,
+.folder-header:hover .folder-icon,
+.folder-name.current .folder-icon,
+.mp-project-row:hover .mp-row-icon,
+.mp-discovered-row:hover .mp-row-icon {
+  color: var(--accent);
+}
+
+.home-host-card:hover,
+.home-project-card:hover,
+.home-workspace-suggestion:hover,
+.mp-project-row:hover,
+.mp-discovered-row:hover,
+.session-item:hover {
+  border-color: color-mix(in oklch, var(--accent) 34%, var(--border-strong));
+}
+
+.mp-remove-btn,
+.home-project-remove,
+.session-close-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mp-section {
+  padding: 10px;
+  border: 1px solid color-mix(in oklch, var(--border) 82%, transparent);
+  border-radius: var(--radius);
+  background: color-mix(in oklch, var(--bg-surface) 72%, var(--bg));
+}
+
+.mp-section + .mp-section {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid color-mix(in oklch, var(--border) 82%, transparent);
+}
