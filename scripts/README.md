@@ -1,6 +1,11 @@
 # Scripts
 
-This directory is reserved for harness automation.
+This directory contains project automation used by CI, E2E tests, and local development.
+
+## Current Scripts
+
+- `build.sh` builds the protocol package, builds the web app, syncs `apps/jump-web/dist` into the embedded `jumpd` web directory, then writes `bin/jump` and `bin/jumpd`. Set `VERSION` to stamp non-dev binaries.
+- `dev-kill.sh` is a best-effort pre-dev cleanup that stops an existing `jumpd` daemon via `bin/jumpd` or `jumpd` on `PATH`; it does not kill arbitrary processes.
 
 ## Installer
 

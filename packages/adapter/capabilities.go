@@ -81,6 +81,16 @@ type SessionFileLister interface {
 	ListSessionFiles() []string
 }
 
+// SessionWatchDirProvider is an optional extension for adapters with bounded
+// well-known nested directories that should be watched even before any live
+// session exists. This avoids missing file creates in tools that write under
+// date-based trees such as ~/.codex/sessions/YYYY/MM/DD.
+type SessionWatchDirProvider interface {
+	// SessionWatchDirs returns additional directories under SessionRootDir that
+	// should be created and watched at daemon startup.
+	SessionWatchDirs() []string
+}
+
 // FileCandidate describes a live session that could own a file.
 // Passed to FileAttributor.AttributeFile for matching.
 type FileCandidate struct {

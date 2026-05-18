@@ -37,6 +37,34 @@ func TestWatchRootsDoesNotWatchHistoricalSubdirs(t *testing.T) {
 	}
 }
 
+func TestWatchRootsPrewatchesCodexDateTree(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	codex := adapters.NewCodex()
+	root := codex.SessionRootDir()
+	today := codex.SessionDir("")
+
+	fm := NewFileMonitor(store.New())
+	if fm.watcher != nil {
+		defer fm.watcher.Close()
+	}
+
+	fm.WatchRoots()
+
+	if !fm.watchedDirs[root] {
+		t.Fatalf("root %s was not watched", root)
+	}
+	for dir := filepath.Dir(today); dir != root && dir != "."; dir = filepath.Dir(dir) {
+		if !fm.watchedDirs[dir] {
+			t.Fatalf("intermediate dir %s was not watched", dir)
+		}
+	}
+	if !fm.watchedDirs[today] {
+		t.Fatalf("today dir %s was not watched", today)
+	}
+}
+
 func TestNotifyNewSessionDoesNotStealTitleFromOldPiFile(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)

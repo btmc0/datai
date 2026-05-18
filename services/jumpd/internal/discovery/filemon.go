@@ -148,7 +148,7 @@ func (fm *FileMonitor) SetConvIndex(ix *conversations.Index) {
 func (fm *FileMonitor) WatchRoots() {
 	fm.mu.Lock()
 	defer fm.mu.Unlock()
-	for root := range fm.rootToAdapter {
+	for root, a := range fm.rootToAdapter {
 		if _, err := os.Stat(root); os.IsNotExist(err) {
 			if err := os.MkdirAll(root, 0o755); err != nil {
 				log.Printf("filemon: mkdir %s: %v", root, err)
@@ -156,6 +156,35 @@ func (fm *FileMonitor) WatchRoots() {
 			}
 		}
 		fm.ensureRootWatchLocked(root)
+		if provider, ok := a.(adapter.SessionWatchDirProvider); ok {
+			for _, dir := range provider.SessionWatchDirs() {
+				fm.ensureWatchTreeLocked(root, dir)
+			}
+		}
+	}
+}
+
+func (fm *FileMonitor) ensureWatchTreeLocked(root, dir string) {
+	root = filepath.Clean(root)
+	dir = filepath.Clean(dir)
+	if root == "." || dir == "." || dir == root || !isUnderRoot(dir, root) {
+		return
+	}
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		log.Printf("filemon: mkdir %s: %v", dir, err)
+		return
+	}
+	rel, err := filepath.Rel(root, dir)
+	if err != nil || rel == "." {
+		return
+	}
+	cur := root
+	for _, part := range strings.Split(rel, string(os.PathSeparator)) {
+		if part == "" || part == "." {
+			continue
+		}
+		cur = filepath.Join(cur, part)
+		fm.addWatchLocked(cur)
 	}
 }
 

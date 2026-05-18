@@ -13,12 +13,13 @@ import (
 
 // Compile-time interface checks.
 var (
-	_ adapter.Launchable        = (*Codex)(nil)
-	_ adapter.SessionFiler      = (*Codex)(nil)
-	_ adapter.SessionFileLister = (*Codex)(nil)
-	_ adapter.FileMonitor       = (*Codex)(nil)
-	_ adapter.FileAttributor    = (*Codex)(nil)
-	_ adapter.Resumer           = (*Codex)(nil)
+	_ adapter.Launchable              = (*Codex)(nil)
+	_ adapter.SessionFiler            = (*Codex)(nil)
+	_ adapter.SessionFileLister       = (*Codex)(nil)
+	_ adapter.SessionWatchDirProvider = (*Codex)(nil)
+	_ adapter.FileMonitor             = (*Codex)(nil)
+	_ adapter.FileAttributor          = (*Codex)(nil)
+	_ adapter.Resumer                 = (*Codex)(nil)
 )
 
 func init() {
@@ -90,6 +91,17 @@ func (c *Codex) SessionDir(_ string) string {
 	}
 	now := time.Now()
 	return filepath.Join(root, now.Format("2006"), now.Format("01"), now.Format("02"))
+}
+
+// SessionWatchDirs returns today's Codex date directory. Watching this bounded
+// path at daemon startup avoids missing file creates produced by mkdir -p of
+// YYYY/MM/DD before fsnotify can add watches to each intermediate directory.
+func (c *Codex) SessionWatchDirs() []string {
+	dir := c.SessionDir("")
+	if dir == "" {
+		return nil
+	}
+	return []string{dir}
 }
 
 // ListSessionFiles walks the date-nested directory tree

@@ -74,7 +74,8 @@ export default async function globalSetup(_config: FullConfig) {
   }
 
   const port = await freePort()
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'jump-e2e-'))
+  const tmpRoot = fs.realpathSync(os.tmpdir())
+  const tmpDir = fs.mkdtempSync(path.join(tmpRoot, 'jump-e2e-'))
   const socketDir = path.join(tmpDir, 'sockets')
   const configDir = path.join(tmpDir, 'config')
   const stateDir = path.join(tmpDir, 'state')
