@@ -16,9 +16,10 @@ import { ManageProjectsModal } from './manage-projects'
 import { ProjectHub } from './project-hub'
 import { Home } from './home'
 import { LaunchButton } from './launcher'
-import { IconActivity, IconDots, IconRestart } from './icons'
+import { IconActivity, IconAlert, IconDots, IconHelp, IconMoon, IconRestart, IconSun } from './icons'
 import { installCopySession } from './mock-data/export-session'
 import { isCoarsePointerDevice } from './input-device'
+import { fetchHostActions, requestDisplaySleep, type DisplaySleepCapability } from './host-actions'
 import {
   TERMINAL_FONT_SIZE_MAX,
   TERMINAL_FONT_SIZE_MIN,
@@ -61,6 +62,51 @@ function countPtySessions(items: readonly Session[]): { alive: number; dead: num
     else dead++
   }
   return { alive, dead }
+}
+
+type DisplaySleepRequestState = 'idle' | 'checking' | 'requesting' | 'sent' | 'failed'
+
+function displaySleepStateLabel(capability: DisplaySleepCapability | null): string {
+  if (!capability) return 'unknown'
+  return capability.state
+}
+
+function displaySleepTag(capability: DisplaySleepCapability | null, requestState: DisplaySleepRequestState): string {
+  if (requestState === 'checking') return 'checking'
+  if (requestState === 'requesting') return 'sending'
+  if (requestState === 'failed') return 'failed'
+  if (!capability) return 'unknown'
+  if (capability.available) {
+    const state = displaySleepStateLabel(capability)
+    return requestState === 'sent' ? `sent · ${state}` : state
+  }
+  if (capability.status === 'unsupported') return 'unsupported'
+  return 'unavailable'
+}
+
+function displaySleepTagClass(capability: DisplaySleepCapability | null, requestState: DisplaySleepRequestState): string {
+  if (requestState === 'failed') return 'error'
+  if (requestState === 'checking' || requestState === 'requesting') return 'pending'
+  if (!capability) return 'unknown'
+  if (!capability.available) return ''
+  if (capability.state === 'unknown') return 'unknown'
+  return 'ok'
+}
+
+function DisplaySleepStatusIcon({ capability, requestState }: { capability: DisplaySleepCapability | null, requestState: DisplaySleepRequestState }) {
+  if (requestState === 'checking' || requestState === 'requesting') return <IconActivity class="session-menu-action-tag-icon" />
+  if (requestState === 'failed') return <IconAlert class="session-menu-action-tag-icon" />
+  if (!capability) return <IconHelp class="session-menu-action-tag-icon" />
+  if (!capability.available) return <IconAlert class="session-menu-action-tag-icon" />
+  if (capability.state === 'awake') return <IconSun class="session-menu-action-tag-icon" />
+  if (capability.state === 'asleep') return <IconMoon class="session-menu-action-tag-icon" />
+  return <IconHelp class="session-menu-action-tag-icon" />
+}
+
+function displaySleepTitle(capability: DisplaySleepCapability | null): string {
+  if (!capability) return 'Checking display sleep support…'
+  if (capability.available) return `Sleep the host display (state: ${displaySleepStateLabel(capability)})`
+  return capability.reason || 'Display sleep is not available on this host'
 }
 
 function MainHeader({ session, terminalFontSize, onTerminalFontSizeChange, onRestart }: {
@@ -133,6 +179,8 @@ function SessionMenu({ session, terminalFontSize, onTerminalFontSizeChange, onRe
   const [open, setOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const healthVal = health.value
+  const [displaySleep, setDisplaySleep] = useState<DisplaySleepCapability | null>(null)
+  const [displaySleepRequestState, setDisplaySleepRequestState] = useState<DisplaySleepRequestState>('idle')
 
   // For remote sessions, compare against the peer's version (not the local
   // daemon's). Peers don't expose runner_hash, so only version comparison
@@ -160,6 +208,34 @@ function SessionMenu({ session, terminalFontSize, onTerminalFontSizeChange, onRe
     }
   }, [open])
 
+  useEffect(() => {
+    if (!open) return
+    const controller = new AbortController()
+    setDisplaySleepRequestState('checking')
+    fetchHostActions(controller.signal).then(actions => {
+      if (controller.signal.aborted) return
+      setDisplaySleep(actions?.display_sleep ?? null)
+      setDisplaySleepRequestState('idle')
+    }).catch(() => {
+      if (controller.signal.aborted) return
+      setDisplaySleep(null)
+      setDisplaySleepRequestState('failed')
+    })
+    return () => controller.abort()
+  }, [open])
+
+  const handleDisplaySleep = async () => {
+    if (!displaySleep?.available || displaySleepRequestState === 'requesting') return
+    setDisplaySleepRequestState('requesting')
+    const next = await requestDisplaySleep()
+    if (next) {
+      setDisplaySleep(next)
+      setDisplaySleepRequestState('sent')
+    } else {
+      setDisplaySleepRequestState('failed')
+    }
+  }
+
   const versionDisplay = session.runner_version
     ? `v${session.runner_version}`
     : session.binary_hash
@@ -167,6 +243,11 @@ function SessionMenu({ session, terminalFontSize, onTerminalFontSizeChange, onRe
       : 'unknown'
 
   const hasActions = session.alive && onRestart
+  const displaySleepDisabled = !displaySleep?.available
+    || displaySleepRequestState === 'checking'
+    || displaySleepRequestState === 'requesting'
+  const displaySleepTagText = displaySleepTag(displaySleep, displaySleepRequestState)
+  const displaySleepTagClassName = displaySleepTagClass(displaySleep, displaySleepRequestState)
 
   return (
     <div class="session-menu" ref={menuRef}>
@@ -194,6 +275,27 @@ function SessionMenu({ session, terminalFontSize, onTerminalFontSizeChange, onRe
               <div class="session-menu-divider" />
             </>
           )}
+          <div class="session-menu-section-title">Host</div>
+          <button
+            type="button"
+            class="session-menu-action"
+            onClick={handleDisplaySleep}
+            disabled={displaySleepDisabled}
+            title={displaySleepTitle(displaySleep)}
+          >
+            <span class="session-menu-action-label">
+              <IconMoon class="session-menu-action-icon" />
+              <span>Sleep display</span>
+            </span>
+            <span
+              class={`session-menu-action-tag status-icon ${displaySleepTagClassName}`}
+              title={displaySleepTagText}
+              aria-label={`Display sleep status: ${displaySleepTagText}`}
+            >
+              <DisplaySleepStatusIcon capability={displaySleep} requestState={displaySleepRequestState} />
+            </span>
+          </button>
+          <div class="session-menu-divider" />
           <div class="session-menu-section-title">Terminal</div>
           <div class="session-menu-font-row">
             <span class="session-menu-label">Font size</span>

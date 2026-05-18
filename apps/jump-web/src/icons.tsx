@@ -40,6 +40,22 @@ export function IconActivity({ class: className }: IconProps) {
   return <svg class={className} viewBox="0 0 14 14" aria-hidden="true" {...S}><path d="M2 8h2l1.2-3 2 6 1.4-4H12" /></svg>
 }
 
+export function IconSun({ class: className }: IconProps) {
+  return <svg class={className} viewBox="0 0 14 14" aria-hidden="true" {...S}><circle cx="7" cy="7" r="2.2" /><path d="M7 1.8v1.1M7 11.1v1.1M1.8 7h1.1M11.1 7h1.1M3.3 3.3l.8.8M9.9 9.9l.8.8M10.7 3.3l-.8.8M4.1 9.9l-.8.8" /></svg>
+}
+
+export function IconHelp({ class: className }: IconProps) {
+  return <svg class={className} viewBox="0 0 14 14" aria-hidden="true" {...S}><circle cx="7" cy="7" r="5" /><path d="M5.6 5.4a1.5 1.5 0 0 1 2.8.7c0 1.3-1.4 1.3-1.4 2.3" /><path d="M7 10.7h.01" /></svg>
+}
+
+export function IconAlert({ class: className }: IconProps) {
+  return <svg class={className} viewBox="0 0 14 14" aria-hidden="true" {...S}><path d="M7 2.2 12 11H2z" /><path d="M7 5.4v2.5M7 10.1h.01" /></svg>
+}
+
+export function IconMoon({ class: className }: IconProps) {
+  return <svg class={className} viewBox="0 0 14 14" aria-hidden="true" {...S}><path d="M10.8 9.4A4.7 4.7 0 0 1 4.6 3.2a4.9 4.9 0 1 0 6.2 6.2z" /></svg>
+}
+
 export function IconRestart({ class: className }: IconProps) {
   return <svg class={className} viewBox="0 0 14 14" aria-hidden="true" {...S}><path d="M11 6a4 4 0 1 1-1.2-2.9" /><path d="M11 2.5V6H7.5" /></svg>
 }

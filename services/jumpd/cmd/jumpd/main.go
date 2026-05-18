@@ -725,6 +725,8 @@ func serve(stderr io.Writer) int {
 		writeJSON(w, map[string]any{"ok": true, "data": data})
 	})
 
+	registerHostActionRoutes(mux, defaultHostActionService{})
+
 	mux.HandleFunc("GET /v1/host-metrics", func(w http.ResponseWriter, r *http.Request) {
 		metrics, err := hostmetrics.Collect(r.Context())
 		if err != nil {

@@ -1380,6 +1380,29 @@ body {
   color: var(--text);
 }
 
+.session-menu-action:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.session-menu-action:disabled:hover {
+  background: none;
+  color: var(--text-secondary);
+}
+
+.session-menu-action-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.session-menu-action-icon {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+}
+
 .session-menu-action.stale {
   color: oklch(80% 0.15 65);
 }
@@ -1399,6 +1422,41 @@ body {
   background: oklch(80% 0.15 65 / 0.15);
   color: oklch(80% 0.15 65);
   white-space: nowrap;
+}
+
+.session-menu-action-tag.ok {
+  background: color-mix(in oklch, var(--accent) 16%, transparent);
+  color: var(--accent);
+}
+
+.session-menu-action-tag.error {
+  background: color-mix(in oklch, var(--status-error) 16%, transparent);
+  color: var(--status-error);
+}
+
+.session-menu-action-tag.pending {
+  background: color-mix(in oklch, var(--text-muted) 16%, transparent);
+  color: var(--text-muted);
+}
+
+.session-menu-action-tag.unknown {
+  background: color-mix(in oklch, var(--text-muted) 14%, transparent);
+  color: var(--text-muted);
+}
+
+.session-menu-action-tag.status-icon {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.session-menu-action-tag-icon {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 auto;
 }
 
 .session-menu-divider {
