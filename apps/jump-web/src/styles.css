@@ -236,7 +236,8 @@ body {
 }
 
 .folder-header:hover .launch-container.folder-launch-btn,
-.launch-container.folder-launch-btn:has(.loading) {
+.launch-container.folder-launch-btn:has(.loading),
+.launch-container.folder-launch-btn:has(.launch-inline-menu) {
   opacity: 1;
 }
 
@@ -2918,26 +2919,71 @@ code {
 }
 
 .folder-header {
+  --folder-metal-base: var(--bg-surface);
   min-height: 28px;
   padding: 0 6px 0 8px;
   gap: 6px;
+  position: relative;
+  isolation: isolate;
   border-left: 0;
   border-bottom: 1px solid #0b0b0b;
-  background: var(--bg-surface);
+  background:
+    radial-gradient(ellipse at 15% 20%,
+      color-mix(in oklch, var(--text) 3%, transparent),
+      transparent 62%,
+      color-mix(in oklch, #000 7%, transparent)),
+    repeating-radial-gradient(circle at 33% 44%,
+      color-mix(in oklch, var(--text) 0.8%, transparent) 0 0.25px,
+      transparent 0.25px 7px),
+    repeating-radial-gradient(circle at 67% 58%,
+      color-mix(in oklch, #000 2.5%, transparent) 0 0.25px,
+      transparent 0.25px 6px),
+    var(--folder-metal-base);
+  background-size: auto, 7px 7px, 6px 6px, auto;
+  box-shadow:
+    inset 0 0.5px 0 color-mix(in oklch, var(--text) 1.5%, transparent),
+    inset 0 -0.5px 0 color-mix(in oklch, #000 14%, transparent);
 }
 
 .folder-header::before {
   content: '├';
+  position: relative;
+  z-index: 1;
   color: var(--border-strong);
+  filter: drop-shadow(0 0.5px 0 color-mix(in oklch, var(--text) 12%, transparent));
+}
+
+.folder-header::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(93deg,
+      transparent 0 1px,
+      color-mix(in oklch, var(--text) 1.5%, transparent) 1px 2px,
+      transparent 2px 7px),
+    repeating-linear-gradient(183deg,
+      transparent 0 2px,
+      color-mix(in oklch, #000 4%, transparent) 2px 3px,
+      transparent 3px 9px);
+  opacity: 0.7;
+  mix-blend-mode: overlay;
+}
+
+.folder-header > * {
+  position: relative;
+  z-index: 1;
 }
 
 .folder-header:hover {
-  background: var(--bg-hover);
+  --folder-metal-base: var(--bg-hover);
   border-left-color: transparent;
 }
 
 .folder-header:has(.folder-name.current) {
-  background: #101010;
+  --folder-metal-base: #101010;
   color: #fff;
   border-left-color: transparent;
 }
@@ -3551,7 +3597,7 @@ code {
 
 /* Sidebar: keep dense scanning, but soften contrast around the Pasture accent. */
 .folder-header:has(.folder-name.current) {
-  background: color-mix(in oklch, var(--bg-selected) 96%, var(--accent) 4%);
+  --folder-metal-base: color-mix(in oklch, var(--bg-selected) 96%, var(--accent) 4%);
   color: var(--text);
   border-left-color: var(--accent);
 }
@@ -3576,7 +3622,7 @@ code {
 }
 
 .session-item.selected {
-  background: color-mix(in oklch, var(--bg-selected) 97%, var(--accent) 3%);
+  background: color-mix(in oklch, var(--bg-selected) 58%, #000 42%);
 }
 
 .session-item.selected::before {
@@ -3953,6 +3999,37 @@ select:focus-visible,
   align-items: center;
   justify-content: center;
   gap: 6px;
+}
+
+.folder-header:has(.launch-inline-menu) {
+  z-index: 2000;
+}
+
+.launch-container.folder-launch-btn .launch-btn {
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  min-height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-muted);
+  box-shadow: none;
+  letter-spacing: 0;
+}
+
+.launch-container.folder-launch-btn .launch-icon {
+  width: 12px;
+  height: 12px;
+}
+
+.launch-container.folder-launch-btn .launch-btn:hover,
+.launch-container.folder-launch-btn .launch-btn:focus-visible {
+  background: color-mix(in oklch, var(--bg-hover) 72%, var(--text) 4%);
+  color: var(--text-secondary);
+  outline: 1px solid color-mix(in oklch, var(--border-strong) 42%, transparent);
+  outline-offset: 0;
 }
 
 .folder-name,

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { launchersForPeer, resolveTarget, formatTarget } from './launcher'
+import { launchersForPeer, resolveTarget, formatTarget, placeLaunchMenu } from './launcher'
 import type { Session, LauncherDef, PeerInfo } from './types'
 
 const localLaunchers: LauncherDef[] = [
@@ -122,6 +122,37 @@ describe('resolveTarget', () => {
     ]
     const target = resolveTarget(sessions, null, '/fallback')
     expect(target).toEqual({ cwd: '/fallback' })
+  })
+})
+
+describe('placeLaunchMenu', () => {
+  test('moves a tall menu above the bottom viewport edge', () => {
+    const pos = placeLaunchMenu({
+      buttonTop: 620,
+      buttonRight: 260,
+      menuWidth: 240,
+      menuHeight: 260,
+      viewportWidth: 390,
+      viewportHeight: 700,
+      showTarget: true,
+    })
+
+    expect(pos.top).toBe(428)
+    expect(pos.maxHeight).toBe(260)
+  })
+
+  test('keeps a menu inside the left viewport edge', () => {
+    const pos = placeLaunchMenu({
+      buttonTop: 80,
+      buttonRight: 90,
+      menuWidth: 240,
+      menuHeight: 140,
+      viewportWidth: 390,
+      viewportHeight: 700,
+      showTarget: false,
+    })
+
+    expect(pos.left).toBe(12)
   })
 })
 

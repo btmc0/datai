@@ -87,6 +87,42 @@ export function formatTarget(target: LaunchTarget): string {
 //    the target is derived from the user's current context (used by
 //    sidebar folder headers).
 
+export interface MenuPlacementInput {
+  buttonTop: number
+  buttonRight: number
+  menuWidth: number
+  menuHeight: number
+  viewportWidth: number
+  viewportHeight: number
+  showTarget: boolean
+}
+
+export function placeLaunchMenu({
+  buttonTop,
+  buttonRight,
+  menuWidth,
+  menuHeight,
+  viewportWidth,
+  viewportHeight,
+  showTarget,
+}: MenuPlacementInput) {
+  const margin = 12
+  const width = Math.min(menuWidth, viewportWidth - margin * 2)
+  const height = Math.min(menuHeight, viewportHeight - margin * 2)
+  const targetOffset = showTarget ? 32 : 0
+  const wantedTop = buttonTop - 4 - targetOffset
+  const wantedLeft = buttonRight - width
+  const maxTop = Math.max(margin, viewportHeight - height - margin)
+  const maxLeft = Math.max(margin, viewportWidth - width - margin)
+  const top = Math.max(margin, Math.min(wantedTop, maxTop))
+
+  return {
+    top,
+    left: Math.max(margin, Math.min(wantedLeft, maxLeft)),
+    maxHeight: Math.max(80, viewportHeight - top - margin),
+  }
+}
+
 interface LaunchButtonProps {
   className?: string
   onLaunch?: () => void
@@ -119,36 +155,53 @@ export function LaunchButton({ className, onLaunch, beforeLaunch, cwd, peer, ses
   const showTarget = target.cwd !== ''
 
   const [state, setState] = useState<'idle' | 'open' | 'launching'>('idle')
-  const [menuPos, setMenuPos] = useState<{ top: number; left: number; maxWidth: number } | null>(null)
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number; maxWidth: number; maxHeight: number } | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const btnRef = useRef<HTMLButtonElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
 
   // Read launcher config from the store (populated by /v1/health).
   const hasLaunchers = launchersSignal.value.length > 0
 
   /** Compute fixed position for the menu so it escapes overflow:hidden parents. */
-  const computeMenuPos = () => {
+  const computeMenuPos = (menuSize?: { width: number; height: number }) => {
     const btn = btnRef.current
     if (!btn) return
     const r = btn.getBoundingClientRect()
     const margin = 12
-    const menuWidth = Math.min(260, window.innerWidth - margin * 2)
+    const maxWidth = Math.min(260, window.innerWidth - margin * 2)
     const itemCount = (launchersSignal.value.length || 1) + (showTarget ? 2 : 0)
     const estimatedHeight = 8 + itemCount * 34
-    const targetOffset = showTarget ? 32 : 0
-
+    const menuWidth = Math.min(menuSize?.width ?? maxWidth, window.innerWidth - margin * 2)
+    const menuHeight = Math.min(menuSize?.height ?? estimatedHeight, window.innerHeight - margin * 2)
     // Keep the default item aligned with the + button when possible, then
-    // clamp the fixed menu inside the viewport on both axes.
-    const wantedTop = r.top - 4 - targetOffset
-    const wantedLeft = r.right - menuWidth
-    const maxTop = Math.max(margin, window.innerHeight - estimatedHeight - margin)
-    const maxLeft = Math.max(margin, window.innerWidth - menuWidth - margin)
+    // clamp the fixed menu inside the viewport on both axes. When the menu
+    // has rendered, use its real height so it cannot disappear below mobile
+    // viewports or long sidebar lists.
+    const placement = placeLaunchMenu({
+      buttonTop: r.top,
+      buttonRight: r.right,
+      menuWidth,
+      menuHeight,
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight,
+      showTarget,
+    })
 
     setMenuPos({
-      top: Math.max(margin, Math.min(wantedTop, maxTop)),
-      left: Math.max(margin, Math.min(wantedLeft, maxLeft)),
-      maxWidth: menuWidth,
+      ...placement,
+      maxWidth,
     })
+  }
+
+  const getMenuSize = () => {
+    const menu = menuRef.current
+    if (!menu) return undefined
+    const rect = menu.getBoundingClientRect()
+    return {
+      width: rect.width,
+      height: Math.max(rect.height, menu.scrollHeight),
+    }
   }
 
   const handleClick = (e: MouseEvent) => {
@@ -195,7 +248,7 @@ export function LaunchButton({ className, onLaunch, beforeLaunch, cwd, peer, ses
 
   useEffect(() => {
     if (state !== 'open') return
-    const update = () => computeMenuPos()
+    const update = () => computeMenuPos(getMenuSize())
     window.addEventListener('resize', update)
     window.addEventListener('scroll', update, true)
     return () => {
@@ -205,6 +258,12 @@ export function LaunchButton({ className, onLaunch, beforeLaunch, cwd, peer, ses
   }, [state, showTarget])
 
   const isOpen = state === 'open' && hasLaunchers
+
+  useEffect(() => {
+    if (!isOpen || !menuRef.current) return
+    computeMenuPos(getMenuSize())
+  }, [isOpen, showTarget, launchersSignal.value.length])
+
   const isLoading = state === 'launching'
 
   let defLauncher: LauncherDef | undefined
@@ -237,8 +296,9 @@ export function LaunchButton({ className, onLaunch, beforeLaunch, cwd, peer, ses
       </button>
       {isOpen && menuPos && (
         <div
+          ref={menuRef}
           class="launch-inline-menu"
-          style={{ top: menuPos.top, left: menuPos.left, maxWidth: menuPos.maxWidth }}
+          style={{ top: menuPos.top, left: menuPos.left, maxWidth: menuPos.maxWidth, maxHeight: menuPos.maxHeight }}
         >
           {showTarget && (
             <>
