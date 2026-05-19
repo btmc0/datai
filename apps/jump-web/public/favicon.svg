@@ -1,5 +1,27 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <rect width="32" height="32" rx="6" fill="#0f141a"/>
-  <polyline points="8,10 16,16 8,22" fill="none" stroke="#49b8b8" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-  <line x1="18" y1="22" x2="25" y2="22" stroke="#49b8b8" stroke-width="2.4" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="8" stdDeviation="16" flood-color="#00F0FF" flood-opacity="0.45" />
+           </filter>
+  </defs>
+
+  <!-- Nền của App Icon -->
+  <rect width="512" height="512" rx="120" fill="#0B0F19" />
+
+  <!-- Chữ 'j' và Dấu Prompt đại diện cho chấm 'j' -->
+  <g filter="url(#glow)">
+    <!-- Thân chữ 'j' tối giản hình khối (Flat Geometry) -->
+    <path d="M215,180 h70 v130 c0,40 -25,70 -70,70 h-10 c-40,0 -60,-25 -60,-50 v-10 h50 v10 c0,10 5,12 10,12 h10 c15,0 20,-12 20,-32 V180 Z"
+          fill="#00F0FF" />
+
+    <!-- Dấu nhắc Terminal '>' đóng vai trò là dấu chấm của chữ 'j' -->
+    <path d="M215,90 L265,115 L215,140"
+          fill="none"
+          stroke="#FFFFFF"
+          stroke-width="24"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          transform="scale(1)"
+          transform-origin="242.5 115" />
+  </g>
 </svg>
