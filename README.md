@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/assets/jump-logo.svg" alt="jump logo" width="96" height="96">
+</p>
+
 # jump
 
 **Browser-first session manager for AI agents, test runners, and long-running commands.**
