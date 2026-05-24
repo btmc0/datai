@@ -73,7 +73,7 @@ To edit prose for an upcoming release: open the `release/next` PR and edit the b
 1. The `tag` job extracts the version from the PR title (`release: v1.2.0`), creates and pushes the git tag, and dispatches the release build. Because `changelog.mdx` is already on `main` (it's part of the merged release commit), there's no separate changelog write here.
 2. The `release` job extracts the latest entry from `changelog.mdx` and passes it to GoReleaser via `--release-notes` (binaries + GitHub Release + Homebrew tap).
 3. `notify-discord.sh` reads the same latest entry from `changelog.mdx` and posts the whole entry (curated prose plus auto-generated bullets) to Discord, so subscribers always see what changed without clicking through.
-4. `pages.yml` deploys the docs site.
+4. The release workflow stops after publishing artifacts and sending Discord notifications; docs deployment is intentionally not part of release.
 
 ## Branch protection
 
@@ -111,9 +111,6 @@ Workflows set `permissions: {}` at the top level (deny-all), then grant minimum 
 | `regen.yml` | `regen` | `contents: write`, `pull-requests: write`, `actions: write` |
 | `release.yml` | `tag` | `contents: write`, `actions: write` |
 | `release.yml` | `release` | `contents: write` |
-| `release.yml` | `deploy-docs` | `contents: read`, `pages: write`, `id-token: write` |
-| `pages.yml` | `build` | `contents: read` |
-| `pages.yml` | `deploy` | `pages: write`, `id-token: write` |
 
 ### Action pinning
 

@@ -121,12 +121,3 @@ jobs:
           ROLE_PATCH: ${{ vars.DISCORD_ROLE_PATCH }}
           VERSION: ${{ steps.version.outputs.version }}
         run: bash .github/workflows/scripts/notify-discord.sh
-
-  deploy-docs:
-    needs: release
-    if: needs.release.result == 'success'
-    uses: ./.github/workflows/pages.yml
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
