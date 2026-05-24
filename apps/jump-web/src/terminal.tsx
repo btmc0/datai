@@ -1185,6 +1185,20 @@ export function TerminalView({
 
 // ── MockTerminal ──
 
+const ANSI_SEQUENCE = /\x1b\[[0-?]*[ -/]*[@-~]/g
+
+function estimateTerminalRows(content: string, cols: number): number {
+  const width = Math.max(cols, 1)
+  return content
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    .split('\n')
+    .reduce((rows, line) => {
+      const visibleLength = line.replace(ANSI_SEQUENCE, '').length
+      return rows + Math.max(1, Math.ceil(visibleLength / width))
+    }, 0)
+}
+
 /** Read-only xterm instance showing pre-baked ANSI content for mock/demo mode. */
 export function MockTerminal({ sessionId }: { sessionId: string }) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -1204,26 +1218,53 @@ export function MockTerminal({ sessionId }: { sessionId: string }) {
     term.loadAddon(fit)
     term.open(containerRef.current)
     loadPreferredRenderer(term)
-    fit.fit()
-
     const mock = MOCK_BY_ID[sessionId]
-    if (mock?.terminal) {
+    let renderVersion = 0
+    const renderMockContent = () => {
+      renderVersion += 1
+      const version = renderVersion
+      term.reset()
+
+      if (!mock?.terminal) return
+      const topPaddingRows = mock.terminalAnchor === 'bottom'
+        ? Math.max(term.rows - estimateTerminalRows(mock.terminal, term.cols), 0)
+        : 0
+      const terminalContent = `${'\n'.repeat(topPaddingRows)}${mock.terminal}`
+
       // Normalize \n to \r\n so xterm carriage-returns to column 0 on each line.
-      term.write(mock.terminal.replace(/\r?\n/g, '\r\n'), () => {
+      term.write(terminalContent.replace(/\r?\n/g, '\r\n'), () => {
+        if (version !== renderVersion) return
         if (mock.cursorX != null && mock.cursorY != null) {
-          term.write(`\x1b[${mock.cursorY + 1};${mock.cursorX + 1}H`)
+          term.write(`\x1b[${mock.cursorY + topPaddingRows + 1};${mock.cursorX + 1}H`)
         }
       })
     }
 
+    fit.fit()
+    renderMockContent()
+
     // Expose for debug: window.__jumpTerm
     ;(window as any).__jumpTerm = term
 
-    const onResize = () => fit.fit()
-    window.addEventListener('resize', onResize)
+    let pendingFit = 0
+    const fitToShell = () => {
+      if (pendingFit) cancelAnimationFrame(pendingFit)
+      pendingFit = requestAnimationFrame(() => {
+        pendingFit = 0
+        fit.fit()
+        renderMockContent()
+      })
+    }
+    const shellEl = containerRef.current.parentElement
+    const resizeObserver = typeof ResizeObserver === 'function' ? new ResizeObserver(fitToShell) : null
+    if (shellEl) resizeObserver?.observe(shellEl)
+
+    window.addEventListener('resize', fitToShell)
 
     return () => {
-      window.removeEventListener('resize', onResize)
+      if (pendingFit) cancelAnimationFrame(pendingFit)
+      resizeObserver?.disconnect()
+      window.removeEventListener('resize', fitToShell)
       if ((window as any).__jumpTerm === term) (window as any).__jumpTerm = null
       term.dispose()
     }

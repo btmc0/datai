@@ -13,6 +13,9 @@ import piAutoresearch from './sessions/pi-autoresearch'
 import codexMigrateConvex from './sessions/codex-migrate'
 import shellOpenclawConfigure from './sessions/shell-openclaw-configure'
 import shellOpenclawLogs from './sessions/shell-openclaw-logs'
+import { SCREENSHOT_PROJECTS, SCREENSHOT_SESSIONS } from './screenshot-scene'
+
+export { SCREENSHOT_PROJECTS, SCREENSHOT_SESSIONS }
 
 /** All mock sessions. First alive session is auto-selected. */
 export const MOCK_SESSIONS: MockSession[] = [
@@ -27,7 +30,7 @@ export const MOCK_SESSIONS: MockSession[] = [
 
 /** Session ID → mock session (for terminal content + cursor lookup). */
 export const MOCK_BY_ID: Record<string, MockSession> = Object.fromEntries(
-  MOCK_SESSIONS.map(m => [m.id, m]),
+  [...MOCK_SESSIONS, ...SCREENSHOT_SESSIONS].map(m => [m.id, m]),
 )
 
 /**

@@ -11,7 +11,8 @@
     "test:e2e": "npx playwright test --config e2e/playwright.config.ts",
     "lint": "biome lint . && moon run :lint",
     "check": "moon check :build :test",
-    "graph": "moon project-graph"
+    "graph": "moon project-graph",
+    "screenshot:webui": "node scripts/screenshot-webui.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.7",

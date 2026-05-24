@@ -40,7 +40,7 @@ import {
   type AppearancePreferences,
 } from './appearance'
 import { addPageResumeListener } from './page-resume'
-import { MOCK_SESSIONS, MOCK_PROJECTS } from './mock-data/index'
+import { MOCK_SESSIONS, MOCK_PROJECTS, SCREENSHOT_SESSIONS, SCREENSHOT_PROJECTS } from './mock-data/index'
 import type { ResolvedTerminalOptions } from './settings-schema'
 import {
   DEFAULT_NOTIFICATION_PREFERENCES,
@@ -738,19 +738,23 @@ export function initStore(): () => void {
   commitAppearance(readCachedAppearance())
 
   if (USE_MOCK) {
-    const localHost = new URLSearchParams(location.search).get('host')
+    const params = new URLSearchParams(location.search)
+    const localHost = params.get('host')
+    const useScreenshotScene = params.has('screenshot')
+    const sourceSessions = useScreenshotScene ? SCREENSHOT_SESSIONS : MOCK_SESSIONS
+    const sourceProjects = useScreenshotScene ? SCREENSHOT_PROJECTS : MOCK_PROJECTS
     const mockSessions = localHost
-      ? MOCK_SESSIONS.map(s => s.peer === localHost ? { ...s, peer: undefined } : s)
-      : [...MOCK_SESSIONS]
+      ? sourceSessions.map(s => s.peer === localHost ? { ...s, peer: undefined } : s)
+      : [...sourceSessions]
     batch(() => {
-      projects.value = MOCK_PROJECTS
+      projects.value = sourceProjects
       sessions.value = mockSessions
       sessionsLoaded.value = true
       connState.value = 'connected'
       terminalOptions.value = buildTerminalOptions(null, null)
       keybinds.value = resolveKeybinds(null, false)
     })
-    const activeIds = MOCK_SESSIONS.filter(s => s.mockActive).map(s => s.id)
+    const activeIds = sourceSessions.filter(s => s.mockActive).map(s => s.id)
     activeIds.forEach(id => handleActivity(id))
     const tick = setInterval(() => activeIds.forEach(id => handleActivity(id)), 2000)
     cleanups.push(() => clearInterval(tick))

@@ -1,12 +1,16 @@
-<p align="center">
+<div align="center">
   <img src="docs/assets/jump-logo.svg" alt="jump logo" width="96" height="96">
+
+  <h1>jump</h1>
+
+  <p><strong>Browser-first session manager for AI agents, test runners, and long-running commands.</strong></p>
+  <p><code>jump</code> wraps commands in managed PTY sessions, keeps them alive outside the browser tab, and exposes them through a local Web UI.</p>
+  <p>Remote access is optional: use built-in Tailscale/tsnet for private access or <code>jump-relayd</code> for public HTTPS/WSS access through one outbound agent connection.</p>
+</div>
+
+<p align="center">
+  <img src="docs/assets/jump-webui-zerobyte.png" alt="jump Web UI showing active PTY sessions" width="960">
 </p>
-
-# jump
-
-**Browser-first session manager for AI agents, test runners, and long-running commands.**
-
-`jump` wraps commands in managed PTY sessions, keeps them alive outside the browser tab, and exposes them through a local Web UI. Remote access is optional: use built-in Tailscale/tsnet for private access or `jump-relayd` for public HTTPS/WSS access through one outbound agent connection.
 
 ## Architecture
 
@@ -22,24 +26,21 @@ graph LR
 - `jumpd`: discovers sessions, serves the Web UI/API, stores state, and connects to optional remote transports.
 - `jump-relayd`: transport-only public relay; it does not store sessions.
 
-## Install
+## Quick start (local)
 
-Release automation, Homebrew taps, and public install scripts are not restored yet. Build the binaries from this branch:
+Install the latest release:
 
 ```bash
-git clone https://github.com/sting8k/jump.git
-cd jump
-git checkout dev
-
-mkdir -p ~/.local/bin
-TMPDIR=/tmp GOWORK=$PWD/go.work go build -o ~/.local/bin/jump ./cli/jump/cmd/jump
-TMPDIR=/tmp GOWORK=$PWD/go.work go build -o ~/.local/bin/jumpd ./services/jumpd/cmd/jumpd
-TMPDIR=/tmp GOWORK=$PWD/go.work go build -o ~/.local/bin/jump-relayd ./services/jump-relayd/cmd/jump-relayd
+curl -fsSL https://raw.githubusercontent.com/sting8k/jump/main/scripts/install.sh | bash
 ```
 
-Add `~/.local/bin` to `PATH` if needed. If you change Web UI code, run `pnpm --filter @jump/web build` before rebuilding `jumpd` so the embedded assets are current.
+Optional pin/custom install directory:
 
-## Run
+```bash
+curl -fsSL https://raw.githubusercontent.com/sting8k/jump/main/scripts/install.sh | JUMP_VERSION=vX.Y.Z INSTALL_DIR=/usr/local/bin bash
+```
+
+Launch sessions and open the local Web UI:
 
 ```bash
 jump pi                    # launch a coding agent
@@ -48,21 +49,11 @@ jump make build            # launch any long-running command
 jump                       # open the Web UI
 ```
 
-Default local UI:
+Default local URL:
 
 ```text
 http://127.0.0.1:8790
 ```
-
-To expose `jumpd` on LAN/VPN/container networks, opt in explicitly:
-
-```toml
-# ~/.config/jump/host.toml
-listen = "0.0.0.0"
-port = 8790
-```
-
-`JUMPD_LISTEN=0.0.0.0` can override this for systemd/Docker. The default stays `127.0.0.1`; don't expose plain HTTP to untrusted networks without TLS/VPN/reverse proxy protection.
 
 Useful daemon commands:
 
@@ -73,6 +64,18 @@ jumpd doctor
 jumpd start
 jumpd stop
 ```
+
+## Local network access
+
+`jumpd` binds to `127.0.0.1` by default. To expose it on LAN, VPN, or container networks, opt in explicitly:
+
+```toml
+# ~/.config/jump/host.toml
+listen = "0.0.0.0"
+port = 8790
+```
+
+`JUMPD_LISTEN=0.0.0.0` can override this for systemd/Docker. Do not expose plain HTTP to untrusted networks without TLS, VPN, or reverse proxy protection.
 
 ## Remote access
 
@@ -113,23 +116,6 @@ Use `jumpd tsnet` to set up private tailnet access without a public relay.
 | `~/.local/state/jump/` | Runtime state, auth token, logs, project list, session metadata. |
 | `/tmp/jump-sessions/` | Local runner socket discovery. |
 
-## Development
-
-```bash
-pnpm install
-TMPDIR=/tmp GOWORK=$PWD/go.work go test ./packages/paths/... ./packages/workspace/... ./packages/relayproto/... ./packages/scrollback/... ./packages/adapter/... ./cli/jump/... ./services/jumpd/... ./services/jump-relayd/...
-pnpm --filter @jump/web lint
-pnpm --filter @jump/web test
-pnpm --filter @jump/web build
-```
-
-The website build requires Node.js `>=22.12.0` because it uses `node --experimental-strip-types`:
-
-```bash
-source ~/.nvm/nvm.sh
-nvm use 23
-pnpm --filter @jump/website build
-```
 
 ## Repo map
 

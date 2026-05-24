@@ -8,6 +8,8 @@ export type MockSession = Session & {
   cursorY?: number
   /** Raw terminal content. Plain \n line endings (normalized to \r\n on render). */
   terminal: string
+  /** Viewport alignment for static terminal mocks. Defaults to top. */
+  terminalAnchor?: 'top' | 'bottom'
   /** Mock mode: simulate recent activity for this session (drives the active dot). */
   mockActive?: boolean
 }
