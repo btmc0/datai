@@ -601,6 +601,17 @@ func (fm *FileMonitor) handleFileChange(path string) {
 // processAttributedFileLocked reads new lines from an attributed file
 // and applies title/status/unread updates to the session. Must be
 // called with fm.mu held.
+func storeAttentionStatus(status *adapter.Status) *store.Status {
+	if status == nil {
+		return nil
+	}
+	return &store.Status{
+		Label:   status.Label,
+		Working: status.Working,
+		Error:   status.Error,
+	}
+}
+
 func (fm *FileMonitor) processAttributedFileLocked(sessionID, path string) {
 	ms, ok := fm.sessions[sessionID]
 	if !ok {
@@ -627,6 +638,13 @@ func (fm *FileMonitor) processAttributedFileLocked(sessionID, path string) {
 		return
 	}
 
+	recoverUnread := false
+	if readAll {
+		if sess, ok := fm.store.Get(sessionID); ok {
+			recoverUnread = sess.Status != nil && sess.Status.Working
+		}
+	}
+
 	// Extract the canonical cwd from the first event that carries one.
 	// Only applied on the initial full read (first attribution): session
 	// file cwds are immutable, so re-applying on every write is redundant.
@@ -645,20 +663,7 @@ func (fm *FileMonitor) processAttributedFileLocked(sessionID, path string) {
 			if evt.Title != "" {
 				sess.AdapterTitle = evt.Title
 			}
-			if evt.Status != nil {
-				if evt.Status.Label == "" && !evt.Status.Working && !evt.Status.Error {
-					sess.Status = nil
-				} else {
-					sess.Status = &store.Status{
-						Label:   evt.Status.Label,
-						Working: evt.Status.Working,
-						Error:   evt.Status.Error,
-					}
-				}
-			}
-			if evt.Unread != nil && !readAll {
-				sess.Unread = *evt.Unread
-			}
+			sess.ApplyAttentionUpdateFrom("filemon/process", storeAttentionStatus(evt.Status), evt.Unread, !readAll || recoverUnread)
 		}
 		if newCwd != "" {
 			sess.Cwd = newCwd
@@ -716,6 +721,35 @@ func (fm *FileMonitor) syncFileMetadataLocked(sessionID, filePath string) {
 	})
 }
 
+func (fm *FileMonitor) reconcileFileStatusLocked(sessionID, filePath string) {
+	ms, ok := fm.sessions[sessionID]
+	if !ok {
+		return
+	}
+
+	sess, ok := fm.store.Get(sessionID)
+	if !ok {
+		return
+	}
+	recoverUnread := sess.Status != nil && sess.Status.Working
+
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return
+	}
+	lines := strings.Split(strings.ReplaceAll(string(data), "\r\n", "\n"), "\n")
+	events := ms.fileMon.ParseNewLines(lines, filePath)
+	if len(events) == 0 {
+		return
+	}
+
+	fm.store.Update(sessionID, func(sess *store.Session) {
+		for _, evt := range events {
+			sess.ApplyAttentionUpdateFrom("filemon/reconcile", storeAttentionStatus(evt.Status), evt.Unread, recoverUnread)
+		}
+	})
+}
+
 // persistAttributionsLocked writes the current attributions to disk.
 func (fm *FileMonitor) persistAttributionsLocked() {
 	saveAttributions(fm.attributions, fm.sessions)
@@ -745,12 +779,28 @@ func (fm *FileMonitor) ApplyPersistedAttributions() {
 	fm.mu.Lock()
 	defer fm.mu.Unlock()
 
-	var applied int
+	type attributedFile struct {
+		path    string
+		modTime time.Time
+	}
+	latest := make(map[string]attributedFile)
 	for path, sessionID := range fm.attributions {
 		if _, ok := fm.sessions[sessionID]; !ok {
 			continue
 		}
-		fm.syncFileMetadataLocked(sessionID, path)
+		info, err := os.Stat(path)
+		if err != nil {
+			continue
+		}
+		if cur, ok := latest[sessionID]; !ok || info.ModTime().After(cur.modTime) {
+			latest[sessionID] = attributedFile{path: path, modTime: info.ModTime()}
+		}
+	}
+
+	var applied int
+	for sessionID, file := range latest {
+		fm.syncFileMetadataLocked(sessionID, file.path)
+		fm.reconcileFileStatusLocked(sessionID, file.path)
 		applied++
 	}
 	if applied > 0 {

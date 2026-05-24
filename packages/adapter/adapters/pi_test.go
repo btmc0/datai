@@ -283,6 +283,36 @@ func TestParseNewLinesNameAmidToolUse(t *testing.T) {
 	}
 }
 
+func TestParseNewLinesAssistantTextOnlySnakeStopReason(t *testing.T) {
+	events := NewPi().ParseNewLines([]string{
+		`{"type":"message","id":"a1","message":{"role":"assistant","stop_reason":null,"content":[{"type":"text","text":"Done."}]}}`,
+	}, "")
+	if len(events) != 1 {
+		t.Fatalf("expected 1 event, got %d", len(events))
+	}
+	if events[0].Status == nil || events[0].Status.Working {
+		t.Error("expected working=false for text-only assistant message")
+	}
+	if events[0].Unread == nil || !*events[0].Unread {
+		t.Error("expected unread=true for text-only assistant message")
+	}
+}
+
+func TestParseNewLinesAssistantToolCallContent(t *testing.T) {
+	events := NewPi().ParseNewLines([]string{
+		`{"type":"message","id":"a1","message":{"role":"assistant","stop_reason":null,"content":[{"type":"thinking"},{"type":"text","text":"I'll inspect it."},{"type":"toolCall","name":"bash"}]}}`,
+	}, "")
+	if len(events) != 1 {
+		t.Fatalf("expected 1 event, got %d", len(events))
+	}
+	if events[0].Status == nil || !events[0].Status.Working {
+		t.Error("expected working=true for toolCall content")
+	}
+	if events[0].Unread != nil {
+		t.Error("expected unread=nil while toolCall keeps loop working")
+	}
+}
+
 func TestParseNewLinesAssistantStop(t *testing.T) {
 	events := NewPi().ParseNewLines([]string{
 		`{"type":"message","id":"a1","message":{"role":"assistant","stopReason":"stop","content":[{"type":"text","text":"Done."}]}}`,
@@ -295,6 +325,21 @@ func TestParseNewLinesAssistantStop(t *testing.T) {
 	}
 	if events[0].Unread == nil || !*events[0].Unread {
 		t.Error("expected unread=true on stop (turn complete)")
+	}
+}
+
+func TestParseNewLinesAssistantStopSequence(t *testing.T) {
+	events := NewPi().ParseNewLines([]string{
+		`{"type":"message","id":"a1","message":{"role":"assistant","stopReason":"stop_sequence","content":[{"type":"text","text":"Done."}]}}`,
+	}, "")
+	if len(events) != 1 {
+		t.Fatalf("expected 1 event, got %d", len(events))
+	}
+	if events[0].Status == nil || events[0].Status.Working {
+		t.Error("expected working=false status on stop_sequence")
+	}
+	if events[0].Unread == nil || !*events[0].Unread {
+		t.Error("expected unread=true on stop_sequence (turn complete)")
 	}
 }
 

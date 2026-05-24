@@ -12,7 +12,7 @@ import { useArrivalPulse } from './use-arrival-pulse'
 import {
   folders, selectedId, currentProjectSlug,
   activityMap, activityGeneration, unmatchedActiveCount, projects, connState,
-  updateProjects, reorderSessions,
+  updateProjects, reorderSessions, projectDotState, sessionDotState,
   type DotState,
 } from './store'
 import { PeerLabel } from './peer-label'
@@ -25,19 +25,6 @@ import type { Session, Folder, ProjectItem } from './types'
 
 // Re-export DotState so existing imports keep working.
 export type { DotState }
-
-// ── Helpers ──
-
-/** Determine the dot indicator state for a session. */
-function sessionDotState(session: Session, am: ReadonlyMap<string, 'active' | 'fading'>): DotState {
-  if (session.alive && session.status?.error)   return 'error'
-  if (session.alive && session.status?.working) return 'working'
-  if (session.unread) return 'unread'
-  const act = am.get(session.id)
-  if (act === 'active') return 'active'
-  if (act === 'fading') return 'fading'
-  return 'none'
-}
 
 function formatSessionMemory(bytes?: number): string | null {
   if (typeof bytes !== 'number' || !Number.isFinite(bytes) || bytes <= 0) return null
@@ -130,8 +117,7 @@ function SessionItem({
   session,
   href,
   selected,
-  resuming,
-  dotState: rawDotState,
+  dotState,
   activityGeneration: activityPulseGeneration,
   dragging,
   dropTarget,
@@ -144,7 +130,6 @@ function SessionItem({
   session: Session
   href: string
   selected: boolean
-  resuming?: boolean
   dotState: DotState
   activityGeneration?: number
   dragging?: boolean
@@ -156,9 +141,6 @@ function SessionItem({
   onDragOver?: () => void
   onDragEnd?: () => void
 }) {
-  const effectiveDotState = resuming ? 'working' : rawDotState
-  // Nothing is "unread" if you're already looking at it.
-  const dotState = (selected && (effectiveDotState === 'error' || effectiveDotState === 'unread')) ? 'none' : effectiveDotState
   const arrival = useArrivalPulse(dotState, activityPulseGeneration)
   const sleeping = !session.alive && session.resumable
   const memory = formatSessionMemory(session.memory_rss_bytes)
@@ -265,6 +247,7 @@ function FolderGroup({
   const visible = folder.sessions.filter(s => s.alive || s.resumable)
   const displayItems = drag ? reorder(visible, drag.from, drag.over) : visible
   const isCurrent = curProjectSlug === folder.path
+  const folderDot = projectDotState(folder.sessions, am, selId)
   return (
     <div class="folder">
       <div class="folder-header">
@@ -274,6 +257,7 @@ function FolderGroup({
           title={`Open ${folder.name} hub`}
           onClick={onClick}
         >
+          <span class={`folder-attention-dot session-dot-indicator ${folderDot}`} />
           <IconFolder class="folder-icon" />
           <span>{folder.name}</span>
         </a>
@@ -291,8 +275,10 @@ function FolderGroup({
             session={s}
             href={sessionPath(folder.path, s)}
             selected={selId === s.id}
-            resuming={resumingId === s.id}
-            dotState={sessionDotState(s, am)}
+            dotState={sessionDotState(s, am, {
+              selected: selId === s.id,
+              resuming: resumingId === s.id,
+            })}
             activityGeneration={activityGen.get(s.id) ?? 0}
             dragging={drag !== null && s.id === visible[drag.from]?.id}
             dropTarget={drag !== null && drag.over === i && drag.from !== i}

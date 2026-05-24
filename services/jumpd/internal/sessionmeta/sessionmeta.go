@@ -33,15 +33,17 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/sting8k/jump/packages/paths"
 	"github.com/sting8k/jump/services/jumpd/internal/store"
 )
 
 const (
-	metaFile = "meta.json"
-	dirMode  = 0o700
-	fileMode = 0o600
+	metaFile              = "meta.json"
+	dirMode               = 0o700
+	fileMode              = 0o600
+	writeCoalesceInterval = 500 * time.Millisecond
 )
 
 // Per-session directories may also contain scrollback files written
@@ -167,27 +169,67 @@ func (s *Store) Remove(id string) error {
 	return nil
 }
 
-// WatchRemovals consumes events until the channel closes, removing
-// the on-disk record for every session-remove event. Wired at
-// jumpd startup against store.Subscribe so the persister cleans up
-// after every store removal, not just the dismiss / resume-merge
-// paths that have explicit Remove calls.
+// WatchEvents consumes store events until the channel closes.
 //
-// Catches the slug-takeover case: when a fresh live session
-// shadows a dead one with the same (kind, peer, slug), the store
-// silently evicts the dead record and broadcasts session-remove.
-// Without this loop those orphan meta.json files accumulate — the
-// next Sweep would re-load them and the next slug collision would
-// re-orphan, indefinitely.
+// session-upsert writes the latest local session metadata so attention state
+// such as Unread/Status survives daemon restarts even while a runner is still
+// alive. session-remove deletes the on-disk record so dismiss / slug takeover /
+// peer disconnect do not leave ghosts for the next Sweep.
 //
-// Errors from Remove are logged; failure to clean up one entry
-// doesn't stop the loop. Returns when the events channel closes
-// (i.e., when the store subscription is cancelled at shutdown).
-func (s *Store) WatchRemovals(events <-chan store.Event) {
-	for ev := range events {
-		if ev.Type != "session-remove" {
-			continue
+// Errors are logged; failure to persist or remove one entry doesn't stop the
+// loop. Peer sessions are ignored by Write because this daemon is not their
+// authoritative owner.
+func (s *Store) WatchEvents(events <-chan store.Event) {
+	s.watchEvents(events, writeCoalesceInterval)
+}
+
+func (s *Store) watchEvents(events <-chan store.Event, interval time.Duration) {
+	pending := make(map[string]store.Session)
+	flush := func(id string, sess store.Session) {
+		if err := s.Write(sess); err != nil {
+			log.Printf("sessionmeta: write %s: %v", id, err)
 		}
+	}
+	flushAll := func() {
+		for id, sess := range pending {
+			flush(id, sess)
+			delete(pending, id)
+		}
+	}
+
+	if interval <= 0 {
+		for ev := range events {
+			s.handleEventImmediate(ev, flush, pending)
+			flushAll()
+		}
+		return
+	}
+
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case ev, ok := <-events:
+			if !ok {
+				flushAll()
+				return
+			}
+			s.handleEventImmediate(ev, flush, pending)
+		case <-ticker.C:
+			flushAll()
+		}
+	}
+}
+
+func (s *Store) handleEventImmediate(ev store.Event, flush func(string, store.Session), pending map[string]store.Session) {
+	switch ev.Type {
+	case "session-upsert":
+		if ev.Session == nil {
+			return
+		}
+		pending[ev.ID] = *ev.Session
+	case "session-remove":
+		delete(pending, ev.ID)
 		if err := s.Remove(ev.ID); err != nil {
 			log.Printf("sessionmeta: cleanup remove %s: %v", ev.ID, err)
 		}

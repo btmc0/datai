@@ -18,6 +18,17 @@ import type { Session, ProjectItem, DiscoveredProject, PeerInfo, LauncherDef, Fo
 import type { View } from './routing'
 import { resolveViewFromPath, viewToPath, sessionPath } from './routing'
 import { buildProjectFolders, matchSession } from './projects'
+import {
+  backgroundDotState,
+  projectDotState,
+  sessionIdsInProject,
+  sessionDotState,
+  unreadSessionCount,
+  type ActivityState,
+  type DotState,
+} from './attention'
+export { projectDotState, sessionDotState }
+export type { DotState }
 
 import { fetchFrontendConfig, saveFrontendPreferences, buildTerminalOptions, resolveKeybinds, type ResolvedKeybind } from './config'
 import {
@@ -182,12 +193,12 @@ export const urlPath = signal(
  * cleaned up by timers; the map reference changes on every transition
  * so computed values that read it recompute.
  */
-export const activityMap = signal<ReadonlyMap<string, 'active' | 'fading'>>(new Map())
+export const activityMap = signal<ReadonlyMap<string, ActivityState>>(new Map())
 export const activityGeneration = signal<ReadonlyMap<string, number>>(new Map())
 
 // Internal mutable map + timers. We write to this and then publish a
 // new (frozen) snapshot to the signal so reads trigger recomputation.
-const _actMap = new Map<string, 'active' | 'fading'>()
+const _actMap = new Map<string, ActivityState>()
 const _actGeneration = new Map<string, number>()
 const _actTimers = new Map<string, ReturnType<typeof setTimeout>>()
 const _fadeTimers = new Map<string, ReturnType<typeof setTimeout>>()
@@ -198,9 +209,27 @@ function publishActivity() {
   activityMap.value = new Map(_actMap)
   activityGeneration.value = new Map(_actGeneration)
 }
+export function clearSessionActivity(sessionId: string) {
+  const t1 = _actTimers.get(sessionId)
+  if (t1) { clearTimeout(t1); _actTimers.delete(sessionId) }
+  const t2 = _fadeTimers.get(sessionId)
+  if (t2) { clearTimeout(t2); _fadeTimers.delete(sessionId) }
+  _actMap.delete(sessionId)
+  publishActivity()
+}
+
 
 export function handleActivity(sessionId: string) {
   // Clear existing timers for this session.
+  if (selectedId.value === sessionId) {
+    clearSessionActivity(sessionId)
+    return
+  }
+  const sess = sessions.value.find(s => s.id === sessionId)
+  if (sess && (!sess.alive || !sess.unread || sess.status?.working)) {
+    clearSessionActivity(sessionId)
+    return
+  }
   const t1 = _actTimers.get(sessionId)
   if (t1) clearTimeout(t1)
   const t2 = _fadeTimers.get(sessionId)
@@ -289,23 +318,13 @@ export const currentProjectSlug = computed(() =>
 )
 
 /** Dot state for the mobile hamburger: summarizes background session activity. */
-export type DotState = 'working' | 'error' | 'unread' | 'active' | 'fading' | 'none'
-
-export const backgroundActivity = computed((): DotState => {
-  const sel = selectedId.value
-  const am = activityMap.value
-  const others = sessions.value.filter(s => s.id !== sel && s.alive)
-  if (others.some(s => s.status?.error))          return 'error'
-  if (others.some(s => s.status?.working))        return 'working'
-  if (others.some(s => s.unread))                 return 'unread'
-  if (others.some(s => am.get(s.id) === 'active')) return 'active'
-  if (others.some(s => am.get(s.id) === 'fading')) return 'fading'
-  return 'none'
-})
+export const backgroundActivity = computed((): DotState =>
+  backgroundDotState(sessions.value, activityMap.value, selectedId.value),
+)
 
 /** Count of unread sessions (excluding selected). */
 export const unreadCount = computed(() =>
-  sessions.value.filter(s => s.id !== selectedId.value && s.alive && s.unread).length,
+  unreadSessionCount(sessions.value, selectedId.value),
 )
 
 // ── Mutators ────────────────────────────────────────────────────────────────
@@ -418,7 +437,16 @@ export function removeSession(id: string) {
   publishActivity()
 }
 
+export function clearProjectActivity(projectSlug: string) {
+  const ids = sessionIdsInProject(sessions.value, projects.value, projectSlug)
+  for (const id of ids) {
+    if (activityMap.value.has(id)) clearSessionActivity(id)
+  }
+}
+
+
 export function markSessionRead(id: string) {
+  clearSessionActivity(id)
   sessions.value = sessions.value.map(s =>
     s.id === id
       ? { ...s, unread: false, status: s.status?.error ? { ...s.status, error: false } : s.status }
@@ -865,15 +893,27 @@ export function initStore(): () => void {
   })
   cleanups.push(disposeUrlNorm)
 
-  // Mark-as-read effect: clear unread/error flags when viewing a session.
+  // Mark-as-read effect: clear attention flags when viewing a session.
   const disposeMarkRead = effect(() => {
     const id = selectedId.value
     const sess = selected.value
     if (!id || !sess) return
+    if (activityMap.value.has(id)) {
+      clearSessionActivity(id)
+    }
     if (sess.unread || sess.status?.error) {
       markSessionRead(id)
     }
   })
+
+  // Project hub is foreground for transient activity in that workspace.
+  // Do not mark sessions read here; clear only active/fading animation.
+  const disposeClearProjectActivity = effect(() => {
+    const slug = currentProjectSlug.value
+    if (!slug) return
+    clearProjectActivity(slug)
+  })
+  cleanups.push(disposeClearProjectActivity)
   cleanups.push(disposeMarkRead)
 
   return () => cleanups.forEach(fn => fn())

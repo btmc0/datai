@@ -105,8 +105,8 @@ func Scan(sessions *store.Store, subs *Subscriptions, fileMon *FileMonitor, onDe
 			continue
 		}
 		sockPath := filepath.Join(dir, entry.Name())
-		if tracked, ok := trackedSockets[sockPath]; ok && tracked.Alive {
-			continue // already tracked as live
+		if tracked, ok := trackedSockets[sockPath]; ok && tracked.Alive && subs != nil && subs.IsActive(tracked.ID) {
+			continue // already tracked by this daemon as live
 		}
 		if err := Register(sessions, subs, fileMon, sockPath, onDead); err != nil {
 			// Only remove sockets old enough to be genuinely stale.
@@ -147,7 +147,7 @@ func Scan(sessions *store.Store, subs *Subscriptions, fileMon *FileMonitor, onDe
 		}
 		// Socket gone or unresponsive — mark dead.
 		s.Alive = false
-		s.Status = nil
+		s.ClearAttentionStatusFrom("discovery/prune")
 		if fileMon != nil {
 			if cmd := fileMon.ResolveResumeCommand(&s); cmd != nil {
 				s.Command = cmd
@@ -225,7 +225,11 @@ func Register(sessions *store.Store, subs *Subscriptions, fileMon *FileMonitor, 
 		existing.StartedAt = newSess.StartedAt
 		existing.ExitedAt = newSess.ExitedAt
 		existing.ExitCode = newSess.ExitCode
-		existing.Status = newSess.Status
+		if newSess.Status == nil {
+			existing.ClearAttentionStatusFrom("discovery/register")
+		} else {
+			existing.ApplyAttentionStatusFrom("discovery/register", newSess.Status)
+		}
 		existing.BinaryHash = newSess.BinaryHash
 		existing.RunnerVersion = newSess.RunnerVersion
 		existing.Command = newSess.Command

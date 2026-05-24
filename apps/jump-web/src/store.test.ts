@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
-import { sessions, sessionsLoaded, projects, upsertSession, removeSession, markSessionRead, handleActivity, isSessionActive, isSessionFading, activityMap, activityGeneration, sessionStaleness, peers, peerAppearance, urlPath, selectedId, navigateToSession, setNavigate, launchSession, removeProject, health, startHealthRefresh, HEALTH_REFRESH_MS, HEALTH_REFRESH_SETTLE_MS, appearance, setThemeId, notificationPreferences, setNotificationPreferences, initStore } from './store'
+import { sessions, sessionsLoaded, projects, upsertSession, removeSession, markSessionRead, handleActivity, isSessionActive, isSessionFading, activityMap, activityGeneration, clearProjectActivity, sessionStaleness, peers, peerAppearance, urlPath, selectedId, navigateToSession, setNavigate, launchSession, removeProject, health, startHealthRefresh, HEALTH_REFRESH_MS, HEALTH_REFRESH_SETTLE_MS, appearance, setThemeId, notificationPreferences, setNotificationPreferences, initStore } from './store'
 import { APPEARANCE_STORAGE_KEY } from './appearance'
 import { DEFAULT_NOTIFICATION_PREFERENCES } from './notifications'
 import type { Session } from './types'
@@ -402,12 +402,53 @@ describe('activity tracking', () => {
     expect(isSessionFading('sess-1')).toBe(false)
   })
 
+  it('ignores activity for a read known session', () => {
+    sessions.value = [makeSession({ id: 'sess-1', unread: false })]
+    handleActivity('sess-1')
+    expect(isSessionActive('sess-1')).toBe(false)
+    expect(isSessionFading('sess-1')).toBe(false)
+  })
+
+  it('uses activity only to repulse an unread idle session', () => {
+    sessions.value = [makeSession({ id: 'sess-1', unread: true, status: null })]
+    const before = activityGeneration.value.get('sess-1') ?? 0
+    handleActivity('sess-1')
+    expect(activityGeneration.value.get('sess-1')).toBe(before + 1)
+  })
+
+  it('ignores activity while a session is still working', () => {
+    sessions.value = [makeSession({ id: 'sess-1', unread: true, status: { label: '', working: true } })]
+    handleActivity('sess-1')
+    expect(isSessionActive('sess-1')).toBe(false)
+    expect(isSessionFading('sess-1')).toBe(false)
+  })
+
+
   it('increments activity generation on each activity event', () => {
     const before = activityGeneration.value.get('sess-1') ?? 0
     handleActivity('sess-1')
     handleActivity('sess-1')
     expect(activityGeneration.value.get('sess-1')).toBe(before + 2)
   })
+
+  it('clears activity for sessions in a viewed project only', () => {
+    projects.value = [
+      { slug: 'tilth', match: [{ path: '/repo/tilth' }] },
+      { slug: 'other', match: [{ path: '/repo/other' }] },
+    ]
+    sessions.value = [
+      makeSession({ id: 'sess-tilth', cwd: '/repo/tilth', unread: true }),
+      makeSession({ id: 'sess-other', cwd: '/repo/other', unread: true }),
+    ]
+    handleActivity('sess-tilth')
+    handleActivity('sess-other')
+
+    clearProjectActivity('tilth')
+
+    expect(isSessionActive('sess-tilth')).toBe(false)
+    expect(isSessionActive('sess-other')).toBe(true)
+  })
+
 
   it('cleans activity state when a session is removed', () => {
     sessions.value = [makeSession({ id: 'sess-1' })]

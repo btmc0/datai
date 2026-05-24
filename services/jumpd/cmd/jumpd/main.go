@@ -473,7 +473,7 @@ func serve(stderr io.Writer) int {
 	// needed.
 	metaEvents, cancelMetaEvents := sessions.Subscribe()
 	defer cancelMetaEvents()
-	go metaStore.WatchRemovals(metaEvents)
+	go metaStore.WatchEvents(metaEvents)
 
 	// Build command titlers from adapters that implement CommandTitler.
 	commandTitlers := make(map[string]func([]string) string)
@@ -498,7 +498,7 @@ func serve(stderr io.Writer) int {
 	subs.OnExit = func(sess *store.Session) bool {
 		if cmd := fileMon.ResolveResumeCommand(sess); cmd != nil {
 			sess.Command = cmd
-			sess.Status = nil // clear exit status for clean resumable display
+			sess.ClearAttentionStatusFrom("runner/resume") // clear exit status for clean resumable display
 			return true
 		}
 		return false
@@ -1324,7 +1324,7 @@ func serve(stderr io.Writer) int {
 				if err := discovery.KillSession(sess.SocketPath); err != nil {
 					log.Printf("kill: %s: runner unreachable, forcing dead: %v", sessionID, err)
 					sess.Alive = false
-					sess.Status = nil
+					sess.ClearAttentionStatusFrom("session/delete")
 					if fileMon != nil {
 						if cmd := fileMon.ResolveResumeCommand(&sess); cmd != nil {
 							sess.Command = cmd
@@ -1346,11 +1346,11 @@ func serve(stderr io.Writer) int {
 				writeError(w, http.StatusMethodNotAllowed, "bad_request", "method not allowed")
 				return
 			}
+			if sess, ok := sessions.Get(sessionID); ok && (sess.Unread || (sess.Status != nil && sess.Status.Error)) {
+				log.Printf("read: clearing attention for %s (%s)", sessionID, sess.Title)
+			}
 			sessions.Update(sessionID, func(sess *store.Session) {
-				sess.Unread = false
-				if sess.Status != nil && sess.Status.Error {
-					sess.Status.Error = false
-				}
+				sess.MarkAttentionReadFrom("read")
 			})
 			writeJSON(w, map[string]any{"ok": true, "data": map[string]any{}})
 

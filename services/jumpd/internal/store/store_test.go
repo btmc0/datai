@@ -1,7 +1,10 @@
 package store
 
 import (
+	"bytes"
 	"encoding/json"
+	"log"
+	"strings"
 	"testing"
 	"time"
 )
@@ -141,6 +144,107 @@ func TestDerivedResumable_ShellIsResumable(t *testing.T) {
 	got, _ := s.Get("s1")
 	if !got.Resumable {
 		t.Error("dead shell session with command should be resumable")
+	}
+}
+
+func TestAttentionLifecycleTraceLogsChangedTransitions(t *testing.T) {
+	var buf bytes.Buffer
+	oldOut := log.Writer()
+	oldFlags := log.Flags()
+	log.SetOutput(&buf)
+	log.SetFlags(0)
+	defer func() {
+		log.SetOutput(oldOut)
+		log.SetFlags(oldFlags)
+	}()
+
+	sess := Session{ID: "sess-trace"}
+	sess.ApplyAttentionStatusFrom("test/status", &Status{Working: true})
+	sess.ApplyAttentionStatusFrom("test/status", &Status{Working: true}) // no-op
+
+	out := buf.String()
+	if strings.Count(out, "attention: sess-trace") != 1 {
+		t.Fatalf("trace log count = %d, want 1; log=%q", strings.Count(out, "attention: sess-trace"), out)
+	}
+	if !strings.Contains(out, "source=test/status") || !strings.Contains(out, "unread=false->false") {
+		t.Fatalf("trace log missing source/state: %q", out)
+	}
+}
+
+func TestAttentionLifecycleTraceLogsReadTransition(t *testing.T) {
+	var buf bytes.Buffer
+	oldOut := log.Writer()
+	oldFlags := log.Flags()
+	log.SetOutput(&buf)
+	log.SetFlags(0)
+	defer func() {
+		log.SetOutput(oldOut)
+		log.SetFlags(oldFlags)
+	}()
+
+	sess := Session{ID: "sess-read", Unread: true, Status: &Status{Error: true}}
+	if !sess.MarkAttentionReadFrom("read") {
+		t.Fatal("expected read transition")
+	}
+
+	out := buf.String()
+	if !strings.Contains(out, "attention: sess-read source=read") || !strings.Contains(out, "unread=true->false") {
+		t.Fatalf("trace log missing read transition: %q", out)
+	}
+}
+
+func TestAttentionLifecycleStatusAndUnread(t *testing.T) {
+	sess := Session{ID: "s1", Alive: true}
+
+	sess.ApplyAttentionStatus(&Status{Working: true})
+	if sess.Status == nil || !sess.Status.Working {
+		t.Fatalf("working status not applied: %+v", sess.Status)
+	}
+
+	unread := true
+	sess.ApplyAttentionUpdate(&Status{}, &unread, true)
+	if sess.Status != nil {
+		t.Fatalf("idle status should clear, got %+v", sess.Status)
+	}
+	if !sess.Unread {
+		t.Fatal("expected unread after done update")
+	}
+
+	sess.ApplyAttentionStatus(&Status{Error: true})
+	if sess.Status == nil || !sess.Status.Error {
+		t.Fatalf("error status not applied: %+v", sess.Status)
+	}
+	if !sess.MarkAttentionRead() {
+		t.Fatal("expected MarkAttentionRead to report changed")
+	}
+	if sess.Unread {
+		t.Fatal("expected unread cleared")
+	}
+	if sess.Status != nil {
+		t.Fatalf("expected error-only status cleared, got %+v", sess.Status)
+	}
+}
+
+func TestAttentionLifecycleReadKeepsWorking(t *testing.T) {
+	sess := Session{ID: "s1", Alive: true, Unread: true, Status: &Status{Working: true, Error: true}}
+
+	if !sess.MarkAttentionRead() {
+		t.Fatal("expected MarkAttentionRead to report changed")
+	}
+	if sess.Unread {
+		t.Fatal("expected unread cleared")
+	}
+	if sess.Status == nil || !sess.Status.Working || sess.Status.Error {
+		t.Fatalf("expected working status preserved with error cleared, got %+v", sess.Status)
+	}
+}
+
+func TestAttentionLifecycleCanSuppressHistoricalUnread(t *testing.T) {
+	sess := Session{ID: "s1", Alive: true}
+	unread := true
+	sess.ApplyAttentionUpdate(&Status{}, &unread, false)
+	if sess.Unread {
+		t.Fatal("expected historical unread to be suppressed")
 	}
 }
 
