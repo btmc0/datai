@@ -26,6 +26,16 @@ graph LR
 - `jumpd`: discovers sessions, serves the Web UI/API, stores state, and connects to optional remote transports.
 - `jump-relayd`: transport-only public relay; it does not store sessions.
 
+## Features
+
+- **Durable command sessions**: run agents, test watchers, builds, and other long-running commands without tying them to one terminal window.
+- **Browser terminal for agent/TUI workflows**: open `jump` to switch projects, attach to live PTY sessions, and keep Codex-style TUIs usable in the browser.
+- **Notifications and attention tracking**: browser notifications, unread markers, stopped-session states, and attention dots help you spot which session needs review.
+- **Easy remote access, two ways**:
+  - **Tailscale/tsnet** for private tailnet access without exposing the daemon publicly.
+  - **`jump-relayd`** for public HTTPS/WSS access through an outbound-only relay connection.
+- **Local-first by default**: `jumpd` listens on `127.0.0.1` unless you explicitly opt into LAN, tailnet, or relay access.
+
 ## Quick start (local)
 
 Install the latest release:
