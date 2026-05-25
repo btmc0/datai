@@ -390,6 +390,137 @@ describe('attachMobileInputHandler', () => {
     expect(textarea.value).toBe('hello bi')
   })
 
+  it('corrects iOS Chrome Vietnamese collapsed token commits without full-line rewrites', () => {
+    const insert = (data: string) => {
+      textarea.selectionStart = textarea.selectionEnd = textarea.value.length
+      return simulateInput(textarea, container, 'insertText', data)
+    }
+    const xtermThenInsert = (data: string) => {
+      term.emitData(data)
+      insert(data)
+    }
+    const domDelete = () => {
+      textarea.selectionStart = textarea.selectionEnd = textarea.value.length
+      return simulateInput(textarea, container, 'deleteContentBackward', '')
+    }
+
+    xtermThenInsert('g')
+    xtermThenInsert('o')
+    term.emitData('\x7f')
+    domDelete()
+    xtermThenInsert('õ')
+    xtermThenInsert(' ')
+
+    xtermThenInsert('t')
+    xtermThenInsert('i')
+    xtermThenInsert('e')
+    term.emitData('\x7f')
+    xtermThenInsert('ê')
+
+    term.emitData('n')
+    term.emitData('g')
+    term.emitData('\x7f')
+    domDelete()
+    domDelete()
+    term.emitData('ế')
+    sent = ''
+    let r = insert('ếng')
+
+    expect(r.stoppedBeforeXterm).toBe(true)
+    expect(sent).toBe('\x7f'.repeat(3) + 'ếng')
+
+    sent = ''
+    xtermThenInsert(' ')
+    xtermThenInsert('v')
+    xtermThenInsert('i')
+    xtermThenInsert('e')
+    term.emitData('\x7f')
+    xtermThenInsert('ê')
+
+    term.emitData('t')
+    term.emitData('\x7f')
+    domDelete()
+    term.emitData('ệ')
+    r = insert('ệt')
+
+    expect(r.stoppedBeforeXterm).toBe(true)
+    expect(sent).toBe('\x7f'.repeat(2) + 'ệt')
+  })
+
+  it('handles iOS collapsed commits that include the token prefix or lack a DOM baseline', () => {
+    const insert = (data: string) => {
+      textarea.selectionStart = textarea.selectionEnd = textarea.value.length
+      return simulateInput(textarea, container, 'insertText', data)
+    }
+    const xtermThenInsert = (data: string) => {
+      term.emitData(data)
+      insert(data)
+    }
+    const domDelete = () => {
+      textarea.selectionStart = textarea.selectionEnd = textarea.value.length
+      return simulateInput(textarea, container, 'deleteContentBackward', '')
+    }
+
+    // Real trace shape for "lỗi": iOS commits "lỗ" (including the prefix),
+    // while xterm's stale token is "ll". The fix must replace the duplicate
+    // prefix, not append the accent to produce "llỗ".
+    xtermThenInsert('l')
+    xtermThenInsert('ô')
+    sent = ''
+    term.emitData('\x7f')
+    domDelete()
+    term.emitData('l')
+
+    let r = insert('lỗ')
+
+    expect(r.stoppedBeforeXterm).toBe(true)
+    expect(sent).toBe('\x7fỗ')
+
+    // Real trace shape for "bình": no prior DOM token baseline survived, but
+    // xterm's stale token is "binì" and iOS commits "ình".
+    sent = ''
+    xtermThenInsert(' ')
+    term.emitData('binx')
+    term.emitData('\x7f')
+    domDelete()
+    domDelete()
+    term.emitData('ì')
+
+    r = insert('ình')
+
+    expect(r.stoppedBeforeXterm).toBe(true)
+    expect(sent).toBe('\x7f'.repeat(3) + 'ình')
+    // Real trace shape for "thường": iOS first replaces raw "uơ" with the
+    // Vietnamese vowel cluster "ươ". The stale xterm token is "thuư", but the
+    // correct target is "thươn", not "thuươn".
+    sent = ''
+    xtermThenInsert(' ')
+    xtermThenInsert('t')
+    xtermThenInsert('h')
+    xtermThenInsert('u')
+    xtermThenInsert('o')
+    term.emitData('\x7f')
+    xtermThenInsert('ơ')
+    term.emitData('\x7f')
+    domDelete()
+    term.emitData('ư')
+
+    r = insert('ươn')
+
+    expect(r.stoppedBeforeXterm).toBe(true)
+    expect(sent).toBe('\x7f'.repeat(2) + 'ươn')
+
+    sent = ''
+    term.emitData('\x7f')
+    domDelete()
+    domDelete()
+    term.emitData('ờ')
+
+    r = insert('ờng')
+
+    expect(r.stoppedBeforeXterm).toBe(true)
+    expect(sent).toBe('\x7f'.repeat(2) + 'ờng')
+  })
   it('does not treat collapsed backspace + typing as autocorrect', () => {
     // Non-collapsed delete sets tracking
     textarea.value = 'hello world'

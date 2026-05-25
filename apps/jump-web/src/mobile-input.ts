@@ -56,6 +56,9 @@ interface PendingReplacement {
   newText: string
   suffix: string
   nextValue: string
+  /** Token after sending this replacement, when the replacement is a bounded
+   *  iOS collapsed Vietnamese correction. */
+  nextToken?: string
   /** When set, reset textarea.value after sending to neutralize xterm's
    *  _handleAnyTextareaChanges deferred diff (Android keyCode-229 path). */
   resetValue?: string
@@ -67,6 +70,76 @@ interface TrackedDeletion {
   preDeleteValue: string
   deleteStart: number
   deleteEnd: number
+}
+
+const BACKSPACE = '\x7f'
+const MAX_TRACKED_TOKEN_CODEPOINTS = 64
+const MAX_CORRECTION_CODEPOINTS = 32
+
+function codepoints(value: string): string[] {
+  return [...value]
+}
+
+function codepointLength(value: string): number {
+  return codepoints(value).length
+}
+
+function dropLastCodepoints(value: string, count: number): string {
+  const chars = codepoints(value)
+  chars.splice(Math.max(0, chars.length - count), count)
+  return chars.join('')
+}
+
+function dropLastCodepoint(value: string): string {
+  const chars = codepoints(value)
+  chars.pop()
+  return chars.join('')
+}
+
+function startsWithCodepointPrefix(value: string, prefix: string): boolean {
+  return prefix !== '' && codepoints(value).slice(0, codepointLength(prefix)).join('') === prefix
+}
+
+function replaceCurrentSuffixWithCommit(currentToken: string, newText: string): string {
+  const current = codepoints(currentToken)
+  const replacementLength = codepointLength(newText)
+  const prefixLength = Math.max(0, current.length - replacementLength)
+  return `${current.slice(0, prefixLength).join('')}${newText}`.normalize('NFC')
+}
+
+function startsWithTonedOHook(value: string): boolean {
+  const first = codepoints(value)[0]
+  return first === 'ờ' || first === 'ở' || first === 'ỡ' || first === 'ớ' || first === 'ợ'
+}
+
+function collapsedCommitTarget(currentToken: string, tokenAtLastDomInput: string, newText: string): string {
+  const normalizedNewText = newText.normalize('NFC')
+  if (startsWithTonedOHook(normalizedNewText) && tokenAtLastDomInput.endsWith('ơn')) {
+    return `${dropLastCodepoints(tokenAtLastDomInput, 2)}${normalizedNewText}`.normalize('NFC')
+  }
+  if (normalizedNewText.startsWith('ươ')) {
+    if (tokenAtLastDomInput.endsWith('uơ')) return `${dropLastCodepoints(tokenAtLastDomInput, 2)}${normalizedNewText}`.normalize('NFC')
+    if (currentToken.endsWith('uư')) return `${dropLastCodepoints(currentToken, 2)}${normalizedNewText}`.normalize('NFC')
+  }
+  const previousStem = dropLastCodepoint(tokenAtLastDomInput)
+  if (!previousStem) return replaceCurrentSuffixWithCommit(currentToken, normalizedNewText)
+  if (startsWithCodepointPrefix(normalizedNewText, previousStem)) return normalizedNewText
+  return `${previousStem}${normalizedNewText}`.normalize('NFC')
+}
+
+function isTokenCharacter(ch: string): boolean {
+  const code = ch.codePointAt(0) ?? 0
+  return code > 0x20 && code !== 0x7f && !ch.startsWith('\x1b')
+}
+
+function tokenCorrection(currentToken: string, targetToken: string): string {
+  const current = codepoints(currentToken)
+  const target = codepoints(targetToken)
+  let prefix = 0
+  while (prefix < current.length && prefix < target.length && current[prefix] === target[prefix]) {
+    prefix++
+  }
+  return BACKSPACE.repeat(current.length - prefix) + target.slice(prefix).join('')
 }
 
 /**
@@ -102,6 +175,9 @@ export function attachMobileInputHandler(
   let pending: PendingReplacement | null = null
   let trackedDeletion: TrackedDeletion | null = null
   let composing = false
+  let currentToken = ''
+  let tokenAtLastDomInput = ''
+  let sawBackspaceSinceLastDomInput = false
   let resetSyncTimer: ReturnType<typeof setTimeout> | null = null
 
   /** Queue a replacement for phase 2 and send the necessary backspaces now. */
@@ -113,7 +189,9 @@ export function attachMobileInputHandler(
     resetValue?: string,
   ) => {
     const suffix = value.substring(selEnd)
-    send('\x7f'.repeat(value.length - selStart))
+    const erase = BACKSPACE.repeat(value.length - selStart)
+    send(erase)
+    applyTerminalDataToToken(erase)
     pending = {
       newText,
       suffix,
@@ -122,8 +200,43 @@ export function attachMobileInputHandler(
     }
   }
 
+  const applyTerminalDataToToken = (data: string) => {
+    for (const ch of data) {
+      if (ch === BACKSPACE || ch === '\b') {
+        currentToken = dropLastCodepoint(currentToken)
+        sawBackspaceSinceLastDomInput = true
+        continue
+      }
+
+      if (!isTokenCharacter(ch)) {
+        currentToken = ''
+        tokenAtLastDomInput = ''
+        sawBackspaceSinceLastDomInput = false
+        continue
+      }
+
+      currentToken = `${currentToken}${ch}`.normalize('NFC')
+      if (codepointLength(currentToken) > MAX_TRACKED_TOKEN_CODEPOINTS) {
+        currentToken = ''
+        tokenAtLastDomInput = ''
+        sawBackspaceSinceLastDomInput = false
+      }
+    }
+  }
+
+  const markDomInputObserved = (ev?: Event) => {
+    const inputType = (ev && 'inputType' in ev) ? (ev as InputEvent).inputType : undefined
+    if (inputType === 'deleteContentBackward') {
+      return
+    }
+    tokenAtLastDomInput = currentToken
+    sawBackspaceSinceLastDomInput = false
+  }
+
   const syncTextareaForTerminalData = (data: string) => {
     if (!isTouchPrimary || composing || pending) return
+
+    applyTerminalDataToToken(data)
 
     let value = textarea.value
     let start = textarea.selectionStart ?? value.length
@@ -131,7 +244,7 @@ export function attachMobileInputHandler(
     let changed = false
 
     for (const ch of data) {
-      if (ch !== '\x7f' && ch !== '\b') continue
+      if (ch !== BACKSPACE && ch !== '\b') continue
 
       if (start < end) {
         value = value.substring(0, start) + value.substring(end)
@@ -194,8 +307,30 @@ export function attachMobileInputHandler(
       return
     }
 
-    // Collapsed selection = normal append, let xterm handle it.
-    if (start === end) return
+    if (start === end) {
+      const newText = resolveText(ev)
+      const replacementLength = codepointLength(newText)
+      if (ev.inputType === 'insertText'
+        && replacementLength > 1
+        && replacementLength <= MAX_CORRECTION_CODEPOINTS
+        && sawBackspaceSinceLastDomInput
+        && currentToken) {
+        // iOS Chrome Vietnamese Telex/VNI does not emit composition events.
+        // xterm first sends a stale mutable token, then the DOM commits the
+        // corrected syllable as collapsed multi-character insertText.
+        const targetToken = collapsedCommitTarget(currentToken, tokenAtLastDomInput, newText)
+        const correction = tokenCorrection(currentToken, targetToken)
+        if (correction && codepointLength(correction) <= MAX_CORRECTION_CODEPOINTS) {
+          pending = {
+            newText: correction,
+            suffix: '',
+            nextValue: textarea.value.substring(0, start) + newText + textarea.value.substring(end),
+            nextToken: targetToken,
+          }
+        }
+      }
+      return
+    }
 
     // iOS / single-event replacement: insertText or insertReplacementText
     // with non-collapsed selection.
@@ -223,14 +358,24 @@ export function attachMobileInputHandler(
       pending = null
       return
     }
-    if (!pending) return
-    const { newText, suffix, nextValue, resetValue } = pending
+    if (!pending) {
+      markDomInputObserved(ev)
+      return
+    }
+    const { newText, suffix, nextValue, nextToken, resetValue } = pending
     pending = null
 
     // Prevent xterm's _inputEvent from also sending ev.data.
     ev.stopImmediatePropagation()
 
-    send(newText + suffix)
+    const sentText = newText + suffix
+    send(sentText)
+    if (nextToken !== undefined) {
+      currentToken = nextToken
+    } else {
+      applyTerminalDataToToken(sentText)
+    }
+    markDomInputObserved()
 
     // Android: reset textarea to the pre-autocorrect value. xterm's
     // CompositionHelper._handleAnyTextareaChanges (triggered by keydown 229)
