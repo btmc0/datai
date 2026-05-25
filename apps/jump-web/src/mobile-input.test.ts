@@ -390,6 +390,26 @@ describe('attachMobileInputHandler', () => {
     expect(textarea.value).toBe('hello bi')
   })
 
+  it('does not touch textarea DOM state for ordinary terminal data', () => {
+    Object.defineProperty(textarea, 'value', {
+      configurable: true,
+      get() { throw new Error('textarea.value read') },
+      set() { throw new Error('textarea.value written') },
+    })
+    Object.defineProperty(textarea, 'selectionStart', {
+      configurable: true,
+      get() { throw new Error('selectionStart read') },
+      set() { throw new Error('selectionStart written') },
+    })
+    Object.defineProperty(textarea, 'selectionEnd', {
+      configurable: true,
+      get() { throw new Error('selectionEnd read') },
+      set() { throw new Error('selectionEnd written') },
+    })
+
+    expect(() => term.emitData('a')).not.toThrow()
+  })
+
   it('corrects iOS Chrome Vietnamese collapsed token commits without full-line rewrites', () => {
     const insert = (data: string) => {
       textarea.selectionStart = textarea.selectionEnd = textarea.value.length

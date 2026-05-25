@@ -127,9 +127,25 @@ function collapsedCommitTarget(currentToken: string, tokenAtLastDomInput: string
   return `${previousStem}${normalizedNewText}`.normalize('NFC')
 }
 
+const COMBINING_MARK = /[\u0300-\u036f\u1ab0-\u1aff\u1dc0-\u1dff\u20d0-\u20ff\ufe20-\ufe2f]/
+
 function isTokenCharacter(ch: string): boolean {
   const code = ch.codePointAt(0) ?? 0
   return code > 0x20 && code !== 0x7f && !ch.startsWith('\x1b')
+}
+
+function appendTokenCharacter(token: string, ch: string): string {
+  const next = `${token}${ch}`
+  return COMBINING_MARK.test(ch) ? next.normalize('NFC') : next
+}
+
+function exceedsTrackedTokenLimit(token: string): boolean {
+  return token.length > MAX_TRACKED_TOKEN_CODEPOINTS
+    && codepointLength(token) > MAX_TRACKED_TOKEN_CODEPOINTS
+}
+
+function hasTerminalBackspace(data: string): boolean {
+  return data.includes(BACKSPACE) || data.includes('\b')
 }
 
 function tokenCorrection(currentToken: string, targetToken: string): string {
@@ -201,6 +217,12 @@ export function attachMobileInputHandler(
   }
 
   const applyTerminalDataToToken = (data: string) => {
+    if (data.includes('\x1b')) {
+      currentToken = ''
+      tokenAtLastDomInput = ''
+      sawBackspaceSinceLastDomInput = false
+      return
+    }
     for (const ch of data) {
       if (ch === BACKSPACE || ch === '\b') {
         currentToken = dropLastCodepoint(currentToken)
@@ -215,8 +237,8 @@ export function attachMobileInputHandler(
         continue
       }
 
-      currentToken = `${currentToken}${ch}`.normalize('NFC')
-      if (codepointLength(currentToken) > MAX_TRACKED_TOKEN_CODEPOINTS) {
+      currentToken = appendTokenCharacter(currentToken, ch)
+      if (exceedsTrackedTokenLimit(currentToken)) {
         currentToken = ''
         tokenAtLastDomInput = ''
         sawBackspaceSinceLastDomInput = false
@@ -237,6 +259,8 @@ export function attachMobileInputHandler(
     if (!isTouchPrimary || composing || pending) return
 
     applyTerminalDataToToken(data)
+
+    if (!hasTerminalBackspace(data)) return
 
     let value = textarea.value
     let start = textarea.selectionStart ?? value.length
