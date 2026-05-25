@@ -156,6 +156,15 @@ function countTerminalBackspaces(data: string): number {
   return count
 }
 
+function isIOSLikeDevice(): boolean {
+  if (typeof navigator === 'undefined') return false
+  const ua = navigator.userAgent ?? ''
+  const platform = navigator.platform ?? ''
+  const maxTouchPoints = navigator.maxTouchPoints ?? 0
+  return /\b(iPad|iPhone|iPod)\b/.test(ua)
+    || (platform === 'MacIntel' && maxTouchPoints > 1)
+}
+
 function tokenCorrection(currentToken: string, targetToken: string): string {
   const current = codepoints(currentToken)
   const target = codepoints(targetToken)
@@ -195,6 +204,8 @@ export function attachMobileInputHandler(
   let isTouchPrimary = pointerQuery.matches
   const onPointerChange = () => { isTouchPrimary = pointerQuery.matches }
   pointerQuery.addEventListener('change', onPointerChange)
+
+  const isIOSLike = isIOSLikeDevice()
 
   let pending: PendingReplacement | null = null
   let trackedDeletion: TrackedDeletion | null = null
@@ -394,7 +405,8 @@ export function attachMobileInputHandler(
         && replacementLength > 1
         && replacementLength <= MAX_CORRECTION_CODEPOINTS
         && sawBackspaceSinceLastDomInput
-        && currentToken) {
+        && currentToken
+        && isIOSLike) {
         // iOS Chrome Vietnamese Telex/VNI does not emit composition events.
         // xterm first sends a stale mutable token, then the DOM commits the
         // corrected syllable as collapsed multi-character insertText.

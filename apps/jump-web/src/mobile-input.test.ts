@@ -22,6 +22,18 @@ Object.defineProperty(window, 'matchMedia', { value: matchMediaMock, writable: t
 
 // ── Test helpers ──
 
+function setNavigatorForTest(overrides: Partial<Navigator> = {}) {
+  Object.defineProperty(window, 'navigator', {
+    configurable: true,
+    value: {
+      userAgent: 'Mozilla/5.0 (iPad; CPU OS 18_5_0 like Mac OS X) AppleWebKit/605.1.15',
+      platform: 'iPad',
+      maxTouchPoints: 5,
+      ...overrides,
+    },
+  })
+}
+
 /** Minimal fake textarea. */
 function createFakeTextarea() {
   let value = ''
@@ -210,6 +222,7 @@ describe('attachMobileInputHandler', () => {
   let dispose: () => void
 
   beforeEach(() => {
+    setNavigatorForTest()
     textarea = createFakeTextarea()
     container = createFakeContainer()
     term = createFakeTerminal(textarea)
@@ -508,6 +521,45 @@ describe('attachMobileInputHandler', () => {
 
     expect(r.stoppedBeforeXterm).toBe(true)
     expect(sent).toBe('\x7f'.repeat(2) + 'ệt')
+  })
+
+  it('does not run iOS collapsed Vietnamese correction on non-iOS touch devices', () => {
+    dispose()
+    setNavigatorForTest({
+      userAgent: 'Mozilla/5.0 (Linux; Android 15; Pixel Tablet) AppleWebKit/537.36 Chrome/126 Mobile Safari/537.36',
+      platform: 'Linux armv8l',
+      maxTouchPoints: 5,
+    })
+    dispose = attachMobileInputHandler(
+      term as any,
+      container as any,
+      send,
+    )
+
+    const insert = (data: string) => {
+      textarea.selectionStart = textarea.selectionEnd = textarea.value.length
+      return simulateInput(textarea, container, 'insertText', data)
+    }
+    const xtermThenInsert = (data: string) => {
+      term.emitData(data)
+      insert(data)
+    }
+    const domDelete = () => {
+      textarea.selectionStart = textarea.selectionEnd = textarea.value.length
+      return simulateInput(textarea, container, 'deleteContentBackward', '')
+    }
+
+    xtermThenInsert('l')
+    xtermThenInsert('ô')
+    sent = ''
+    term.emitData('\x7f')
+    domDelete()
+    term.emitData('l')
+
+    const r = insert('lỗ')
+
+    expect(r.stoppedBeforeXterm).toBe(false)
+    expect(sent).toBe('')
   })
 
   it('handles iOS collapsed commits that include the token prefix or lack a DOM baseline', () => {
