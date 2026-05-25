@@ -173,6 +173,32 @@ function simulateAndroidAutocorrect(
   return simulateInput(textarea, container, 'insertText', data)
 }
 
+function simulateBrowserBackspace(
+  textarea: ReturnType<typeof createFakeTextarea>,
+  container: ReturnType<typeof createFakeContainer>,
+): void {
+  textarea.dispatch('beforeinput', {
+    inputType: 'deleteContentBackward',
+    data: null,
+    dataTransfer: null,
+  })
+
+  const start = textarea.selectionStart
+  const end = textarea.selectionEnd
+  if (start < end) {
+    textarea.value = textarea.value.substring(0, start) + textarea.value.substring(end)
+    textarea.selectionStart = textarea.selectionEnd = start
+  } else if (start > 0) {
+    textarea.value = textarea.value.substring(0, start - 1) + textarea.value.substring(end)
+    textarea.selectionStart = textarea.selectionEnd = start - 1
+  }
+
+  const result = container.dispatch('input', { inputType: 'deleteContentBackward', data: null })
+  if (!result.immediateStopped) {
+    textarea.dispatch('input', { inputType: 'deleteContentBackward', data: null })
+  }
+}
+
 // ── Tests ──
 
 describe('attachMobileInputHandler', () => {
@@ -198,6 +224,7 @@ describe('attachMobileInputHandler', () => {
 
   afterEach(() => {
     dispose()
+    vi.useRealTimers()
   })
 
   // ── Normal typing (must not interfere) ──
@@ -369,11 +396,14 @@ describe('attachMobileInputHandler', () => {
   })
 
   it('keeps textarea in sync after terminal backspaces before the next Telex replacement', () => {
+    vi.useFakeTimers()
     textarea.value = 'hello vie'
     textarea.selectionStart = textarea.selectionEnd = 9
 
     term.emitData('\x7f\x7f\x7f')
 
+    expect(textarea.value).toBe('hello vie')
+    vi.advanceTimersByTime(16)
     expect(textarea.value).toBe('hello ')
     expect(textarea.selectionStart).toBe(6)
 
@@ -388,6 +418,19 @@ describe('attachMobileInputHandler', () => {
     expect(stoppedBeforeXterm).toBe(true)
     expect(sent).toBe('\x7fị')
     expect(textarea.value).toBe('hello bi')
+  })
+
+  it('does not double-delete when the browser already applied Backspace', () => {
+    vi.useFakeTimers()
+    textarea.value = 'abc'
+    textarea.selectionStart = textarea.selectionEnd = 3
+
+    term.emitData('\x7f')
+    simulateBrowserBackspace(textarea, container)
+    vi.advanceTimersByTime(16)
+
+    expect(textarea.value).toBe('ab')
+    expect(textarea.selectionStart).toBe(2)
   })
 
   it('does not touch textarea DOM state for ordinary terminal data', () => {

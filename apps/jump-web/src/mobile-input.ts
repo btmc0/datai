@@ -75,6 +75,7 @@ interface TrackedDeletion {
 const BACKSPACE = '\x7f'
 const MAX_TRACKED_TOKEN_CODEPOINTS = 64
 const MAX_CORRECTION_CODEPOINTS = 32
+const TEXTAREA_BACKSPACE_SYNC_DELAY_MS = 16
 
 function codepoints(value: string): string[] {
   return [...value]
@@ -91,6 +92,9 @@ function dropLastCodepoints(value: string, count: number): string {
 }
 
 function dropLastCodepoint(value: string): string {
+  if (!value) return ''
+  const last = value.charCodeAt(value.length - 1)
+  if (last < 0xdc00 || last > 0xdfff) return value.slice(0, -1)
   const chars = codepoints(value)
   chars.pop()
   return chars.join('')
@@ -144,8 +148,12 @@ function exceedsTrackedTokenLimit(token: string): boolean {
     && codepointLength(token) > MAX_TRACKED_TOKEN_CODEPOINTS
 }
 
-function hasTerminalBackspace(data: string): boolean {
-  return data.includes(BACKSPACE) || data.includes('\b')
+function countTerminalBackspaces(data: string): number {
+  let count = 0
+  for (const ch of data) {
+    if (ch === BACKSPACE || ch === '\b') count++
+  }
+  return count
 }
 
 function tokenCorrection(currentToken: string, targetToken: string): string {
@@ -195,6 +203,8 @@ export function attachMobileInputHandler(
   let tokenAtLastDomInput = ''
   let sawBackspaceSinceLastDomInput = false
   let resetSyncTimer: ReturnType<typeof setTimeout> | null = null
+  let pendingTextareaBackspaces = 0
+  let textareaBackspaceSyncTimer: ReturnType<typeof setTimeout> | null = null
 
   /** Queue a replacement for phase 2 and send the necessary backspaces now. */
   const queueReplacement = (
@@ -246,9 +256,74 @@ export function attachMobileInputHandler(
     }
   }
 
+  const applyPendingTextareaBackspaceSync = () => {
+    const count = pendingTextareaBackspaces
+    pendingTextareaBackspaces = 0
+    textareaBackspaceSyncTimer = null
+    if (count <= 0 || composing || pending) return
+
+    let value = textarea.value
+    let start = textarea.selectionStart ?? value.length
+    let end = textarea.selectionEnd ?? start
+    let remaining = count
+    let changed = false
+
+    if (start < end && remaining > 0) {
+      value = value.substring(0, start) + value.substring(end)
+      end = start
+      remaining--
+      changed = true
+    }
+
+    if (remaining > 0 && start > 0) {
+      const erase = Math.min(start, remaining)
+      value = value.substring(0, start - erase) + value.substring(end)
+      start -= erase
+      end = start
+      changed = true
+    }
+
+    if (!changed) return
+    textarea.value = value
+    textarea.selectionStart = textarea.selectionEnd = start
+  }
+
+  const clearTextareaBackspaceSync = () => {
+    pendingTextareaBackspaces = 0
+    if (textareaBackspaceSyncTimer !== null) {
+      clearTimeout(textareaBackspaceSyncTimer)
+      textareaBackspaceSyncTimer = null
+    }
+  }
+
+  const flushTextareaBackspaceSync = () => {
+    if (textareaBackspaceSyncTimer !== null) clearTimeout(textareaBackspaceSyncTimer)
+    if (pendingTextareaBackspaces > 0) applyPendingTextareaBackspaceSync()
+  }
+
+  const scheduleTextareaBackspaceSync = (count: number) => {
+    if (count <= 0 || pending) return
+    pendingTextareaBackspaces += count
+    if (textareaBackspaceSyncTimer !== null) return
+    textareaBackspaceSyncTimer = setTimeout(
+      applyPendingTextareaBackspaceSync,
+      TEXTAREA_BACKSPACE_SYNC_DELAY_MS,
+    )
+  }
+
+  const consumeBrowserBackspaceSync = () => {
+    if (pendingTextareaBackspaces <= 0) return
+    pendingTextareaBackspaces--
+    if (pendingTextareaBackspaces === 0 && textareaBackspaceSyncTimer !== null) {
+      clearTimeout(textareaBackspaceSyncTimer)
+      textareaBackspaceSyncTimer = null
+    }
+  }
+
   const markDomInputObserved = (ev?: Event) => {
     const inputType = (ev && 'inputType' in ev) ? (ev as InputEvent).inputType : undefined
     if (inputType === 'deleteContentBackward') {
+      consumeBrowserBackspaceSync()
       return
     }
     tokenAtLastDomInput = currentToken
@@ -259,30 +334,7 @@ export function attachMobileInputHandler(
     if (!isTouchPrimary || composing || pending) return
 
     applyTerminalDataToToken(data)
-
-    if (!hasTerminalBackspace(data)) return
-
-    let value = textarea.value
-    let start = textarea.selectionStart ?? value.length
-    let end = textarea.selectionEnd ?? start
-    let changed = false
-
-    for (const ch of data) {
-      if (ch !== BACKSPACE && ch !== '\b') continue
-
-      if (start < end) {
-        value = value.substring(0, start) + value.substring(end)
-      } else if (start > 0) {
-        value = value.substring(0, start - 1) + value.substring(end)
-        start--
-      }
-      end = start
-      changed = true
-    }
-
-    if (!changed) return
-    textarea.value = value
-    textarea.selectionStart = textarea.selectionEnd = start
+    scheduleTextareaBackspaceSync(countTerminalBackspaces(data))
   }
 
   const dataDisposable = term.onData(syncTextareaForTerminalData)
@@ -298,6 +350,10 @@ export function attachMobileInputHandler(
     // Snapshot and clear tracked deletion at the top; only the
     // deleteContentBackward branch may re-set it below.
     if (composing) return
+    if (ev.inputType === 'insertText' || ev.inputType === 'insertReplacementText') {
+      flushTextareaBackspaceSync()
+    }
+
     const deletion = trackedDeletion
     trackedDeletion = null
 
@@ -366,12 +422,14 @@ export function attachMobileInputHandler(
     composing = true
     pending = null
     trackedDeletion = null
+    clearTextareaBackspaceSync()
   }
 
   const onCompositionEnd = () => {
     composing = false
     pending = null
     trackedDeletion = null
+    clearTextareaBackspaceSync()
   }
 
   // Phase 2: intercept the input event before xterm, send replacement + suffix.
@@ -431,6 +489,7 @@ export function attachMobileInputHandler(
     pointerQuery.removeEventListener('change', onPointerChange)
     dataDisposable.dispose()
     if (resetSyncTimer !== null) clearTimeout(resetSyncTimer)
+    clearTextareaBackspaceSync()
     textarea.removeEventListener('compositionstart', onCompositionStart, { capture: true })
     textarea.removeEventListener('compositionend', onCompositionEnd, { capture: true })
     textarea.removeEventListener('beforeinput', onBeforeInput, { capture: true })
