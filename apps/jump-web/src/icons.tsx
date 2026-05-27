@@ -64,6 +64,18 @@ export function IconTrash({ class: className }: IconProps) {
   return <svg class={className} viewBox="0 0 14 14" aria-hidden="true" {...S}><path d="M3 4h8" /><path d="M5 4V2.8h4V4" /><path d="M4 4.8 4.5 12h5L10 4.8" /><path d="M6 6.5v3M8 6.5v3" /></svg>
 }
 
+export function IconCopy({ class: className }: IconProps) {
+  return <svg class={className} viewBox="0 0 14 14" aria-hidden="true" {...S}><rect x="4.5" y="3.5" width="6.5" height="7.5" rx="1" /><path d="M3 9.5V2.8h6" /></svg>
+}
+
+export function IconScreen({ class: className }: IconProps) {
+  return <svg class={className} viewBox="0 0 14 14" aria-hidden="true" {...S}><rect x="2.3" y="3" width="9.4" height="6.4" rx="1" /><path d="M5.3 11h3.4M7 9.4V11" /></svg>
+}
+
+export function IconX({ class: className }: IconProps) {
+  return <svg class={className} viewBox="0 0 14 14" aria-hidden="true" {...S}><path d="M4 4l6 6M10 4l-6 6" /></svg>
+}
+
 export function IconDots({ class: className }: IconProps) {
   return <svg class={className} viewBox="0 0 14 14" aria-hidden="true" fill="currentColor"><circle cx="7" cy="3.5" r="1" /><circle cx="7" cy="7" r="1" /><circle cx="7" cy="10.5" r="1" /></svg>
 }

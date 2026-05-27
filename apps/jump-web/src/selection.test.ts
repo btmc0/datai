@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
   selectionToText,
+  visibleViewportToText,
   type SelectionBufferLine,
   type SelectionTerminal,
+  type ViewportSelectionTerminal,
 } from './selection'
 
 /**
@@ -44,6 +46,59 @@ function makeTerm(opts: {
     getSelectionPosition: () => opts.selection,
   }
 }
+
+function makeViewportTerm(opts: {
+  cols: number
+  rows: number
+  viewportY: number
+  lines: string[]
+  wrapped?: number[]
+}): ViewportSelectionTerminal {
+  const wrapped = new Set(opts.wrapped ?? [])
+  const lines: SelectionBufferLine[] = opts.lines.map((written, i) => {
+    const writtenLen = Math.min(written.length, opts.cols)
+    const padded = written.padEnd(opts.cols, ' ').slice(0, opts.cols)
+    return {
+      isWrapped: wrapped.has(i),
+      translateToString(trim, start = 0, end = opts.cols) {
+        if (!trim) return padded.slice(start, end)
+        const cap = Math.min(end, writtenLen)
+        return cap <= start ? '' : padded.slice(start, cap)
+      },
+    }
+  })
+
+  return {
+    cols: opts.cols,
+    rows: opts.rows,
+    buffer: { active: { viewportY: opts.viewportY, getLine: y => lines[y] } },
+  }
+}
+
+describe('visibleViewportToText', () => {
+  it('copies visible rows and drops blank viewport tail', () => {
+    const term = makeViewportTerm({
+      cols: 12,
+      rows: 4,
+      viewportY: 1,
+      lines: ['', 'alpha', 'beta   ', ''],
+    })
+
+    expect(visibleViewportToText(term)).toBe('alpha\nbeta')
+  })
+
+  it('joins soft-wrapped visible rows', () => {
+    const term = makeViewportTerm({
+      cols: 8,
+      rows: 2,
+      viewportY: 0,
+      lines: ['long lin', 'e'],
+      wrapped: [1],
+    })
+
+    expect(visibleViewportToText(term)).toBe('long line')
+  })
+})
 
 describe('selectionToText', () => {
   it('returns empty string when nothing is selected', () => {

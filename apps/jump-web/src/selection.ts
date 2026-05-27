@@ -64,10 +64,20 @@ export interface SelectionBuffer {
   getLine(y: number): SelectionBufferLine | undefined
 }
 
+export interface ViewportSelectionBuffer extends SelectionBuffer {
+  readonly viewportY: number
+}
+
 export interface SelectionTerminal {
   readonly cols: number
   readonly buffer: { readonly active: SelectionBuffer }
   getSelectionPosition(): { start: { x: number, y: number }, end: { x: number, y: number } } | undefined
+}
+
+export interface ViewportSelectionTerminal {
+  readonly cols: number
+  readonly rows: number
+  readonly buffer: { readonly active: ViewportSelectionBuffer }
 }
 
 /**
@@ -118,4 +128,30 @@ export function selectionToText(term: SelectionTerminal): string {
     }
   }
   return out
+}
+
+/**
+ * Render the currently visible viewport as clipboard text. Used as a mobile
+ * fallback when precise touch selection is awkward. It uses the same
+ * boundary-trimming model as `selectionToText`, then drops blank viewport tail
+ * rows so copying a mostly-empty screen does not include a wall of newlines.
+ */
+export function visibleViewportToText(term: ViewportSelectionTerminal): string {
+  const buffer = term.buffer.active
+  const cols = term.cols
+  const startY = buffer.viewportY
+  const endY = startY + Math.max(0, term.rows - 1)
+
+  let out = ''
+  for (let y = startY; y <= endY; y++) {
+    const line = buffer.getLine(y)
+    if (line) out += line.translateToString(true, 0, cols).replace(/[ \t]+$/, '')
+
+    if (y < endY) {
+      const next = buffer.getLine(y + 1)
+      if (!next?.isWrapped) out += '\n'
+    }
+  }
+
+  return out.replace(/\n+$/, '')
 }

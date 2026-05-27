@@ -15,6 +15,9 @@ import { decideViewportResize, sameSize } from './terminal-resize'
 import { MOCK_BY_ID } from './mock-data/index'
 import type { Session } from './types'
 import { isCoarsePointerDevice, isSoftKeyboardLikelyOpen } from './input-device'
+import { selectionToText, visibleViewportToText } from './selection'
+import { selectTerminalRange, touchToTerminalCell, type TerminalCell } from './mobile-copy-mode'
+import { IconCopy, IconScreen, IconX } from './icons'
 import {
   beginTerminalComposition,
   createTerminalCompositionInputState,
@@ -231,6 +234,8 @@ export function TerminalView({
   onKeyboardHideReady,
   onKeyboardActiveChange,
   terminalFontSize,
+  mobileCopyMode = false,
+  onMobileCopyModeChange,
 }: {
   session: Session
   terminalOptions: ResolvedTerminalOptions
@@ -247,6 +252,8 @@ export function TerminalView({
   onKeyboardHideReady?: (hide: (() => void) | null) => void
   onKeyboardActiveChange?: (active: boolean) => void
   terminalFontSize: number
+  mobileCopyMode?: boolean
+  onMobileCopyModeChange?: (active: boolean) => void
 }) {
   const shellRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -264,6 +271,8 @@ export function TerminalView({
   const composingRef = useRef(false)
   const compositionInputRef = useRef(createTerminalCompositionInputState())
   const compositionSuppressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const mobileCopyModeRef = useRef(mobileCopyMode)
+  const mobileCopyAnchorRef = useRef<TerminalCell | null>(null)
 
   // True once the terminal's font is downloaded; gates xterm mount.
   // See the preload effect below for why this matters.
@@ -273,6 +282,8 @@ export function TerminalView({
   const [wsState, setWsState] = useState<'connecting' | 'open' | 'lost'>('connecting')
   const [viewportSize, setViewportSize] = useState<TerminalSize | null>(null)
   const [scrolledUp, setScrolledUp] = useState(false)
+  const [mobileCopyHasSelection, setMobileCopyHasSelection] = useState(false)
+  const [mobileCopyStatus, setMobileCopyStatus] = useState<'idle' | 'copied' | 'empty' | 'failed'>('idle')
   const SCROLL_THRESHOLD = 3 // rows above bottom before showing the button
   // Track the last PTY size we know about so we can derive the pill.
   const [ptySize, setPtySize] = useState<TerminalSize | null>(null)
@@ -296,6 +307,7 @@ export function TerminalView({
   sessionRef.current = session
   ctrlArmedRef.current = ctrlArmed
   altArmedRef.current = altArmed
+  mobileCopyModeRef.current = mobileCopyMode
 
   const queueResize = useCallback((size: TerminalSize) => {
     termIoRef.current?.requestResize(size, termEpochRef.current)
@@ -456,8 +468,113 @@ export function TerminalView({
     if (!term) return
     // PTY echo is the source of truth. While reconnecting, disable xterm's
     // input surface instead of silently dropping bytes on flaky networks.
-    term.options.disableStdin = wsState !== 'open'
-  }, [wsState])
+    // Mobile copy mode also pauses stdin so touch/keyboard selection never
+    // leaks bytes into the PTY.
+    term.options.disableStdin = wsState !== 'open' || mobileCopyMode
+  }, [wsState, mobileCopyMode])
+
+  useEffect(() => {
+    mobileCopyModeRef.current = mobileCopyMode
+    mobileCopyAnchorRef.current = null
+
+    if (mobileCopyMode) {
+      hideTerminalInput(termRef.current)
+      termRef.current?.clearSelection()
+      setMobileCopyHasSelection(false)
+      setMobileCopyStatus('idle')
+    }
+  }, [mobileCopyMode])
+
+  useEffect(() => {
+    if (!mobileCopyMode) return
+
+    const shell = shellRef.current
+    const term = termRef.current
+    if (!shell || !term) return
+
+    const stop = (ev: TouchEvent) => {
+      ev.preventDefault()
+      ev.stopPropagation()
+    }
+
+    const isCopyPanelEvent = (ev: TouchEvent) => {
+      return ev.target instanceof Element && !!ev.target.closest('.mobile-copy-panel')
+    }
+
+    const selectAt = (touch: Touch) => {
+      const cell = touchToTerminalCell(term, touch)
+      const anchor = mobileCopyAnchorRef.current
+      if (!cell || !anchor) return
+      selectTerminalRange(term, anchor, cell)
+      setMobileCopyHasSelection(true)
+      setMobileCopyStatus('idle')
+    }
+
+    const handleTouchStart = (ev: TouchEvent) => {
+      if (ev.touches.length !== 1) return
+      if (isCopyPanelEvent(ev)) return
+      const anchor = touchToTerminalCell(term, ev.touches[0])
+      if (!anchor) return
+      mobileCopyAnchorRef.current = anchor
+      term.clearSelection()
+      setMobileCopyHasSelection(false)
+      setMobileCopyStatus('idle')
+      stop(ev)
+    }
+
+    const handleTouchMove = (ev: TouchEvent) => {
+      if (ev.touches.length !== 1) return
+      if (isCopyPanelEvent(ev)) return
+      selectAt(ev.touches[0])
+      stop(ev)
+    }
+
+    const handleTouchEnd = (ev: TouchEvent) => {
+      if (isCopyPanelEvent(ev)) return
+      if (ev.changedTouches.length === 1) selectAt(ev.changedTouches[0])
+      mobileCopyAnchorRef.current = null
+      stop(ev)
+    }
+
+    shell.addEventListener('touchstart', handleTouchStart, { capture: true, passive: false })
+    shell.addEventListener('touchmove', handleTouchMove, { capture: true, passive: false })
+    shell.addEventListener('touchend', handleTouchEnd, { capture: true, passive: false })
+    shell.addEventListener('touchcancel', handleTouchEnd, { capture: true, passive: false })
+
+    return () => {
+      shell.removeEventListener('touchstart', handleTouchStart, true)
+      shell.removeEventListener('touchmove', handleTouchMove, true)
+      shell.removeEventListener('touchend', handleTouchEnd, true)
+      shell.removeEventListener('touchcancel', handleTouchEnd, true)
+    }
+  }, [mobileCopyMode])
+
+  const writeClipboardText = useCallback(async (text: string) => {
+    if (!text) {
+      setMobileCopyStatus('empty')
+      return
+    }
+
+    try {
+      await navigator.clipboard.writeText(text)
+      setMobileCopyStatus('copied')
+      onMobileCopyModeChange?.(false)
+    } catch {
+      setMobileCopyStatus('failed')
+    }
+  }, [onMobileCopyModeChange])
+
+  const copyMobileSelection = useCallback(() => {
+    const term = termRef.current
+    if (!term) return
+    void writeClipboardText(selectionToText(term))
+  }, [writeClipboardText])
+
+  const copyMobileScreen = useCallback(() => {
+    const term = termRef.current
+    if (!term) return
+    void writeClipboardText(visibleViewportToText(term))
+  }, [writeClipboardText])
 
   // Terminal + keyboard setup (stable across session changes).
   useEffect(() => {
@@ -707,6 +824,7 @@ export function TerminalView({
     }
 
     const handleTouchStartCapture = (ev: TouchEvent) => {
+      if (mobileCopyModeRef.current) return
       cancelPendingRefocus()
       if (ev.touches.length !== 1 || isInteractiveTarget(ev.target)) {
         touchPanState.active = false
@@ -732,6 +850,7 @@ export function TerminalView({
     }
 
     const handleTouchMoveCapture = (ev: TouchEvent) => {
+      if (mobileCopyModeRef.current) return
       if (!touchPanState.active || ev.touches.length !== 1) return
 
       const host = shellRef.current
@@ -765,6 +884,7 @@ export function TerminalView({
     }
 
     const handleTouchEndCapture = () => {
+      if (mobileCopyModeRef.current) return
       if (touchPanState.active && !touchPanState.moved) {
         // Defer scroll so synthesized mouse events (which the browser fires
         // after touchend returns) reach xterm's Linkifier at the current
@@ -1142,7 +1262,7 @@ export function TerminalView({
   return (
     <div
       ref={shellRef}
-      class={`terminal-shell ${showResizePill ? 'terminal-shell-passive' : ''}`}
+      class={`terminal-shell ${showResizePill ? 'terminal-shell-passive' : ''} ${mobileCopyMode ? 'mobile-copy-mode-active' : ''}`}
       onClick={handleShellClick}
     >
       {showDisconnectedPill && (
@@ -1167,6 +1287,41 @@ export function TerminalView({
       {termLoading && (
         <div class="terminal-loading">
           Waiting for output…
+        </div>
+      )}
+      {mobileCopyMode && (
+        <div class="mobile-copy-panel">
+          <span class={`mobile-copy-hint ${mobileCopyStatus}`}>
+            {mobileCopyStatus === 'copied'
+              ? 'Copied'
+              : mobileCopyStatus === 'empty'
+                ? 'Nothing to copy'
+                : mobileCopyStatus === 'failed'
+                  ? 'Copy failed'
+                  : 'Drag terminal text to select'}
+          </span>
+          <button
+            type="button"
+            class="mobile-copy-action primary icon-only"
+            disabled={!mobileCopyHasSelection}
+            onClick={copyMobileSelection}
+            title="Copy selected"
+            aria-label="Copy selected"
+          ><IconCopy class="mobile-copy-action-icon" /></button>
+          <button
+            type="button"
+            class="mobile-copy-action icon-only"
+            onClick={copyMobileScreen}
+            title="Copy visible screen"
+            aria-label="Copy visible screen"
+          ><IconScreen class="mobile-copy-action-icon" /></button>
+          <button
+            type="button"
+            class="mobile-copy-action ghost icon-only"
+            onClick={() => onMobileCopyModeChange?.(false)}
+            title="Cancel copy mode"
+            aria-label="Cancel copy mode"
+          ><IconX class="mobile-copy-action-icon" /></button>
         </div>
       )}
       {scrolledUp && (

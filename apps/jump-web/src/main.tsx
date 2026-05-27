@@ -18,7 +18,7 @@ import { SettingsModal } from './settings-modal'
 import { ProjectHub } from './project-hub'
 import { Home } from './home'
 import { LaunchButton } from './launcher'
-import { IconActivity, IconAlert, IconDots, IconHelp, IconMoon, IconRestart, IconSun } from './icons'
+import { IconActivity, IconAlert, IconCopy, IconDots, IconHelp, IconMoon, IconRestart, IconSun } from './icons'
 import { installCopySession } from './mock-data/export-session'
 import { isCoarsePointerDevice } from './input-device'
 import { fetchHostActions, requestDisplaySleep, type DisplaySleepCapability } from './host-actions'
@@ -113,11 +113,14 @@ function displaySleepTitle(capability: DisplaySleepCapability | null): string {
   return capability.reason || 'Display sleep is not available on this host'
 }
 
-function MainHeader({ session, terminalFontSize, onTerminalFontSizeChange, onRestart }: {
+function MainHeader({ session, terminalFontSize, onTerminalFontSizeChange, onRestart, mobileCopyAvailable = false, mobileCopyActive = false, onMobileCopyToggle }: {
   session: Session | null
   terminalFontSize: number
   onTerminalFontSizeChange: (delta: number) => void
   onRestart?: () => void
+  mobileCopyAvailable?: boolean
+  mobileCopyActive?: boolean
+  onMobileCopyToggle?: () => void
 }) {
   if (!session) {
     return (
@@ -170,6 +173,18 @@ function MainHeader({ session, terminalFontSize, onTerminalFontSizeChange, onRes
           <span class="main-header-pty-dot" />
           <span class="main-header-pty-dead"><strong>{ptyCounts.dead}</strong><span class="main-header-pty-dead-label"> dead</span></span>
         </div>
+        {mobileCopyAvailable && (
+          <button
+            type="button"
+            class={`mobile-copy-trigger${mobileCopyActive ? ' active' : ''}`}
+            onClick={onMobileCopyToggle}
+            title="Copy terminal text"
+            aria-label="Copy terminal text"
+            aria-pressed={mobileCopyActive}
+          >
+            <IconCopy class="session-menu-icon" />
+          </button>
+        )}
         <SessionMenu
           session={session}
           onRestart={onRestart}
@@ -649,6 +664,7 @@ function App() {
   const terminalKeyboardToggleRef = useRef<(() => void) | null>(null)
   const terminalKeyboardHideRef = useRef<(() => void) | null>(null)
   const terminalPasteRef = useRef<(() => void) | null>(null)
+  const [mobileCopyMode, setMobileCopyMode] = useState(false)
 
   // Read signals.
   const viewVal = view.value
@@ -710,6 +726,10 @@ function App() {
   }, [resumingId])
 
   const canAttach = !!selectedVal?.alive && (!!selectedVal?.socket_path || !!selectedVal?.peer) && !USE_MOCK
+
+  useEffect(() => {
+    setMobileCopyMode(false)
+  }, [selId])
 
   // Clear modifiers when terminal isn't attachable.
   useEffect(() => {
@@ -793,6 +813,9 @@ function App() {
             terminalFontSize={terminalFontSize}
             onTerminalFontSizeChange={handleTerminalFontSizeChange}
             onRestart={selectedVal ? () => { restartSession(selectedVal.id).catch(err => console.error('restart failed:', err)) } : undefined}
+            mobileCopyAvailable={canAttach}
+            mobileCopyActive={mobileCopyMode}
+            onMobileCopyToggle={() => { handleHideKeyboard(); setMobileCopyMode(active => !active) }}
           />
         )}
 
@@ -833,6 +856,8 @@ function App() {
             onKeyboardHideReady={handleKeyboardHideReady}
             onKeyboardActiveChange={handleKeyboardActiveChange}
             terminalFontSize={terminalFontSize}
+            mobileCopyMode={mobileCopyMode}
+            onMobileCopyModeChange={setMobileCopyMode}
           />
         ) : selectedVal && !selectedVal.alive && termOpts && !USE_MOCK ? (
           <ReplayView
