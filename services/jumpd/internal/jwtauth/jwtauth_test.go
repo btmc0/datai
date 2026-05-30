@@ -176,8 +176,10 @@ func TestMiddlewareCookieToken(t *testing.T) {
 func TestMiddlewareMissingToken(t *testing.T) {
 	t.Setenv("WEBUI_SECRET_KEY", testSecret)
 
+	// With no token, jwtauth falls back to a local user (netauth passthrough).
+	var gotUser *User
 	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		t.Error("handler should not be called")
+		gotUser = UserFromContext(r.Context())
 	})
 
 	handler := Middleware(inner)
@@ -186,8 +188,14 @@ func TestMiddlewareMissingToken(t *testing.T) {
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 
-	if rec.Code != http.StatusUnauthorized {
-		t.Errorf("status = %d, want %d", rec.Code, http.StatusUnauthorized)
+	if rec.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d", rec.Code, http.StatusOK)
+	}
+	if gotUser == nil {
+		t.Fatal("expected local user fallback, got nil")
+	}
+	if gotUser.Role != RoleAdmin {
+		t.Errorf("local user role = %q, want %q", gotUser.Role, RoleAdmin)
 	}
 }
 

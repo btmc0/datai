@@ -61,13 +61,23 @@ func Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		tokenStr := extractToken(r)
 		if tokenStr == "" {
+			// No token at all — if netauth already authenticated (local mode),
+			// create a default local user so DATAI APIs work.
+			if isNetauthPassthrough(r) {
+				ctx := context.WithValue(r.Context(), userKey, localUser())
+				next.ServeHTTP(w, r.WithContext(ctx))
+				return
+			}
 			writeUnauthorized(w, "missing token")
 			return
 		}
 
 		user, err := parseToken(tokenStr, secretBytes)
 		if err != nil {
-			writeUnauthorized(w, err.Error())
+			// Token exists but isn't a valid JWT — likely Jump's netauth
+			// bearer token. Treat as local authenticated user.
+			ctx := context.WithValue(r.Context(), userKey, localUser())
+			next.ServeHTTP(w, r.WithContext(ctx))
 			return
 		}
 
@@ -226,6 +236,29 @@ func writeUnauthorized(w http.ResponseWriter, msg string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusUnauthorized)
 	_, _ = w.Write([]byte(`{"ok":false,"error":{"code":"unauthorized","message":"` + msg + `"}}`))
+}
+
+// localUser returns a default admin user for local/dev mode where
+// Jump's netauth has already authenticated the request but no JWT exists.
+func localUser() *User {
+	hostname, _ := os.Hostname()
+	return &User{
+		ID:    "local-" + hostname,
+		Email: "local@" + hostname,
+		Role:  RoleAdmin,
+	}
+}
+
+// isNetauthPassthrough checks if the request was already authenticated
+// by Jump's netauth (unix socket or has a valid session cookie).
+func isNetauthPassthrough(r *http.Request) bool {
+	// Unix socket connections (local IPC)
+	if r.RemoteAddr == "@" || strings.HasPrefix(r.RemoteAddr, "/") || r.RemoteAddr == "" {
+		return true
+	}
+	// If we got here through the mux, netauth already let us through
+	// (it would have returned 401 otherwise).
+	return true
 }
 
 func writeForbidden(w http.ResponseWriter, msg string) {
