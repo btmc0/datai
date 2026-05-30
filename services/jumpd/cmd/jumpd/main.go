@@ -24,6 +24,10 @@ import (
 	"github.com/sting8k/jump/packages/adapter/adapters"
 	"github.com/sting8k/jump/packages/paths"
 	"github.com/sting8k/jump/services/jumpd/internal/authtoken"
+	"github.com/sting8k/jump/services/jumpd/internal/db"
+	"github.com/sting8k/jump/services/jumpd/internal/jwtauth"
+	"github.com/sting8k/jump/services/jumpd/internal/servermgr"
+	"github.com/sting8k/jump/services/jumpd/internal/sshpty"
 	"github.com/sting8k/jump/services/jumpd/internal/binhash"
 	"github.com/sting8k/jump/services/jumpd/internal/clipfile"
 	"github.com/sting8k/jump/services/jumpd/internal/config"
@@ -588,6 +592,57 @@ func serve(stderr io.Writer) int {
 	defer notifCancel()
 
 	mux := http.NewServeMux()
+
+	// ── DATAI modules ──
+	var dataiDB *db.DB
+	if dbPath := os.Getenv("DATAI_DB_PATH"); dbPath != "" {
+		var err error
+		dataiDB, err = db.Open(dbPath)
+		if err != nil {
+			log.Printf("datai: db open failed: %v", err)
+		} else {
+			defer dataiDB.Close()
+			if err := dataiDB.SeedBuiltinTemplates(); err != nil {
+				log.Printf("datai: seed templates failed: %v", err)
+			}
+			log.Printf("datai: database ready at %s", dbPath)
+		}
+	}
+
+	// DATAI server manager + API routes
+	var dataiMgr *servermgr.Manager
+	if dataiDB != nil {
+		mgr := servermgr.New(dataiDB)
+		dataiMgr = mgr
+		// Wrap datai routes with JWT auth
+		dataiMux := http.NewServeMux()
+		mgr.RegisterRoutes(dataiMux)
+		mux.Handle("/v1/datai/", jwtauth.Middleware(dataiMux))
+
+		// SSH PTY WebSocket (JWT-authenticated)
+		sshResolver := sshpty.ServerResolver(func(ctx context.Context, serverID string) (*sshpty.ServerInfo, error) {
+			userID := jwtauth.UserIDFromContext(ctx)
+			if userID == "" {
+				return nil, fmt.Errorf("unauthorized")
+			}
+			server, err := dataiDB.GetServer(userID, serverID)
+			if err != nil {
+				return nil, err
+			}
+			privKey, err := dataiDB.GetSSHKeyPrivate(userID, server.SSHKeyID)
+			if err != nil {
+				return nil, err
+			}
+			return &sshpty.ServerInfo{
+				Host:       server.Host,
+				Port:       server.Port,
+				User:       server.Username,
+				PrivateKey: privKey,
+			}, nil
+		})
+		mux.Handle("/ws/ssh/", jwtauth.Middleware(http.HandlerFunc(sshpty.Handler(sshResolver))))
+		log.Printf("datai: API routes registered")
+	}
 
 	// tsListener is set below if tailscale is enabled. Declared here so
 	// the health handler can include the tailscale URL.
@@ -1758,6 +1813,14 @@ func serve(stderr io.Writer) int {
 	if len(cfg.Peers) > 0 || cfg.Discovery.Devcontainers || (cfg.Tailscale.Enabled && cfg.Discovery.Tailscale) {
 		peerManager = peering.NewManager(cfg.Peers, sessions, hostname)
 		peerManager.Start()
+
+		// Wire DATAI peer management to peering.Manager
+		if dataiMgr != nil {
+			dataiMgr.PeerManager = peerManager
+			if err := dataiMgr.LoadPeers(); err != nil {
+				log.Printf("datai: load peers failed: %v", err)
+			}
+		}
 		if len(cfg.Peers) > 0 {
 			log.Printf("peering: %d peer(s) configured", len(cfg.Peers))
 		}

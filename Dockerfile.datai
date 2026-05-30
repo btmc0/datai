@@ -1,0 +1,79 @@
+# ── Stage 1: Build frontend ──
+FROM node:22-alpine AS frontend
+
+RUN corepack enable && corepack prepare pnpm@10.32.1 --activate
+
+WORKDIR /app
+
+# Copy workspace config + lockfiles first for caching
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* ./
+COPY apps/jump-web/package.json apps/jump-web/
+COPY packages/protocol/package.json packages/protocol/
+
+RUN pnpm install --frozen-lockfile 2>/dev/null || pnpm install
+
+# Copy source and build
+COPY packages/protocol/ packages/protocol/
+COPY apps/jump-web/ apps/jump-web/
+
+ARG VERSION=dev
+ENV VERSION=${VERSION}
+
+RUN pnpm --filter @jump/protocol build && \
+    pnpm --filter @jump/web build
+
+# ── Stage 2: Build Go backend ──
+FROM golang:1.24-alpine AS backend
+
+RUN apk add --no-cache git
+
+WORKDIR /app
+
+# Copy go.work and all go.mod/go.sum for dependency caching
+COPY go.work go.work.sum* ./
+COPY services/jumpd/go.mod services/jumpd/go.sum services/jumpd/
+COPY services/jump-relayd/go.mod services/jump-relayd/
+COPY cli/jump/go.mod cli/jump/go.sum cli/jump/
+COPY packages/adapter/go.mod packages/adapter/go.sum packages/adapter/
+COPY packages/paths/go.mod packages/paths/
+COPY packages/relayproto/go.mod packages/relayproto/
+COPY packages/scrollback/go.mod packages/scrollback/
+COPY packages/workspace/go.mod packages/workspace/
+COPY tests/e2e/go.mod tests/e2e/
+
+RUN cd services/jumpd && go mod download
+
+# Copy all source
+COPY . .
+
+# Embed frontend build into backend
+COPY --from=frontend /app/apps/jump-web/dist/ services/jumpd/cmd/jumpd/web/
+
+ARG VERSION=dev
+
+RUN CGO_ENABLED=0 go build \
+    -ldflags="-s -w -X main.version=${VERSION}" \
+    -o /jumpd \
+    ./services/jumpd/cmd/jumpd
+
+# ── Stage 3: Runtime ──
+FROM alpine:3.20
+
+LABEL maintainer="datai"
+LABEL org.opencontainers.image.source="https://github.com/sting8k/datai"
+LABEL org.opencontainers.image.description="DATAI - Multi-user terminal management platform"
+
+RUN apk add --no-cache ca-certificates tzdata openssh-client && \
+    addgroup -S datai && adduser -S datai -G datai && \
+    mkdir -p /data && chown datai:datai /data
+
+COPY --from=backend /jumpd /usr/local/bin/jumpd
+
+USER datai
+
+EXPOSE 8790
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+    CMD wget --spider -q http://localhost:8790/v1/health || exit 1
+
+CMD ["jumpd"]

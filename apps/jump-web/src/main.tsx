@@ -45,6 +45,13 @@ import {
 
 // Lazy-loaded routes (code-split, not bundled with the main app)
 const InputDiagnostics = lazy(() => import('./input-diagnostics'))
+const ServersPage = lazy(() => import('./servers'))
+const SSHKeysPage = lazy(() => import('./ssh-keys'))
+const PiConfigPage = lazy(() => import('./pi-config'))
+const ConversationsPage = lazy(() => import('./conversations'))
+const ConversationView = lazy(() => import('./conversation-view'))
+const LogViewer = lazy(() => import('./log-viewer'))
+const PeersPage = lazy(() => import('./peers'))
 
 // ── Config ──
 
@@ -895,6 +902,13 @@ render(
   <LocationProvider>
     <Router>
       <Route path="/_/input-diagnostics" component={InputDiagnostics} />
+      <Route path="/_/servers" component={ServersPage} />
+      <Route path="/_/ssh-keys" component={SSHKeysPage} />
+      <Route path="/_/servers/:id/pi" component={PiConfigPage} />
+      <Route path="/_/conversations" component={ConversationsPage} />
+      <Route path="/_/conversations/:id" component={ConversationView} />
+      <Route path="/_/logs/:sessionId" component={LogViewer} />
+      <Route path="/_/peers" component={PeersPage} />
       <Route default component={App} />
     </Router>
   </LocationProvider>,

@@ -1,150 +1,131 @@
-<div align="center">
-  <img src="docs/assets/jump-logo.svg" alt="jump logo" width="96" height="96">
+# DATAI
 
-  <h1>jump</h1>
+Multi-user terminal management platform for AI coding agents. Run Pi, Claude, and shell sessions on remote servers via SSH, managed through a browser UI.
 
-  <p><strong>Browser-first session manager for AI agents, test runners, and long-running commands.</strong></p>
-  <p><code>jump</code> wraps commands in managed PTY sessions, keeps them alive outside the browser tab, and exposes them through a local Web UI.</p>
-  <p>Remote access is optional: use built-in Tailscale/tsnet for private access or <code>jump-relayd</code> for public HTTPS/WSS access through one outbound agent connection.</p>
-</div>
-
-<p align="center">
-  <img src="docs/assets/jump-webui-zerobyte.png" alt="jump Web UI showing active PTY sessions" width="960">
-</p>
+Built on [Jump](https://github.com/sting8k/jump) (terminal multiplexer) + [Open WebUI](https://github.com/open-webui/open-webui) (auth, chat, RAG).
 
 ## Architecture
 
-```mermaid
-graph LR
-    cli["jump CLI\nPTY runner"] -->|Unix socket| daemon["jumpd\nstate · auth · web/API · WS proxy"]
-    browser["Browser\nlocal or tailnet"] -->|HTTP · SSE · WS| daemon
-    daemon -->|optional outbound WSS| relay["jump-relayd\npublic relay"]
-    phone["Phone / remote browser"] -->|HTTPS · WSS| relay
 ```
-
-- `jump`: launches and attaches to local PTY sessions.
-- `jumpd`: discovers sessions, serves the Web UI/API, stores state, and connects to optional remote transports.
-- `jump-relayd`: transport-only public relay; it does not store sessions.
+                    ┌────────────────────────────┐
+                    │         Nginx              │
+                    │    (SSL, reverse proxy)     │
+                    └────┬──────────────┬────────┘
+                         │              │
+               /         │              │  /terminal, /v1/datai, /ws
+               │         │              │
+        ┌──────▼──────┐  │  ┌───────────▼─────────┐
+        │  Open WebUI │  │  │    datai-server      │
+        │  (Svelte)   │  │  │    (Go, fork Jump)   │
+        │             │  │  │                      │
+        │  • Auth/JWT │  │  │  • JWT verify        │
+        │  • Chat AI  │  │  │  • SSH key manager   │
+        │  • RAG      │  │  │  • Server manager    │
+        │  • Groups   │  │  │  • Remote PTY (SSH)  │
+        │  port 8080  │  │  │  • Pi agent mgmt     │
+        └──────┬──────┘  │  │  • Conversations     │
+               │         │  │  • Scrollback/replay  │
+               │         │  │  port 8790           │
+               └─────┐   │  └───────────┬──────────┘
+                     │   │              │
+              ┌──────▼───▼──────────────▼──────┐
+              │        Tailscale Network       │
+              │         (100.x.x.x)            │
+              │                                │
+              │   ┌──────┐ ┌──────┐ ┌──────┐   │
+              │   │ Pi A │ │ Pi B │ │ Pi C │   │
+              │   │ (SSH)│ │ (SSH)│ │ (SSH)│   │
+              │   └──────┘ └──────┘ └──────┘   │
+              └────────────────────────────────┘
+```
 
 ## Features
 
-- **Durable command sessions**: run agents, test watchers, builds, and other long-running commands without tying them to one terminal window.
-- **Browser terminal for agent/TUI workflows**: open `jump` to switch projects, attach to live PTY sessions, and keep Codex-style TUIs usable in the browser.
-- **Notifications and attention tracking**: browser notifications, unread markers, stopped-session states, and attention dots help you spot which session needs review.
-- **Easy remote access, two ways**:
-  - **Tailscale/tsnet** for private tailnet access without exposing the daemon publicly.
-  - **`jump-relayd`** for public HTTPS/WSS access through an outbound-only relay connection.
-- **Local-first by default**: `jumpd` listens on `127.0.0.1` unless you explicitly opt into LAN, tailnet, or relay access.
+- **SSH Remote Terminals** — connect to remote servers via SSH, run AI agents in browser-based xterm.js terminals
+- **Pi Agent Management** — install, configure, and manage Pi on remote servers. Edit system prompts, skills, and project configs from the UI, sync to servers via SSH
+- **Split-pane Conversations** — group multiple terminal sessions into a conversation with resizable split panes
+- **Multi-device** — open your laptop, reconnect to datai, see sessions still running on remote servers (via Jump relay/peering)
+- **Shared Auth** — single sign-on with Open WebUI via shared JWT (HS256)
+- **Structured Logging** — parse Pi/Claude output into structured events, view as terminal, structured, or raw
+- **Templates** — predefined Pi configs (coding assistant, devops, data engineering) applied per-server
 
-## Quick start (local)
-
-Install the latest release:
+## Quick Start
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/sting8k/jump/main/scripts/install.sh | bash
+# Clone
+git clone https://github.com/yourorg/datai.git
+cd datai
+
+# Configure
+cp .env.example .env
+# Edit .env: set WEBUI_SECRET_KEY, ENCRYPTION_KEY, TS_AUTHKEY
+
+# Update nginx.conf with your domain and SSL cert paths
+
+# Start
+docker compose up -d
 ```
 
-Optional pin/custom install directory:
+Open `https://yourdomain.com` for Open WebUI, `https://yourdomain.com/terminal/` for DATAI terminal UI.
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/sting8k/jump/main/scripts/install.sh | JUMP_VERSION=vX.Y.Z INSTALL_DIR=/usr/local/bin bash
+See [docs/setup.md](docs/setup.md) for detailed instructions.
+
+## Tech Stack
+
+| Component | Technology |
+|-----------|-----------|
+| Backend | Go (fork of Jump) |
+| Frontend | Preact + Signals + xterm.js |
+| Database | SQLite (file: `/data/datai.db`) |
+| Auth | JWT HS256 (shared with Open WebUI) |
+| SSH | `golang.org/x/crypto/ssh` |
+| Terminal | xterm.js via WebSocket |
+| Networking | Tailscale (internal comms) |
+| Deploy | Docker Compose + Nginx |
+
+## Project Structure
+
+```
+datai/
+├── services/jumpd/           # Go backend (fork of Jump)
+│   ├── cmd/jumpd/main.go     # Entry point, HTTP routes
+│   └── internal/
+│       ├── jwtauth/           # JWT verification middleware
+│       ├── db/                # SQLite layer + schema
+│       ├── sshpty/            # SSH remote PTY + WebSocket handler
+│       ├── servermgr/         # Server/SSH key/Pi/conversation REST API
+│       ├── store/             # In-memory session state (from Jump)
+│       ├── wsproxy/           # WebSocket proxy (from Jump)
+│       ├── notify/            # SSE notifications (from Jump)
+│       └── ...                # Other Jump internals (kept)
+├── apps/jump-web/             # Preact frontend (fork of Jump web)
+│   └── src/
+│       ├── datai-api.ts       # API client (17 endpoints)
+│       ├── datai-store.ts     # Signals store for DATAI state
+│       ├── servers.tsx        # Server management page
+│       ├── ssh-keys.tsx       # SSH key management page
+│       ├── pi-config.tsx      # Pi config editor
+│       ├── conversations.tsx  # Conversation list + detail
+│       ├── split-pane.tsx     # Split-pane terminal layout
+│       └── ...                # Jump web files (kept)
+├── docker-compose.yml
+├── nginx.conf
+├── Dockerfile.datai
+└── .env.example
 ```
 
-Launch sessions and open the local Web UI:
+## API
 
-```bash
-jump pi                    # launch a coding agent
-jump pytest --watch        # launch a watcher
-jump make build            # launch any long-running command
-jump                       # open the Web UI
-```
+All DATAI endpoints live under `/v1/datai/`. Auth via JWT Bearer token or cookie (same token Open WebUI issues).
 
-Default local URL:
+See [docs/api.md](docs/api.md) for the full API reference.
 
-```text
-http://127.0.0.1:8790
-```
+## Docs
 
-Useful daemon commands:
-
-```bash
-jumpd status
-jumpd auth
-jumpd doctor
-jumpd start
-jumpd stop
-```
-
-## Local network access
-
-`jumpd` binds to `127.0.0.1` by default. To expose it on LAN, VPN, or container networks, opt in explicitly:
-
-```toml
-# ~/.config/jump/host.toml
-listen = "0.0.0.0"
-port = 8790
-```
-
-`JUMPD_LISTEN=0.0.0.0` can override this for systemd/Docker. Do not expose plain HTTP to untrusted networks without TLS, VPN, or reverse proxy protection.
-
-## Remote access
-
-### Relay mode
-
-`jumpd` connects out to a public `jump-relayd`; browsers connect to the relay.
-
-`~/.config/jump/host.toml`:
-
-```toml
-[remote]
-mode = "relay"
-
-[relay]
-enabled = true
-url = "wss://your-relay.example.com/_jump/agent"
-token = "replace-with-a-shared-secret"
-```
-
-Relay server:
-
-```bash
-jump-relayd -listen 127.0.0.1:8791 -token-file /etc/jump-relayd/token
-```
-
-Put HTTPS in front of the relay with nginx, Caddy, Cloudflare, or similar. Official release archives include `jump`, `jumpd`, and `jump-relayd`. See `docs/product/remote-access.md` for relay and tsnet details.
-
-### Tailscale/tsnet mode
-
-Use `jumpd tsnet` to set up private tailnet access without a public relay.
-
-## Files
-
-| Path | Purpose |
-| --- | --- |
-| `~/.config/jump/host.toml` | Daemon listener, remote mode, relay, Tailscale, host behavior. |
-| `~/.config/jump/settings.jsonc` | Web UI/user settings. |
-| `~/.local/state/jump/` | Runtime state, auth token, logs, project list, session metadata. |
-| `/tmp/jump-sessions/` | Local runner socket discovery. |
-
-
-## Repo map
-
-| Path | Purpose |
-| --- | --- |
-| `cli/jump` | CLI runner and PTY server. |
-| `services/jumpd` | Local daemon, API, Web UI embed, auth, relay client. |
-| `services/jump-relayd` | Public relay server. |
-| `apps/jump-web` | Preact Web UI. |
-| `apps/website` | Documentation site. |
-| `packages/*` | Shared paths, workspace, scrollback, relay protocol, adapter code. |
-
-## Project docs
-
-- Operating model: `docs/HARNESS.md`
-- Product architecture: `docs/ARCHITECTURE.md`
-- Remote access contract: `docs/product/remote-access.md`
-- Validation matrix: `docs/TEST_MATRIX.md`
+- [Setup Guide](docs/setup.md)
+- [API Reference](docs/api.md)
+- [Architecture](docs/architecture.md)
 
 ## License
 
-MIT
+Fork of [Jump](https://github.com/sting8k/jump). See original LICENSE.

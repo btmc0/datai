@@ -1,0 +1,11 @@
+node_modules/
+.git/
+*.md
+e2e/
+tests/
+apps/jump-web/dist/
+apps/website/
+.moon/
+.env
+.env.*
+!.env.example

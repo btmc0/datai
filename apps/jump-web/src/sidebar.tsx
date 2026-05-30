@@ -16,7 +16,7 @@ import {
   type DotState,
 } from './store'
 import { PeerLabel } from './peer-label'
-import { IconBattery, IconCpu, IconFolder, IconMemory, IconSettings } from './icons'
+import { IconBattery, IconCpu, IconFolder, IconMemory, IconScreen, IconSettings, IconActivity, IconDots } from './icons'
 import { formatBytes, formatPercent, useHostMetrics, type HostBattery } from './host-metrics'
 import type { Session, Folder, ProjectItem } from './types'
 
@@ -400,6 +400,30 @@ export function Sidebar({
           )}
         </div>
         <div class="sidebar-footer">
+          <div class="sidebar-section-title">DATAI</div>
+          <div class="sidebar-datai-nav">
+            <a class="sidebar-footer-action-btn" href="/_/servers" onClick={onClose}>
+              <IconActivity class="btn-icon" />
+              <span>Servers</span>
+            </a>
+            <a class="sidebar-footer-action-btn" href="/_/conversations" onClick={onClose}>
+              <IconDots class="btn-icon" />
+              <span>Conversations</span>
+            </a>
+            <a class="sidebar-footer-action-btn" href="/_/ssh-keys" onClick={onClose}>
+              <IconSettings class="btn-icon" />
+              <span>SSH Keys</span>
+            </a>
+            <a class="sidebar-footer-action-btn" href="/_/peers" onClick={onClose}>
+              <IconScreen class="btn-icon" />
+              <span>Peers</span>
+            </a>
+            <a class="sidebar-footer-action-btn" href="/" onClick={(e) => { e.preventDefault(); window.location.href = '/' }}>
+              <IconCpu class="btn-icon" />
+              <span>Open WebUI</span>
+            </a>
+          </div>
+          <div class="sidebar-datai-divider" />
           <button class="manage-projects-btn sidebar-footer-action-btn" onClick={onOpenSettings}>
             <IconSettings class="btn-icon" />
             <span>Settings</span>
